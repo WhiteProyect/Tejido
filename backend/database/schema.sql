@@ -169,6 +169,7 @@ CREATE INDEX IF NOT EXISTS idx_collaborators_code ON collaborators(code);
 -- Artistas de Moneystack
 CREATE TABLE IF NOT EXISTS artists(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id),
     name TEXT NOT NULL,
     stage_name TEXT NOT NULL,
     slug TEXT,

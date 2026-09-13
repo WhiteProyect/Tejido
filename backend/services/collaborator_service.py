@@ -104,12 +104,12 @@ def get_profile(conn, user_id):
     }
 
 
-def share_publication(conn, collaborator_id, publication_id):
-    if has_shared_publication(conn, collaborator_id, publication_id):
+def share_publication(conn, user_id, publication_id):
+    collab = get_collaborator_by_user(conn, user_id)
+    if not collab:
         return None
 
-    collab = get_collaborator_by_user(conn, collaborator_id)
-    if not collab:
+    if has_shared_publication(conn, collab['id'], publication_id):
         return None
 
     now = datetime.now(timezone.utc).isoformat()

@@ -108,15 +108,21 @@ def seed_database():
             rewards,
         )
 
+        # Vincula artistas sembrados antes de que existiera user_id (no reasigna dueños ya definidos)
+        conn.execute(
+            "UPDATE artists SET user_id=2 WHERE slug='og-mauro' AND user_id IS NULL"
+        )
+
         # ── Artista Og Mauro — perfil completo ──────────────────────
         if conn.execute("SELECT COUNT(*) FROM artists").fetchone()[0] == 0:
             ts = now()
             conn.execute(
-                """INSERT INTO artists(name, stage_name, slug, real_name, bio, image, hero_image,
+                """INSERT INTO artists(user_id, name, stage_name, slug, real_name, bio, image, hero_image,
                    genre, city, region, spotify_url, youtube_url, instagram_url, tiktok_url,
                    featured, created_at, updated_at)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
+                    2,  # Mateo Gestor es el dueno del perfil de Og Mauro
                     "Oscar Mauro",
                     "Og Mauro",
                     "og-mauro",

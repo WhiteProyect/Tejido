@@ -302,6 +302,8 @@ def _check_artist_admin(handler, conn, user, artist_id):
     artist = get_artist_by_id(conn, artist_id)
     if not artist:
         return handler.error(404, "NOT_FOUND", "Artista no encontrado")
+    if user["role"] == "GESTOR" and artist.get("user_id") != user["id"]:
+        return handler.error(403, "FORBIDDEN", "No puedes gestionar el perfil de otro artista")
     return artist
 
 
@@ -393,9 +395,10 @@ def _create_artist_metric(handler, conn, user, artist_id, data):
 
 
 def _delete_artist_timeline(handler, artist_id, entry_id, user):
-    if not user or user["role"] not in ("ADMIN", "GESTOR"):
-        return handler.error(403, "FORBIDDEN", "Acceso denegado")
     with get_db_connection() as conn:
+        artist = _check_artist_admin(handler, conn, user, artist_id)
+        if not artist:
+            return
         rows = delete_timeline_entry(conn, artist_id, entry_id)
         if rows == 0:
             return handler.error(404, "NOT_FOUND", "Hito no encontrado")
@@ -403,9 +406,10 @@ def _delete_artist_timeline(handler, artist_id, entry_id, user):
 
 
 def _delete_artist_media(handler, artist_id, media_id, user):
-    if not user or user["role"] not in ("ADMIN", "GESTOR"):
-        return handler.error(403, "FORBIDDEN", "Acceso denegado")
     with get_db_connection() as conn:
+        artist = _check_artist_admin(handler, conn, user, artist_id)
+        if not artist:
+            return
         rows = delete_media_item(conn, artist_id, media_id)
         if rows == 0:
             return handler.error(404, "NOT_FOUND", "Media no encontrada")
@@ -413,9 +417,10 @@ def _delete_artist_media(handler, artist_id, media_id, user):
 
 
 def _delete_artist_social(handler, artist_id, link_id, user):
-    if not user or user["role"] not in ("ADMIN", "GESTOR"):
-        return handler.error(403, "FORBIDDEN", "Acceso denegado")
     with get_db_connection() as conn:
+        artist = _check_artist_admin(handler, conn, user, artist_id)
+        if not artist:
+            return
         rows = delete_social_link(conn, artist_id, link_id)
         if rows == 0:
             return handler.error(404, "NOT_FOUND", "Red social no encontrada")
@@ -423,9 +428,10 @@ def _delete_artist_social(handler, artist_id, link_id, user):
 
 
 def _delete_artist_connection(handler, artist_id, connection_id, user):
-    if not user or user["role"] not in ("ADMIN", "GESTOR"):
-        return handler.error(403, "FORBIDDEN", "Acceso denegado")
     with get_db_connection() as conn:
+        artist = _check_artist_admin(handler, conn, user, artist_id)
+        if not artist:
+            return
         rows = delete_connection(conn, artist_id, connection_id)
         if rows == 0:
             return handler.error(404, "NOT_FOUND", "Conexion no encontrada")
@@ -436,12 +442,10 @@ def _delete_artist_connection(handler, artist_id, connection_id, user):
 
 def route_put_artist(handler, artist_id, data, now):
     user = auth(handler)
-    if not user or user["role"] not in ("ADMIN", "GESTOR"):
-        return handler.error(403, "FORBIDDEN", "Acceso denegado")
     with get_db_connection() as conn:
-        artist = get_artist_by_id(conn, artist_id)
+        artist = _check_artist_admin(handler, conn, user, artist_id)
         if not artist:
-            return handler.error(404, "NOT_FOUND", "Artista no encontrado")
+            return
         fields = []
         values = []
         for key in ("name", "stage_name", "slug", "real_name", "bio", "image",
@@ -461,12 +465,10 @@ def route_put_artist(handler, artist_id, data, now):
 
 def route_put_artist_timeline(handler, artist_id, entry_id, data):
     user = auth(handler)
-    if not user or user["role"] not in ("ADMIN", "GESTOR"):
-        return handler.error(403, "FORBIDDEN", "Acceso denegado")
     with get_db_connection() as conn:
-        artist = get_artist_by_id(conn, artist_id)
+        artist = _check_artist_admin(handler, conn, user, artist_id)
         if not artist:
-            return handler.error(404, "NOT_FOUND", "Artista no encontrado")
+            return
         rows = update_timeline_entry(conn, artist_id, entry_id, data)
         if rows == 0:
             return handler.error(404, "NOT_FOUND", "Hito no encontrado o sin cambios")
@@ -475,12 +477,10 @@ def route_put_artist_timeline(handler, artist_id, entry_id, data):
 
 def route_put_artist_media(handler, artist_id, media_id, data):
     user = auth(handler)
-    if not user or user["role"] not in ("ADMIN", "GESTOR"):
-        return handler.error(403, "FORBIDDEN", "Acceso denegado")
     with get_db_connection() as conn:
-        artist = get_artist_by_id(conn, artist_id)
+        artist = _check_artist_admin(handler, conn, user, artist_id)
         if not artist:
-            return handler.error(404, "NOT_FOUND", "Artista no encontrado")
+            return
         rows = update_media_item(conn, artist_id, media_id, data)
         if rows == 0:
             return handler.error(404, "NOT_FOUND", "Media no encontrada o sin cambios")

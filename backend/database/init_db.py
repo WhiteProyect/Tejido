@@ -3,6 +3,7 @@ from pathlib import Path
 from backend.database.connection import get_db_connection
 
 _ARTIST_MIGRATIONS = [
+    "ALTER TABLE artists ADD COLUMN user_id INTEGER REFERENCES users(id)",
     "ALTER TABLE artists ADD COLUMN slug TEXT",
     "ALTER TABLE artists ADD COLUMN real_name TEXT",
     "ALTER TABLE artists ADD COLUMN hero_image TEXT",
@@ -21,6 +22,7 @@ _ARTIST_MIGRATIONS = [
 
 _ARTIST_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_artists_slug ON artists(slug)",
+    "CREATE INDEX IF NOT EXISTS idx_artists_user ON artists(user_id)",
 ]
 
 

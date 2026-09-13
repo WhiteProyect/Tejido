@@ -4,6 +4,7 @@ from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
 
 from backend.database.connection import get_db_connection
+from backend.repositories.artists import get_artist_by_id
 from backend.repositories.publications import get_publication, get_publication_owner_state, list_publication_images, list_publications
 from backend.services.auth_service import get_current_user, login_user, logout_user, now
 from backend.services.collaborator_service import get_profile, get_ranking_top, get_rewards_catalog, get_stats
@@ -175,6 +176,11 @@ def route_api(handler):
             if not user or user["role"] not in ("ADMIN", "GESTOR"):
                 return handler.error(403, "FORBIDDEN", "Acceso denegado")
             artist_id = int(match.group(1))
+            artist = get_artist_by_id(conn, artist_id)
+            if not artist:
+                return handler.error(404, "NOT_FOUND", "Artista no encontrado")
+            if user["role"] == "GESTOR" and artist.get("user_id") != user["id"]:
+                return handler.error(403, "FORBIDDEN", "No puedes ver el dashboard de otro artista")
             data = get_artist_dashboard(conn, artist_id)
             return handler.send_json(data)
 
