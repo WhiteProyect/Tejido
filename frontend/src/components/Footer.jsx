@@ -6,6 +6,24 @@ export default function Footer() {
       <div className="footer-brand">
         <Logo showLocation={false} />
         <p>Descubre lo que mueve a Caucasia.</p>
+        <div className="footer-partners" aria-label="Aliados de Tejido">
+          <div className="footer-partner-logo">
+            <img src="/images/white-proyect-logo.png" alt="White Proyect" />
+            <span>White Proyect</span>
+          </div>
+          <div className="footer-partner-logo footer-moneystack-logo">
+            <img
+              src="/images/moneystack/logo.png"
+              alt="Moneystack"
+              onError={(event) => {
+                event.currentTarget.style.display = 'none';
+                event.currentTarget.parentElement?.classList.add('is-fallback');
+              }}
+            />
+            <span className="footer-moneystack-mark" aria-hidden="true">MS</span>
+            <span>Moneystack</span>
+          </div>
+        </div>
       </div>
       <div>
         <b>Explora</b>
