@@ -4,7 +4,7 @@
 
 TEJIDO es una plataforma web académica para descubrimiento territorial que integra historias, eventos, oportunidades y talentos locales en Caucasia, Antioquia.
 
-**Estado:** ✅ Funcional | **Última actualización:** 30/08/2026
+**Estado:** ✅ Funcional | **Última actualización:** 2026-09-14
 
 ---
 
@@ -12,54 +12,31 @@ TEJIDO es una plataforma web académica para descubrimiento territorial que inte
 
 ```
 tejido/
-├── .config/                      # Configuración del proyecto
-│   ├── .opencode/                # Agentes personalizados
-│   │   ├── agents/               # Definiciones de roles
-│   │   └── tejido-workflow.md    # Workflows y procesos
-│   └── README.md
+├── .config/                      # Configuración de tooling (agentes, workflows)
 ├── .git/                         # Control de versiones
-├── archive/                      # Archivos históricos
-│   ├── database.sql              # Esquema SQL viejo
-│   ├── database_mysql.sql        # Schema MySQL
-│   └── README.md
-├── backend/                      # Backend modularizado
-│   ├── app.py                    # Servidor HTTP
-│   ├── config.py                 # Configuración centralizada
-│   ├── api/
-│   │   └── routes.py             # Rutas y autenticación
-│   ├── database/
-│   │   ├── connection.py         # Conexión BD
-│   │   ├── init_db.py            # Inicialización
-│   │   └── schema.sql            # Esquema actual
-│   ├── services/
-│   │   └── validation.py         # Validación de datos
-│   └── README.md
-├── backups/                      # Versiones anteriores del proyecto
-│   └── pre-*/                    # Snapshots históricos
-├── data/                         # Base de datos SQLite
-│   └── tejido.db                 # Base de datos principal
-├── docs/                         # Documentación
-│   ├── GUIA_EXPOSICION_TEJIDO.md # Guía de exposición
-│   ├── INFORME_AUDITORIA_PREENTREGA.md
-│   ├── INFORME_PRUEBAS.md
-│   └── TEJIDO_Actividad_Integradora_Final_ADSO.docx
-├── frontend/                     # Frontend modularizado
-│   ├── public/                   # Archivos estáticos servidos
-│   │   ├── index.html            # Página principal
-│   │   ├── css/                  # Estilos
-│   │   ├── js/                   # Lógica JavaScript
-│   │   ├── images/               # Imágenes
-│   │   └── assets/               # Otros recursos
-│   ├── src/                      # Histórico de desarrollo
-│   └── README.md
+├── backend/
+│   ├── alembic/                  # Migraciones de esquema (PostgreSQL)
+│   ├── scripts/                  # Scripts puntuales (ej. migración a Neon)
+│   ├── service/                  # Backend FastAPI
+│   │   ├── api/routes/           # Routers por dominio
+│   │   ├── core/                 # Config (pydantic-settings) y logging
+│   │   ├── db/                   # Sesión SQLAlchemy
+│   │   ├── models/                # Modelos ORM (tables.py)
+│   │   ├── schemas/               # Validación Pydantic
+│   │   ├── services/              # Lógica de negocio
+│   │   └── main.py                # App FastAPI
+│   └── tests_fastapi/            # Suite de tests (paridad + flujos de negocio)
+├── backups/                      # Snapshots históricos previos a features riesgosas
+├── docs/                         # Documentación académica (informes, guía)
+├── frontend/                     # React + Vite (a cargo del equipo de frontend)
 ├── scripts/                      # Scripts de arranque
 │   ├── INICIAR_TEJIDO.ps1        # PowerShell (recomendado)
-│   ├── INICIAR_TEJIDO.bat        # Cmd
-│   ├── INICIAR_TEJIDO_MYSQL.bat  # Cmd + MySQL
+│   ├── INICIAR_TEJIDO.bat        # Cmd (invoca el .ps1)
 │   └── README.md
 ├── AGENTS.md                     # Reglas del proyecto
-├── CONTINUACION_PROYECTO.md      # Plan de continuación
-├── server.py                     # Punto de entrada (wrapper)
+├── alembic.ini                   # Config de Alembic
+├── requirements.txt              # Dependencias del backend
+├── server.py                     # Punto de entrada (uvicorn)
 ├── README.md                     # Este archivo
 └── .gitignore                    # Exclusiones de Git
 ```
@@ -68,25 +45,25 @@ tejido/
 
 ## 🚀 Arrancar el Proyecto
 
-### Opción 1: PowerShell (Recomendado)
+### Opción 1: PowerShell (recomendado -- levanta todo y abre el navegador)
 ```powershell
 cd C:\Users\Bryan\Tejido\tejido
 ./scripts/INICIAR_TEJIDO.ps1
 ```
+Levanta el backend (FastAPI) y el frontend (Vite) cada uno en su propia
+ventana de PowerShell, y abre `http://127.0.0.1:5173/` en tu **navegador por
+defecto del sistema** (Chrome/Edge/Brave/Firefox -- nunca el "Simple Browser"
+integrado de VS Code; el `--open` de Vite y el `Start-Process` de este script
+usan el manejador de URL del sistema operativo, verificado en la práctica).
 
-### Opción 2: Python Directo
+### Opción 2: Solo el backend (Python directo)
 ```bash
 cd C:\Users\Bryan\Tejido\tejido
 python server.py
 ```
+No abre navegador ni levanta el frontend -- util para probar solo la API.
 
-### Opción 3: Módulo Python
-```bash
-cd C:\Users\Bryan\Tejido\tejido
-python -m backend.app
-```
-
-**La app estará en:** `http://127.0.0.1:8765`
+**La API estará en:** `http://127.0.0.1:8765` (requiere `.env` con `DATABASE_URL`, ver `.env.example`)
 
 ---
 
@@ -107,7 +84,7 @@ node --check frontend/public/js/services/api.js
 
 Respuesta esperada:
 ```json
-{"status": "ok", "database": "sqlite", "time": "2026-08-30T..."}
+{"status": "ok", "database": "ok", "time": "2026-08-30T..."}
 ```
 
 ---
@@ -115,10 +92,10 @@ Respuesta esperada:
 ## 📦 Componentes Principales
 
 ### Backend
-- **Servidor HTTP:** `backend/app.py` - Usa biblioteca estándar de Python
-- **Autenticación:** `backend/api/routes.py` - Token Bearer de 8 horas
-- **Base de Datos:** SQLite en `data/tejido.db`
-- **Validación:** `backend/services/validation.py`
+- **Framework:** FastAPI + SQLAlchemy 2.0 -- `backend/service/main.py`
+- **Autenticación:** `backend/service/services/auth.py` - Token Bearer de 8 horas
+- **Base de Datos:** PostgreSQL (Neon) -- ver `DATABASE_URL` en `.env`
+- **Validación:** Pydantic -- `backend/service/schemas/`
 
 ### Frontend
 - **React + Vite:** `frontend/src/`
@@ -135,9 +112,9 @@ Respuesta esperada:
   - `js/app.js` - Aplicación principal
 
 ### Datos
-- SQLite en `data/tejido.db`
-- Schemas en `backend/database/schema.sql`
-- Migrations en `backend/database/init_db.py`
+- PostgreSQL (Neon), esquema versionado con Alembic (`backend/alembic/versions/`)
+- Modelos SQLAlchemy en `backend/service/models/tables.py`
+- Seed idempotente en `backend/service/seed.py`
 
 ---
 
@@ -158,19 +135,17 @@ Respuesta esperada:
 
 ## 🔧 Configuración
 
-### backend/config.py
-```python
-HOST = "127.0.0.1"     # Servidor
-PORT = 8765            # Puerto
-DB_PATH = "data/tejido.db"  # Base de datos
-```
-
-### Variables de Ambiente (opcional)
+### Variables de entorno (`.env`, ver `.env.example`)
 ```bash
-TEJIDO_HOST=0.0.0.0
-TEJIDO_PORT=8080
-TEJIDO_DB=postgresql://...
+DATABASE_URL=postgresql+psycopg://usuario:password@host:5432/tejido?sslmode=require  # requerido
+HOST=127.0.0.1
+PORT=8765
+ENVIRONMENT=development   # "production" oculta /docs, /redoc, /openapi.json
+LOG_LEVEL=INFO
+MAX_BODY_BYTES=1000000
+REQUEST_TIMEOUT_SECONDS=30
 ```
+Se leen vía `pydantic-settings` en `backend/service/core/config.py`.
 
 ---
 
@@ -186,37 +161,25 @@ TEJIDO_DB=postgresql://...
 
 ---
 
-## 🎯 Próximas Fases
+## 🎯 Estado de la Migración de Backend/BD
 
-### Fase 3: Optimización Frontend (Actual)
-- [ ] Dividir `app.js` en componentes específicos
-- [ ] Crear componentes para cada sección
-- [ ] Sistema de enrutamiento modular
-- [ ] Validación centralizada
+La migración de backend (stdlib `http.server` + SQLite → FastAPI + SQLAlchemy +
+PostgreSQL/Neon) va por Fase 4 de 5: framework nuevo, datos en Neon, env vars y
+logging endurecidos, y ahora cobertura de tests de flujos de negocio
+(`backend/tests_fastapi/test_business_flows.py`). El deploy (hosting, Docker,
+dominio) queda deliberadamente pausado hasta que el desarrollo esté más maduro.
 
-### Fase 4: Migración a React
-- [x] Crear proyecto React + Vite
-- [x] Conectar publicaciones y filtros con la API existente
-- [ ] Migrar autenticación, favoritos y editor
-- [ ] Migrar mapa y asistente Hilo
-- [ ] Retirar frontend vanilla después de completar la paridad
-
-### Fase 5: Mejoras BD (Futuro)
-- [ ] Opción: Migrar a PostgreSQL
-- [ ] Índices y optimización
-- [ ] Backups automatizados
-- [ ] Réplicas de seguridad
+El roadmap del frontend (migración a React, retiro del vanilla JS heredado)
+lo lleva el equipo de frontend por separado -- no se documenta aquí para
+evitar que quede desactualizado como pasaba con el plan anterior.
 
 ---
 
 ## 📚 Documentación Importante
 
 - **[AGENTS.md](AGENTS.md)** - Reglas generales del proyecto
-- **[CONTINUACION_PROYECTO.md](CONTINUACION_PROYECTO.md)** - Plan detallado
 - **[frontend/README.md](frontend/README.md)** - Arquitectura frontend
-- **[backend/README.md](backend/README.md)** - Arquitectura backend
 - **[scripts/README.md](scripts/README.md)** - Cómo arrancar
-- **[archive/README.md](archive/README.md)** - Archivos históricos
 
 ---
 
@@ -235,15 +198,14 @@ python server.py
 
 ### "Puerto 8765 ya está en uso"
 ```powershell
-# Cambiar puerto en backend/config.py
+# Cambiar PORT en .env, o matar el proceso que lo esta usando:
 Get-Process -Name python | Stop-Process -Force
 ```
 
-### "Base de datos corrupta"
+### Problemas con el esquema de la base de datos
 ```bash
-# NO BORRAR. Hacer backup primero:
-cp data/tejido.db data/tejido.db.backup
-# Luego revisar backend/database/init_db.py
+# La base es PostgreSQL (Neon), gestionada con Alembic:
+py -m alembic upgrade head
 ```
 
 ---
@@ -278,15 +240,13 @@ Para contribuir al proyecto:
 1. Leer [AGENTS.md](AGENTS.md)
 2. Seguir la estructura de carpetas
 3. Documentar cambios en README.md
-4. Probar antes de hacer commit
-5. Actualizar [CONTINUACION_PROYECTO.md](CONTINUACION_PROYECTO.md)
+4. Probar antes de hacer commit (`py -m pytest backend/tests_fastapi -v`)
 
 ---
 
 ## 📞 Soporte
 
 - **Problemas técnicos:** Ver sección "Problemas Comunes"
-- **Preguntas del proyecto:** Ver [CONTINUACION_PROYECTO.md](CONTINUACION_PROYECTO.md)
 - **Reglas del código:** Ver [AGENTS.md](AGENTS.md)
 
 ---
@@ -299,6 +259,6 @@ Hecho con orgullo en Caucasia, Antioquia.
 
 ---
 
-**Última actualización:** 30/08/2026  
-**Versión:** 2.0 (Modularizado y Reorganizado)  
-**Estado:** ✅ Funcional y Listo para Continuar
+**Última actualización:** 2026-09-14  
+**Versión:** 3.0 (Backend FastAPI + PostgreSQL/Neon)  
+**Estado:** ✅ Funcional

@@ -28,6 +28,10 @@ frontend/dist/
 *.swp
 *~
 
+# Reportes de test regenerados en cada corrida
+backend/tests_fastapi/baseline_report_fastapi.json
+.pytest_cache/
+
 # Sistema operativo
 .DS_Store
 Thumbs.db

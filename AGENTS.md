@@ -15,21 +15,21 @@ El proyecto debe mantenerse simple, estable y fácil de mantener.
 
 ## 2. TECNOLOGÍAS OFICIALES
 
-Backend:
+Backend (actualizado 2026-09-14, migración de stack ya autorizada y completa):
 
 - Python 3.9+
-- biblioteca estándar de Python
-- http.server
-- ThreadingHTTPServer
-- sqlite3
-- hashlib
-- secrets
-- json
+- FastAPI
+- SQLAlchemy 2.0 (ORM) + Alembic (migraciones de esquema)
+- Pydantic / pydantic-settings
+- hashlib, secrets (hashing y tokens, sin cambios)
 
 Base de datos principal:
 
-- SQLite
-- data/tejido.db
+- PostgreSQL, hosteada en Neon (neon.tech)
+- Conexión vía `DATABASE_URL` en `.env` (ver `.env.example`), leída con
+  pydantic-settings en `backend/service/core/config.py`
+- Esquema versionado con Alembic (`backend/alembic/versions/`), modelos en
+  `backend/service/models/tables.py`
 
 Frontend:
 
@@ -37,21 +37,24 @@ Frontend:
 - Vite
 - JavaScript
 
-No existe obligación de utilizar frameworks.
+El backend usa FastAPI de forma deliberada y autorizada (no es una excepción
+temporal) -- ver sección 3.
 
 ---
 
 ## 3. TECNOLOGÍAS NO INTRODUCIR SIN AUTORIZACIÓN
 
-No introducir:
+FastAPI, SQLAlchemy, Alembic, Pydantic y PostgreSQL **ya están autorizados y
+en producción** (migración completada, ver sección 2) -- no aplican como
+restricción.
 
-- Flask
-- Django
-- FastAPI
-- Vue
-- Angular
+No introducir sin autorización explícita:
+
+- Flask, Django (otros frameworks backend además del ya adoptado)
+- Vue, Angular
 - Webpack
-- ORMs innecesarios
+- Docker/docker-compose (deploy queda pausado hasta que el desarrollo esté
+  más maduro -- ver el estado del proyecto antes de proponerlo)
 - frameworks CSS nuevos
 
 No convertir TEJIDO en otro tipo de proyecto.
@@ -92,19 +95,21 @@ No sobrescribir backups.
 
 ## 6. BASE DE DATOS
 
-La base de datos principal es:
-
-data/tejido.db
+La base de datos principal es PostgreSQL, hosteada en Neon. La conexión se
+configura con `DATABASE_URL` en `.env` (nunca hardcodeada en el código).
 
 Antes de cambiar la estructura:
 
-- revisar tablas existentes;
-- revisar relaciones;
-- revisar consultas;
+- revisar los modelos en `backend/service/models/tables.py`;
+- revisar relaciones y foreign keys;
+- revisar las queries en `backend/service/services/`;
 - comprobar dependencias;
-- considerar datos existentes.
+- considerar los datos existentes.
 
-Los cambios de base de datos deben ser compatibles con el proyecto.
+Todo cambio de esquema se hace con una migración de Alembic
+(`py -m alembic revision --autogenerate -m "..."` y `py -m alembic upgrade head`),
+nunca editando la base directamente. Los cambios de base de datos deben ser
+compatibles con el proyecto.
 
 ---
 
@@ -136,14 +141,18 @@ Antes de agregar imágenes:
 
 ## 8. BACKEND
 
-El backend principal utiliza Python y la biblioteca estándar.
+El backend principal usa FastAPI. `server.py` en la raíz es solo el punto de
+arranque (uvicorn) -- los endpoints viven en `backend/service/api/routes/`,
+por dominio (auth, publications, collaborators, artists, admin, misc).
 
-Antes de modificar server.py:
+Antes de modificar un endpoint:
 
-- localizar el endpoint;
-- revisar cómo procesa los datos;
-- revisar la respuesta;
-- comprobar qué parte del frontend lo utiliza.
+- localizarlo en `backend/service/api/routes/`;
+- revisar la lógica de negocio en `backend/service/services/`;
+- revisar la respuesta y los códigos de error (`backend/service/errors.py`);
+- comprobar qué parte del frontend lo utiliza;
+- si el cambio es de comportamiento, agregar o actualizar el test
+  correspondiente en `backend/tests_fastapi/`.
 
 No crear endpoints duplicados.
 

@@ -13,48 +13,28 @@ cd C:\Users\Bryan\Tejido\tejido
 ```
 
 ### `INICIAR_TEJIDO.bat`
-**Plataforma:** Windows (Cmd)  
+**Plataforma:** Windows (Cmd, invoca el .ps1)  
 **Uso:**
 ```cmd
 cd C:\Users\Bryan\Tejido\tejido
 scripts\INICIAR_TEJIDO.bat
 ```
 
-### `INICIAR_TEJIDO_MYSQL.bat`
-**Plataforma:** Windows (Cmd con MySQL)  
-**Uso:**
-```cmd
-cd C:\Users\Bryan\Tejido\tejido
-scripts\INICIAR_TEJIDO_MYSQL.bat
-```
-
 ## 🚀 Ejecución Rápida
 
-**Opción 1:** PowerShell (Recomendado)
+**Opción 1:** PowerShell (Recomendado -- levanta backend + frontend y abre el navegador)
 ```powershell
 cd C:\Users\Bryan\Tejido\tejido
 ./scripts/INICIAR_TEJIDO.ps1
 ```
 
-**Opción 2:** Python directo
+**Opción 2:** Solo backend, Python directo
 ```bash
 cd C:\Users\Bryan\Tejido\tejido
 python server.py
 ```
 
-**Opción 3:** Python con módulo
-```bash
-cd C:\Users\Bryan\Tejido\tejido
-python -m backend.app
-```
-
 ## ✅ Verificación
-
-Cuando la app arranque, deberías ver:
-```
-TEJIDO está disponible en http://127.0.0.1:8765
-Presiona Ctrl+C para detener.
-```
 
 Prueba la conexión:
 ```bash
@@ -63,19 +43,16 @@ curl http://127.0.0.1:8765/api/health
 
 Respuesta esperada:
 ```json
-{"status": "ok", "database": "sqlite", "time": "2026-08-30T..."}
+{"status": "ok", "database": "ok", "time": "2026-09-14T..."}
 ```
 
 ## 🔧 Configuración
 
-Para cambiar host, puerto u otras opciones, edita `backend/config.py`:
-
-```python
-HOST = "127.0.0.1"  # Cambiar aquí
-PORT = 8765          # O aquí
-```
+Host, puerto y demas variables se leen desde `.env` (ver `.env.example` en la
+raiz del proyecto), via `pydantic-settings` en `backend/service/core/config.py`
+-- ya no hay un `backend/config.py` con valores hardcodeados.
 
 ---
 
-**Última actualización:** 30/08/2026  
-**Estado:** ✅ Funcional
+**Última actualización:** 2026-09-14  
+**Estado:** ✅ Funcional (FastAPI + PostgreSQL/Neon)
