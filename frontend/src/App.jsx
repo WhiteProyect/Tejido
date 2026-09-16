@@ -154,7 +154,8 @@ export default function App() {
           <SiteHeader user={user} isMoneystack={route.screen === 'moneystack'} onLogin={() => { sessionStorage.setItem('tejido_return_to', getRoute().screen); window.location.hash = 'login'; }} onLogout={handleLogout} />
           <main>{content}</main>
           <Footer />
-          <HiloAssistant publications={publications} />
+          {/* En inicio, HeroInteractive es la guía principal de Hilo; el asistente flotante acompaña las demás vistas. */}
+          {route.screen !== 'inicio' && <HiloAssistant publications={publications} />}
         </>
       )}
       {isArtistRoute && content}

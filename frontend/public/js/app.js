@@ -33,6 +33,10 @@
 async function initializeTEJIDO() {
   try {
     console.log('Iniciando TEJIDO...');
+
+    if (window.TEJIDO_ASSISTANT && typeof window.TEJIDO_ASSISTANT.bind === 'function') {
+      window.TEJIDO_ASSISTANT.bind();
+    }
     
     // 1. Cargar datos iniciales del servidor
     await CORE_LOADER.loadInitialData();
@@ -42,11 +46,6 @@ async function initializeTEJIDO() {
     
     // 3. Vincular todos los eventos de interacción de la página
     INTERACTIONS.bindPageEvents();
-    
-    // 4. Inicializar asistente Hilo si está disponible
-    if (window.TEJIDO_ASSISTANT && typeof window.TEJIDO_ASSISTANT.bind === 'function') {
-      window.TEJIDO_ASSISTANT.bind();
-    }
     
     console.log('✅ TEJIDO inicializado correctamente');
   } catch (error) {

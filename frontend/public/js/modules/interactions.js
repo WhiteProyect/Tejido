@@ -168,8 +168,38 @@ const INTERACTIONS = {
       if (event.key === 'Escape') UI.closeAll();
     });
 
+    // Header: ocultar al bajar, mostrar al subir
+    this.setupScrollHeader();
+
     // Cambio de hash
     window.addEventListener('hashchange', () => DETAIL.handleSharedRoute());
+  },
+
+  /**
+   * Header se esconde al bajar y aparece al subir
+   */
+  setupScrollHeader() {
+    const header = document.querySelector('.site-header');
+    if (!header) return;
+    let lastScroll = 0;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const current = window.scrollY;
+        if (current < 80) {
+          header.classList.remove('header-hidden');
+        } else if (current > lastScroll + 5) {
+          header.classList.add('header-hidden');
+        } else if (current < lastScroll - 5) {
+          header.classList.remove('header-hidden');
+        }
+        lastScroll = current;
+        ticking = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
   },
 
   /**

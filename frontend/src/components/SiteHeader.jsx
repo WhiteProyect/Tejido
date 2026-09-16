@@ -3,7 +3,9 @@ import Logo from './Logo.jsx';
 
 export default function SiteHeader({ user, onLogin, onLogout, isMoneystack = false }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
   const menuRef = useRef(null);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     if (!showUserMenu) return;
@@ -23,8 +25,28 @@ export default function SiteHeader({ user, onLogin, onLogout, isMoneystack = fal
     };
   }, [showUserMenu]);
 
+  useEffect(() => {
+    function handleScroll() {
+      const currentScrollY = window.scrollY;
+      const scrollDifference = currentScrollY - lastScrollY.current;
+
+      // El header permanece visible arriba y reaparece cuando el usuario sube.
+      if (currentScrollY <= 80 || scrollDifference < -6) {
+        setIsHidden(false);
+      } else if (scrollDifference > 6) {
+        setIsHidden(true);
+        setShowUserMenu(false);
+      }
+
+      lastScrollY.current = currentScrollY;
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <header className={`site-header${isMoneystack ? ' site-header-moneystack' : ''}`}>
+    <header className={`site-header${isMoneystack ? ' site-header-moneystack' : ''}${isHidden ? ' header-hidden' : ''}`}>
       <Logo />
       <nav aria-label="Principal">
         <a href="#inicio">Inicio</a>
@@ -52,7 +74,7 @@ export default function SiteHeader({ user, onLogin, onLogout, isMoneystack = fal
       ) : (
         <>
           <button className="login-button" type="button" onClick={onLogin}>Ingresar</button>
-          <img className="white-logo" src="/images/white-proyect-logo.jpeg" alt="White Proyect" aria-label="White Proyect" />
+          <img className="white-logo" src="/images/white-proyect-logo.png" alt="White Proyect" aria-label="White Proyect" />
         </>
       )}
     </header>
