@@ -6,6 +6,7 @@ alembic==1.20.0
 pydantic==2.13.5
 pydantic-settings==2.15.0
 psycopg[binary]==3.3.5
+slowapi==0.1.10
 
 # Dev / tests
 pytest==9.1.1
