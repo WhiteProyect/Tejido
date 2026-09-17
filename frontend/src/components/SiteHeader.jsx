@@ -74,7 +74,6 @@ export default function SiteHeader({ user, onLogin, onLogout, isMoneystack = fal
       ) : (
         <>
           <button className="login-button" type="button" onClick={onLogin}>Ingresar</button>
-          <img className="white-logo" src="/images/white-proyect-logo.png" alt="White Proyect" aria-label="White Proyect" />
         </>
       )}
     </header>

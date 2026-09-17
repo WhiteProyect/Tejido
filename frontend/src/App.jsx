@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Footer from './components/Footer.jsx';
 import HiloAssistant from './components/HiloAssistant.jsx';
 import SiteHeader from './components/SiteHeader.jsx';
@@ -152,7 +153,19 @@ export default function App() {
       {!isArtistRoute && (
         <>
           <SiteHeader user={user} isMoneystack={route.screen === 'moneystack'} onLogin={() => { sessionStorage.setItem('tejido_return_to', getRoute().screen); window.location.hash = 'login'; }} onLogout={handleLogout} />
-          <main>{content}</main>
+          <main>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={route.screen}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
+              >
+                {content}
+              </motion.div>
+            </AnimatePresence>
+          </main>
           <Footer />
           {/* En inicio, HeroInteractive es la guía principal de Hilo; el asistente flotante acompaña las demás vistas. */}
           {route.screen !== 'inicio' && <HiloAssistant publications={publications} />}

@@ -7,7 +7,6 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': 'http://127.0.0.1:8765',
-      '/images': 'http://127.0.0.1:8765',
       '/assets': 'http://127.0.0.1:8765',
     },
   },

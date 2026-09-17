@@ -16,8 +16,9 @@ class Settings(BaseSettings):
     database_url: str
 
     # Mismo host:puerto que el backend legado (ya retirado) para no requerir
-    # ningun cambio en frontend/vite.config.js, que ya proxea /api, /images
-    # y /assets a 127.0.0.1:8765.
+    # ningun cambio en frontend/vite.config.js, que ya proxea /api y /assets
+    # a 127.0.0.1:8765 (/images lo sirve Vite directamente desde
+    # frontend/public/images/ en desarrollo -- ver commit de fix del logo roto).
     host: str = "127.0.0.1"
     port: int = 8765
 
