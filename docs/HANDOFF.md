@@ -54,3 +54,53 @@ repo, en vez de dos sesiones de Claude.
 - Vite (5173) y el backend (8765) del dueño pueden estar corriendo ya — no
   matar esos procesos. Puerto 5174 para pruebas.
 - Deploy/Docker/hosting sigue pausado hasta que el desarrollo esté maduro.
+
+---
+
+## 2026-09-19 (cont.) — Migración del remoto a WhiteProyect/Tejido + cierre de setup
+
+**Qué se hizo:**
+
+- Se confirmó que `agentwhite11` (remoto viejo) es la cuenta personal de un
+  compañero, y que la organización **WhiteProyect** en GitHub es de ambos,
+  con ese compañero ya agregado como colaborador ahí.
+- Se migró el remoto: `origin` ahora es
+  `https://github.com/WhiteProyect/Tejido.git`. Se subieron las ramas
+  `pruebas` (rama de trabajo compartida, todo el historial y el trabajo
+  reciente) y `main` (se fusionó con el README inicial que GitHub creó al
+  hacer el repo). El remoto viejo (`colaborador` → `agentwhite11/tejido`) se
+  eliminó de este checkout local una vez migrado.
+- **Incidente y fix:** durante la migración se hizo `git checkout main`
+  (rama vieja, pre-migración: SQLite + JS vanilla) y luego `git checkout
+  pruebas` para volver, con Vite (5173) y el backend (8765) del dueño
+  corriendo en caliente. Ese swap del working tree bajo servidores vivos
+  corrompió ambos procesos: la pantalla de MoneyStack/artistas se veía
+  rota y el backend reportaba fallas, aunque el árbol final en disco
+  (`pruebas`) estaba correcto. Se diagnosticó, se reiniciaron ambos
+  procesos con `scripts/INICIAR_TEJIDO.ps1`, y se confirmó
+  `/api/health` → `{"status":"ok","database":"ok"}` y frontend 200.
+  Regla agregada a `AGENTS.md` sección 15: parar los servidores antes de
+  cualquier checkout/switch/merge que toque archivos trackeados.
+- Se completó `AGENTS.md` sección 15 con los roles fijos y el estado del
+  remoto/rama compartida, para que Codex arranque con contexto completo.
+
+**Estado actual (fin de esta sesión de Claude):**
+
+- Repo: solo remoto `origin` → `WhiteProyect/Tejido`, rama activa `pruebas`,
+  working tree limpio, todo commiteado y pusheado.
+- Servidores del dueño corriendo y verificados sanos: Vite 5173, backend
+  8765 (`/api/health` ok, DB Neon ok).
+- Roles a partir de ahora: **Claude Code (esta terminal, modelo Opus)** =
+  arquitecto/implementador; **Codex CLI** = analista/revisor en solo
+  lectura. No se van a correr dos sesiones de Claude en paralelo.
+
+**Qué falta / pendiente:**
+
+- El compañero (`agentwhite11`) debe apuntar su propio remoto local a
+  `WhiteProyect/Tejido` (el mismo cambio que se hizo aquí) y, si su backend
+  local falla, revisar que tenga su propio `.env` con el `DATABASE_URL` de
+  Neon (nunca viaja por git, está en `.gitignore`) — no se confirmó todavía
+  si ese es su problema.
+- Instalar la extensión de Codex en VS Code (manual, la hace el dueño).
+- Confirmar que el modelo de esta sesión de Claude ya está en Opus
+  (`/model`, lo hace el dueño).

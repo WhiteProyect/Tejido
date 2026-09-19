@@ -256,19 +256,39 @@ No agregar complejidad sin necesidad.
 
 ## 15. TRABAJO CON DOS AGENTES (CLAUDE + CODEX)
 
-Este proyecto puede trabajarse con dos agentes a la vez: Claude Code como
-arquitecto/implementador y Codex CLI como analista/revisor. Ambos leen este
-mismo archivo (Codex lo hace automáticamente por convención de nombre).
+Este proyecto se trabaja con dos agentes a la vez. Ambos leen este mismo
+archivo (Codex lo hace automáticamente por convención de nombre).
 
-- **Un solo agente escribe código a la vez.** El otro revisa en modo
-  solo lectura (`codex exec -s read-only` o `codex review`). No editar el
-  mismo archivo desde los dos agentes en paralelo.
+**Roles (fijos, no dos sesiones de Claude):**
+
+- **Claude Code** (terminal, modelo Opus): arquitecto e implementador. Es
+  quien edita código, corre tests, hace commits y decide el diseño técnico.
+- **Codex CLI**: analista y revisor, en modo **solo lectura**
+  (`codex exec -s read-only`, `codex review`). Da segunda opinión sobre
+  diffs, busca bugs y cuestiona el diseño; no escribe código de producción
+  salvo que el dueño lo pida explícitamente para una tarea puntual.
+
+**Reglas de convivencia:**
+
+- **Un solo agente escribe código a la vez.** No editar el mismo archivo
+  desde los dos agentes en paralelo.
+- **Antes de cualquier `git checkout`/`switch`/`merge` que cambie archivos
+  trackeados, detener primero Vite (5173) y el backend (8765) si están
+  corriendo**, y volver a levantarlos después con
+  `scripts/INICIAR_TEJIDO.ps1`. Cambiar el working tree con los servidores
+  vivos los corrompe (pasó el 2026-09-19: la pantalla de MoneyStack y el
+  backend se rompieron por un checkout con los servidores en caliente, ver
+  `docs/HANDOFF.md`). Si no están corriendo, no hace falta.
 - **Puertos ya ocupados por servidores del dueño:** Vite en 5173 y el backend
-  en 8765 pueden estar corriendo ya -- no matar esos procesos. Usar el puerto
-  5174 para pruebas.
+  en 8765 pueden estar corriendo ya -- no matar esos procesos sin avisar.
+  Usar el puerto 5174 para pruebas aisladas.
 - **Deploy sigue pausado** (ver sección 3) hasta que el dueño lo autorice
   explícitamente -- ningún agente debe proponer Docker, hosting o dominio
   todavía.
+- **Git:** el remoto `origin` es `https://github.com/WhiteProyect/Tejido.git`
+  (organización compartida del dueño y su compañero). La rama de trabajo
+  compartida es `pruebas` -- ahí se suben y se toman los cambios entre
+  equipos. `main` existe pero va detrás.
 - **Traspaso entre sesiones/agentes:** dejar un resumen breve en
   `docs/HANDOFF.md` (qué se hizo, qué falta, qué se decidió) al cerrar una
   tarea relevante, para que el otro agente no tenga que redescubrir el
