@@ -1,6 +1,6 @@
 """
 Logging con el modulo estandar `logging` -- reemplaza el `print()` casero de
-`Handler.log_message` del backend legado (backend/app.py, ya retirado).
+`Handler.log_message` del backend legado.
 
 `configure_logging()` es idempotente: se llama tanto en server.py (antes de
 `uvicorn.run(..., log_config=None)`, para que uvicorn no pise esta config con

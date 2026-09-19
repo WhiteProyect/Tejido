@@ -31,7 +31,7 @@ export default function ArtistMediaKit() {
     return (
       <div className="mk-loading">
         <p>Artista no encontrado</p>
-        <a href="#moneystack">Volver</a>
+        <a href="/#moneystack">Volver</a>
       </div>
     );
   }

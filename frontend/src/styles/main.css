@@ -22,13 +22,16 @@ nav { display: flex; gap: 32px; font-size: 14px; font-weight: 600; }
 .site-header nav a { color: var(--ink); }
 .site-header nav a:hover { color: var(--orange); }
 .login-button, .primary-button { border: 0; border-radius: 999px; cursor: pointer; font-weight: 700; padding: 13px 22px; }
-.site-header .login-button { background: transparent; border: 1px solid var(--ink); color: var(--ink); }
+.site-header .login-button { background: transparent; border: 2px solid var(--ink); color: var(--ink); transition: background .25s cubic-bezier(.25,.8,.25,1), box-shadow .25s cubic-bezier(.25,.8,.25,1), color .25s cubic-bezier(.25,.8,.25,1), transform .25s cubic-bezier(.25,.8,.25,1); }
+.site-header .login-button:hover { background: var(--ink); box-shadow: 0 8px 20px rgba(23,63,54,.2); color: var(--paper); transform: translateY(-1px); }
+.site-header .login-button:active { transform: translateY(0); }
 .site-header .white-logo { border: 1px solid rgba(247,247,245,.25); border-radius: 50%; flex: none; height: 40px; object-fit: cover; width: 40px; }
 .site-header-moneystack { background: #000000; border-bottom-color: rgba(0, 0, 0, 0.742); }
 .site-header-moneystack .brand { color: #f7f7f5; }
 .site-header-moneystack .brand-mark i { border-color: #f7f7f5; }
 .site-header-moneystack nav a { color: #f7f7f5; }
 .site-header-moneystack .login-button { border-color: #f7f7f5; color: #f7f7f5; }
+.site-header-moneystack .login-button:hover { background: #f7f7f5; box-shadow: 0 8px 20px rgba(0,0,0,.35); color: #0a0a0a; }
 .hero { align-items: center; background: var(--paper); color: var(--ink); display: flex; justify-content: space-between; min-height: 65vh; overflow: hidden; padding: 9vw 12vw; position: relative; }
 .hero::before { background: var(--mint); border-radius: 48% 48% 18% 48%; content: ''; height: 34vw; opacity: .8; position: absolute; right: 8vw; top: 10vw; width: 30vw; }
 .hero-copy { max-width: 650px; position: relative; z-index: 1; }
@@ -102,17 +105,24 @@ h3 { font-size: 24px; }
 .split-section { align-items: center; background: #df6d43; color: #fff9ef; display: flex; justify-content: space-between; }
 .split-section .eyebrow { color: #173b32; }
 .feature-note { border-left: 1px solid rgba(255,255,255,.7); display: grid; gap: 8px; max-width: 300px; padding-left: 30px; }
-footer { background: #0c241e; color: white; display: grid; gap: 50px; grid-template-columns: 2fr 1fr 1fr 1.2fr; margin-top: 60px; padding: 70px 7vw 40px; }
+footer { background: #0c241e; border-radius: 28px; color: white; display: grid; gap: 50px; grid-template-columns: 2fr 1fr 1fr 1.2fr; margin: 60px clamp(16px, 3vw, 40px) 40px; overflow: hidden; padding: 70px 7vw 40px; position: relative; }
 footer > div { align-items: flex-start; display: flex; flex-direction: column; gap: 9px; }
-footer a { color: #aebdb8; font-size: 13px; }
-footer > div > b { margin-bottom: 7px; }
+footer a { color: #aebdb8; font-size: 13px; transition: color .2s ease; }
+footer a:hover { color: var(--gold, #d4a843); }
+footer > div > b { color: var(--gold, #d4a843); font-size: 11px; font-weight: 700; letter-spacing: .14em; margin-bottom: 7px; text-transform: uppercase; }
 .footer-brand > b { font-size: 24px; letter-spacing: .16em; }
 .footer-brand p, .footer-note { color: #aebdb8; }
 .footer-brand .brand-mark i { border-color: white; }
+/* Divisor sutil entre las dos columnas de navegacion -- no una linea dura,
+   se desvanece arriba y abajo. */
+footer > div:nth-child(3) { border-left: 1px solid; border-image: linear-gradient(to bottom, transparent, rgba(255,255,255,.16), transparent) 1; padding-left: 34px; }
+.footer-threshold { inset: 0; pointer-events: none; position: absolute; width: 100%; height: 100%; z-index: 1; }
+.footer-threshold-line { animation: snakeFlow 12s ease-in-out infinite; fill: none; opacity: .75; stroke: url(#footer-threshold-gradient); stroke-dasharray: 20 14; stroke-linecap: round; stroke-width: 3; }
 .footer-partners { align-items: start; display: flex; flex-wrap: wrap; gap: 28px; margin-top: 24px; }
-.footer-partner-logo { align-items: center; display: flex; flex-direction: column; gap: 8px; min-width: 82px; }
-.footer-partner-logo img, .footer-moneystack-mark { align-items: center; border: 1px solid rgba(247,247,245,.25); display: flex; height: 64px; justify-content: center; object-fit: cover; width: 64px; }
-.footer-partner-logo span:last-child { color: white; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-align: center; }
+.footer-partner-logo { align-items: center; display: flex; flex-direction: column; gap: 8px; min-width: 64px; }
+.footer-partner-logo img, .footer-moneystack-mark { align-items: center; display: flex; height: 64px; justify-content: center; object-fit: contain; width: 64px; }
+.footer-partner-logo img { transition: filter .3s cubic-bezier(.25,.8,.25,1), transform .3s cubic-bezier(.25,.8,.25,1); }
+.footer-partner-logo:hover img { filter: brightness(1.15); transform: translateY(-3px); }
 .footer-moneystack-mark { color: white; display: none; font-size: 20px; font-weight: 800; letter-spacing: -.08em; }
 .footer-moneystack-logo.is-fallback .footer-moneystack-mark { display: flex; }
 .footer-note span:last-child { font-size: 11px; margin-top: auto; }
@@ -141,7 +151,7 @@ footer > div > b { margin-bottom: 7px; }
 .hilo-card-gente { --card-accent: #cde5d5; --card-art-bg: #e7f1d0; --card-icon: #f4b942; }.hilo-card-plan { --card-accent: #f6dfae; --card-art-bg: #fff2c9; --card-icon: #d85b36; }.hilo-card-feedback { --card-accent: #e8d8e7; --card-art-bg: #f3e4c8; --card-icon: #8a4f7d; }.hilo-card-mapa { --card-accent: #c7e3e7; --card-art-bg: #e1f1e5; --card-icon: #227c8c; }.hilo-card-oportunidades { --card-accent: #f4d0b8; --card-art-bg: #ffe5bf; --card-icon: #d85b36; }.hilo-card-buscar { --card-accent: #dce7d1; --card-art-bg: #eff4db; --card-icon: #75b79b; }.hilo-card-ajustes { --card-accent: #ddd5c7; --card-art-bg: #f3e4c8; --card-icon: #66746f; }.hilo-card-guardado { --card-accent: #d8e4ef; --card-art-bg: #eaf0f4; --card-icon: #227c8c; }.hilo-card-red { --card-accent: #d9c8eb; --card-art-bg: #efe4f3; --card-icon: #8a4f7d; }
 @keyframes hilo-float { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-7px) rotate(1deg); } }
 @media (max-width: 800px) { nav { display: none; } .site-header { padding: 18px 5vw; } .hero { min-height: 72vh; padding: 70px 8vw; } .hero-stamp { bottom: 35px; position: absolute; right: 5vw; } .section { padding: 70px 6vw; } .section-heading, .toolbar, .split-section, .home-invitation { align-items: flex-start; flex-direction: column; gap: 24px; } .content-grid, .screen-list { grid-template-columns: 1fr; } .search-box, .search-box input { width: 100%; } }
-@media (max-width: 600px) { footer { grid-template-columns: 1fr; padding: 60px 20px; } .login-screen { grid-template-columns: 1fr; } .login-art { min-height: 300px; } .login-art i { height: 60px; width: 60px; } .login-panel { padding: 55px 24px; } .virtual-assistant { bottom: 4px; right: 4px; } .assistant-panel { border-radius: 25px; inset: 6px; width: auto; } .hilo-scene-new { gap: 14px; padding: 16px; } .hilo-avatar-wrapper { height: 72px; width: 72px; } .hilo-greeting { font-size: 15px; } .hilo-card { padding: 14px 8px; } }
+@media (max-width: 600px) { footer { border-radius: 20px; margin: 40px 12px 24px; grid-template-columns: 1fr; padding: 60px 20px; } .footer-threshold-line { rx: 20px; ry: 20px; } footer > div:nth-child(3) { border-left: none; padding-left: 0; } .login-screen { grid-template-columns: 1fr; } .login-art { min-height: 300px; } .login-art i { height: 60px; width: 60px; } .login-panel { padding: 55px 24px; } .virtual-assistant { bottom: 4px; right: 4px; } .assistant-panel { border-radius: 25px; inset: 6px; width: auto; } .hilo-scene-new { gap: 14px; padding: 16px; } .hilo-avatar-wrapper { height: 72px; width: 72px; } .hilo-greeting { font-size: 15px; } .hilo-card { padding: 14px 8px; } }
 @media (max-width: 400px) { .hilo-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* ===== ESTILOS CULTURALES - BAJO CAUCA ===== */
@@ -2173,223 +2183,15 @@ footer > div > b { margin-bottom: 7px; }
 }
 
 /* =========================================
-   MONEystack — Home del sello
+   MONEystack — Home del sello (la pantalla usa Tailwind; aqui solo el fondo global)
    ========================================= */
 
-.moneystack-section {
-  padding: 60px 7vw;
-  background: linear-gradient(180deg, #0a0a0a 0%, #111 50%, #0a0a0a 100%);
-  color: #fff;
-}
-
-.moneystack-loading {
-  text-align: center;
-  padding: 80px 0;
-  color: rgba(255,255,255,0.5);
-  font-size: 16px;
-}
-
-/* Hero del sello */
-.moneystack-hero {
-  max-width: 1000px;
-  margin: 0 auto 60px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 40px;
-}
-
-.moneystack-hero-content {
-  flex: 1;
-}
-
-.moneystack-title {
-  font-size: clamp(48px, 6vw, 80px);
-  font-weight: 800;
-  margin: 12px 0 16px;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #ffffff, #b0b0b0);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.moneystack-subtitle {
-  font-size: 18px;
-  line-height: 1.6;
-  color: rgba(255,255,255,0.7);
-  max-width: 500px;
-  margin-bottom: 24px;
-}
-
-.moneystack-tags {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.moneystack-tag {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.6);
-  border: 1px solid rgba(255,255,255,0.15);
-  padding: 6px 14px;
-  border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.moneystack-logo-placeholder {
-  width: clamp(400px, 9vw, 400px);
-  height: clamp(400px, 9vw, 400px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.moneystack-logo-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.moneystack-logo-placeholder span {
-  display: none;
-  font-size: 64px;
-  font-weight: 800;
-  color: #fff;
-}
-
-.moneystack-logo-placeholder.moneystack-logo-fallback-visible span {
-  display: flex;
-}
-
-/* Artistas del sello */
-.moneystack-artists {
-  max-width: 1000px;
-  margin: 0 auto 60px;
-}
-
-.moneystack-section-title {
-  font-size: 28px;
-  font-weight: 800;
-  margin-bottom: 24px;
-  color: #fff;
-}
-
-.moneystack-empty {
-  color: rgba(255,255,255,0.4);
-  font-style: italic;
-}
-
-.moneystack-artist-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-.moneystack-artist-card {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  display: block;
-  color: #fff;
-}
-
-.moneystack-artist-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255,255,255,0.3);
-  box-shadow: 0 12px 40px rgba(255,255,255,0.15);
-}
-
-.moneystack-artist-image {
-  height: 200px;
-  background: linear-gradient(135deg, #d4a843, #8a4f7d);
-  background-size: cover;
-  background-position: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.moneystack-artist-image span {
-  font-size: 64px;
-  font-weight: 800;
-  color: rgba(255,255,255,0.6);
-}
-
-.moneystack-artist-info {
-  padding: 20px;
-}
-
-.moneystack-artist-info h3 {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0 0 4px;
-}
-
-.moneystack-artist-info p {
-  font-size: 14px;
-  color: rgba(255,255,255,0.5);
-  margin: 0 0 12px;
-}
-
-.moneystack-artist-cta {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.7);
-  transition: color 0.2s;
-}
-
-.moneystack-artist-card:hover .moneystack-artist-cta {
-  color: #ffffff;
-}
-
-/* Sobre el sello */
-.moneystack-about {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.moneystack-about-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  align-items: start;
-}
-
-.moneystack-about-content p {
-  font-size: 16px;
-  line-height: 1.7;
-  color: rgba(255,255,255,0.65);
-}
-
-.moneystack-stats {
-  display: flex;
-  gap: 32px;
-  justify-content: flex-start;
-}
-
-.moneystack-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.moneystack-stat-number {
-  font-size: 28px;
-  font-weight: 800;
-  color: #ffffff;
-}
-
-.moneystack-stat-label {
-  font-size: 12px;
-  color: rgba(255,255,255,0.5);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+/* El footer ahora es una tarjeta flotante (ver regla "footer" mas abajo:
+   margin + border-radius), lo que deja huecos alrededor donde se ve el
+   fondo de <html> (--paper, crema). En Moneystack ese hueco debe ser negro,
+   no crema, para no romper la ambientacion oscura de la pantalla. */
+html:has(.moneystack-section) {
+  background: #0a0a0a;
 }
 
 /* =========================================
@@ -2750,22 +2552,8 @@ footer > div > b { margin-bottom: 7px; }
   border-radius: 28px;
 }
 
-/* Responsive Moneystack / Artist */
+/* Responsive Artist */
 @media (max-width: 768px) {
-  .moneystack-hero {
-    flex-direction: column-reverse;
-    text-align: center;
-    gap: 24px;
-  }
-  .moneystack-subtitle { margin: 0 auto 24px; }
-  .moneystack-tags { justify-content: center; }
-  .moneystack-about-content {
-    grid-template-columns: 1fr;
-  }
-  .moneystack-stats { justify-content: center; }
-  .moneystack-logo-placeholder { width: 100px; height: 100px; }
-  .moneystack-logo-placeholder span { font-size: 40px; }
-
   .artist-hero { min-height: 300px; }
   .artist-hero-name { font-size: 36px; }
   .artist-social-links { justify-content: center; }

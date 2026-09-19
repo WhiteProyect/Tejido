@@ -30,6 +30,25 @@ Write-Host ""
 
 if (-not (Test-Url $HealthUrl)) {
     Start-Module $BackendDir "npm --prefix '$FrontendDir' run dev:backend"
+
+    # El backend ahora se conecta a Neon (red real) al arrancar, no a SQLite
+    # local -- tarda mas que el frontend en quedar listo. Sin esta espera, el
+    # frontend abre el navegador antes de que el backend responda, y la app
+    # muestra errores de "backend no activo" que en realidad son solo un
+    # problema de orden de arranque, no un fallo real.
+    Write-Host "Esperando a que el backend conecte con la base de datos..." -ForegroundColor DarkYellow
+    $backendReady = $false
+    foreach ($Attempt in 1..60) {
+        if (Test-Url $HealthUrl) {
+            $backendReady = $true
+            break
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    if (-not $backendReady) {
+        Write-Host "El backend no respondio en 30s -- revisa la ventana del backend por errores (ej. conexion a Neon)." -ForegroundColor Red
+        exit 1
+    }
 } else {
     Write-Host "Backend ya estaba activo." -ForegroundColor Yellow
 }

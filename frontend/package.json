@@ -17,6 +17,8 @@
     "vite": "latest"
   },
   "devDependencies": {
-    "nodemon": "latest"
+    "@tailwindcss/vite": "^4.3.3",
+    "nodemon": "latest",
+    "tailwindcss": "^4.3.3"
   }
 }

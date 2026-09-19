@@ -1,10 +1,8 @@
 """
-Fase 1 del plan de migración TEJIDO — mismo smoke test de dominio que
-backend/tests/test_smoke.py (Fase 0), corriendo ahora contra el backend
-FastAPI + SQLAlchemy nuevo (todavía sobre SQLite). El objetivo es paridad de
-status codes y forma de respuesta contra la línea base de la Fase 0.
+Smoke test de dominio de la API (status codes y forma de respuesta) contra
+el backend FastAPI + SQLAlchemy sobre PostgreSQL.
 
-Dos diferencias intencionales frente a la Fase 0, ya aprobadas:
+Decisiones de diseño ya aprobadas que estos tests fijan:
   - /api/support y /api/support/stats se RETIRARON (tabla `supporters` nunca
     existió en schema.sql; solo los llamaba JS vanilla muerto que no se sirve
     desde frontend/dist/index.html). Ver test_support_endpoints_removed.

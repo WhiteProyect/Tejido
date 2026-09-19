@@ -1,22 +1,13 @@
 # Componentes React
 
-Esta carpeta contiene las piezas visuales reutilizables del frontend React.
+Piezas visuales reutilizables. Las pantallas completas viven en `../screens/`.
 
-- `Logo.jsx`: identidad visual reutilizable de TEJIDO.
+- `Logo.jsx`: identidad visual de TEJIDO.
 - `SiteHeader.jsx`: navegación principal y acceso de usuario.
-- `HeroSection.jsx`: presentación inicial de TEJIDO.
+- `HeroInteractive.jsx`: hero interactivo de la portada.
 - `ExploreSection.jsx`: filtros, búsqueda y estados de carga.
-- `PublicationCard.jsx`: tarjeta individual de publicación.
-- `Footer.jsx`: pie de página compartido entre pantallas.
-
-`App.jsx` conserva la carga de datos y compone estas piezas. Las nuevas funcionalidades deben incorporarse aquí como componentes independientes cuando tengan una responsabilidad visual o de interacción clara.
-Este directorio va a contener los componentes principales del frontend en la fase 2.
-
-A futuro se espera separar:
-- LoginModal
-- PublicationCard
-- PublicationDetail
-- UserDashboard
-- AdminModeration
-- MapView
-- HiloAssistant
+- `PublicationCard.jsx`: tarjeta de publicación.
+- `PassportSection.jsx`, `TimelineSection.jsx`, `ScreenIntro.jsx`: secciones de portada y transiciones.
+- `HiloAssistant.jsx`: asistente Hilo.
+- `Footer.jsx`: pie de página compartido.
+- `artist/`: componentes del perfil de artista.

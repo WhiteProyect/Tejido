@@ -2,12 +2,13 @@
 
 ## 1. IDENTIDAD DEL PROYECTO
 
-TEJIDO es una aplicación web académica para descubrir:
+TEJIDO es una plataforma web profesional de descubrimiento territorial para Caucasia y el Bajo Cauca. Reúne:
 
 - eventos;
 - historias;
 - oportunidades;
-- talentos locales.
+- talentos locales;
+- el sello Moneystack y sus artistas.
 
 El proyecto debe mantenerse simple, estable y fácil de mantener.
 
@@ -36,6 +37,10 @@ Frontend:
 - React
 - Vite
 - JavaScript
+- Tailwind CSS v4 (`tailwindcss` + `@tailwindcss/vite`), autorizado por el
+  dueño (2026-09-19) y adoptado de forma incremental: solo `theme` +
+  `utilities`, sin `preflight`. Convención en `frontend/README.md`, sección
+  "Tailwind".
 
 El backend usa FastAPI de forma deliberada y autorizada (no es una excepción
 temporal) -- ver sección 3.
@@ -45,7 +50,8 @@ temporal) -- ver sección 3.
 ## 3. TECNOLOGÍAS NO INTRODUCIR SIN AUTORIZACIÓN
 
 FastAPI, SQLAlchemy, Alembic, Pydantic y PostgreSQL **ya están autorizados y
-en producción** (migración completada, ver sección 2) -- no aplican como
+en producción** (migración completada, ver sección 2), y **Tailwind CSS v4 ya
+está autorizado** en el frontend (ver sección 2 y 7) -- no aplican como
 restricción.
 
 No introducir sin autorización explícita:
@@ -55,7 +61,8 @@ No introducir sin autorización explícita:
 - Webpack
 - Docker/docker-compose (deploy queda pausado hasta que el desarrollo esté
   más maduro -- ver el estado del proyecto antes de proponerlo)
-- frameworks CSS nuevos
+- otros frameworks CSS (Bootstrap, Material UI, Chakra, styled-components,
+  etc.): Tailwind es el único autorizado
 
 No convertir TEJIDO en otro tipo de proyecto.
 
@@ -89,8 +96,6 @@ sin una razón técnica clara y autorización cuando corresponda.
 
 No eliminar la base de datos para solucionar errores.
 
-No sobrescribir backups.
-
 ---
 
 ## 6. BASE DE DATOS
@@ -115,20 +120,30 @@ compatibles con el proyecto.
 
 ## 7. FRONTEND
 
-Los archivos principales están en:
+El código vive en `frontend/src/` (React + Vite):
 
-public/
+- `screens/`: pantallas;
+- `components/`: piezas reutilizables;
+- `styles/`: `main.css`, `artist.css`, `moneystack.css` (CSS legado, aprobado
+  visualmente) y `tailwind.css` (integración de Tailwind y tokens de marca);
+- `frontend/public/`: estáticos (`assets/artistas/<slug>/`, `images/`).
 
-Principalmente:
+Estilos con Tailwind (detalle en `frontend/README.md`, sección "Tailwind"):
 
-- index.html
-- styles.css
-- app.js
+- todo componente o pantalla NUEVO usa Tailwind;
+- lo existente se migra de a una pantalla cuando se toque, quitando sus clases
+  legadas y las reglas CSS huérfanas; no mezclar ambas en un mismo elemento;
+- el CSS legado no tiene capa y siempre gana a las utilidades (y sus
+  selectores de etiqueta globales, como `footer`, `nav`, `h1`–`h3`, `a`,
+  `button`, se filtran a los componentes nuevos);
+- no activar `preflight` ni borrar CSS legado hasta terminar la migración;
+- cualquier migración de pantalla debe verificarse con capturas antes/después
+  (1300 px y 390 px) sin diferencias visuales.
 
-Antes de modificar JavaScript:
+Antes de modificar un componente:
 
-- buscar dónde se utiliza la función;
-- revisar eventos relacionados;
+- buscar dónde se utiliza;
+- revisar eventos y estilos relacionados;
 - comprobar llamadas al backend.
 
 Antes de agregar imágenes:
@@ -136,6 +151,8 @@ Antes de agregar imágenes:
 - comprobar que el archivo exista;
 - comprobar exactamente la ruta;
 - respetar mayúsculas y minúsculas.
+
+Respetar la identidad definida en `docs/MANUAL_ESENCIA_TEJIDO.md`.
 
 ---
 
@@ -158,51 +175,20 @@ No crear endpoints duplicados.
 
 ---
 
-## 9. ARQUITECTURA DE AGENTES
+## 9. FLUJO DE TRABAJO
 
-TEJIDO utiliza cuatro agentes:
+Analizar → planificar → implementar → verificar (tests y prueba visual) → aprobar.
 
-### ARQUITECTO
-
-Planifica y analiza.
-
-No modifica código.
-
-### BACKEND BUILDER
-
-Construye y modifica backend.
-
-### FRONTEND BUILDER
-
-Construye y modifica frontend.
-
-### QA / DOCUMENTADOR
-
-Revisa, prueba y documenta.
-
-No modifica código de producción.
+No realizar cambios grandes sin planificación. No modificar código de
+producción sin que el cambio haya sido solicitado.
 
 ---
 
-## 10. FLUJO DE TRABAJO
+## 10. HERRAMIENTAS DE VERIFICACIÓN
 
-El flujo recomendado es:
-
-ARQUITECTO
-↓
-PLAN
-↓
-BACKEND BUILDER / FRONTEND BUILDER
-↓
-IMPLEMENTACIÓN
-↓
-QA / DOCUMENTADOR
-↓
-VERIFICACIÓN
-↓
-APROBACIÓN
-
-No realizar cambios grandes sin planificación.
+- Backend: `py -m pytest backend/tests_fastapi -v`.
+- Arranque completo: `scripts/INICIAR_TEJIDO.ps1`.
+- Cambios de esquema: solo con migración de Alembic.
 
 ---
 

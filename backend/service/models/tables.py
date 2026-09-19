@@ -1,8 +1,7 @@
 """
-Modelos SQLAlchemy que reflejan backend/database/schema.sql tabla por tabla.
+Modelos SQLAlchemy 2.0 del esquema de TEJIDO sobre PostgreSQL (Neon).
 
-Fase 2 de la migración: PostgreSQL es ahora el motor real (antes SQLite).
-Dos cambios de tipo respecto a la Fase 1:
+Notas de tipos:
 
   - Los timestamps de auditoria generados por el propio backend con
     `datetime.now(timezone.utc).isoformat()` (created_at, updated_at,
@@ -229,10 +228,8 @@ class Reward(Base):
     __tablename__ = "rewards"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # UNIQUE agregado en Fase 2: el schema.sql original no lo tenia y el seed
-    # del backend legado (INSERT OR IGNORE en cada arranque) duplico las 12
-    # recompensas 11 veces en data/tejido.db al no tener nada contra que
-    # chocar. Ver backend/scripts/migrate_sqlite_to_postgres.py.
+    # UNIQUE: el seed hace ON CONFLICT DO NOTHING y necesita algo contra que chocar
+    # para no duplicar recompensas en cada arranque.
     name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     points_cost: Mapped[int] = mapped_column(Integer, nullable=False)

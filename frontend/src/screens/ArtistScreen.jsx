@@ -3,6 +3,7 @@ import { fetchArtistProfile } from '../services/artistApi.js';
 import ArtistHeader from '../components/artist/ArtistHeader.jsx';
 import ArtistMedia from '../components/artist/ArtistMedia.jsx';
 import ArtistInfo from '../components/artist/ArtistInfo.jsx';
+import { AX_STATE, AX_BTN, AX_BTN_PRIMARY } from '../components/artist/axStyles.js';
 
 function getSlug() {
   const hash = window.location.hash.replace('#', '');
@@ -32,8 +33,8 @@ export default function ArtistScreen() {
 
   if (loading) {
     return (
-      <div className="ax-loading">
-        <div className="ax-loading-spinner" />
+      <div className={AX_STATE}>
+        <div className="size-10 animate-[axSpin_0.8s_linear_infinite] rounded-[50%] border-[3px] border-ax-border border-t-ax-accent" />
         <p>Cargando artista...</p>
       </div>
     );
@@ -41,10 +42,10 @@ export default function ArtistScreen() {
 
   if (error || !data) {
     return (
-      <div className="ax-error">
-        <h2>Artista no encontrado</h2>
-        <p>{error || 'No se pudo cargar el perfil'}</p>
-        <a href="#moneystack" className="ax-btn ax-btn--primary">Volver a Moneystack</a>
+      <div className={AX_STATE}>
+        <h2 className="text-[28px]!">Artista no encontrado</h2>
+        <p className="mt-0 mb-6 text-ax-dim">{error || 'No se pudo cargar el perfil'}</p>
+        <a href="/#moneystack" className={`${AX_BTN} ${AX_BTN_PRIMARY}`}>Volver a Moneystack</a>
       </div>
     );
   }
@@ -69,7 +70,7 @@ export default function ArtistScreen() {
 
       <footer className="ax-footer">
         <div className="ax-footer-inner">
-          <a href="#moneystack" className="ax-footer-back">← Moneystack</a>
+          <a href="/#moneystack" className="ax-footer-back">← Moneystack</a>
           <a href="#inicio" className="ax-footer-home">TEJIDO</a>
         </div>
       </footer>

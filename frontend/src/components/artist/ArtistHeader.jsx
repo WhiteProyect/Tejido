@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { AX_BTN, AX_BTN_PRIMARY, AX_BTN_GHOST } from './axStyles.js';
 
 const navSections = [
   { id: 'profile', label: 'Perfil' },
@@ -33,6 +34,26 @@ const platformIcons = {
   ),
 };
 
+// Nav interna (.ax-nav-btn). "!" en tamaño/peso: button { font: inherit } de main.css los pisaria.
+// Con el cursor encima gana el color hover, tambien en el activo (igual que el legado, donde
+// .ax-nav-btn:hover tenia mas especificidad que --active).
+const NAV_BTN = 'relative cursor-pointer border-0 bg-transparent px-4.5 py-4 text-[13px]! font-semibold! whitespace-nowrap transition-[color] duration-300 ease-in-out hover:text-ax-dim';
+const NAV_BTN_IDLE = 'text-ax-muted';
+const NAV_BTN_ACTIVE = "text-ax-accent after:absolute after:right-[18px] after:bottom-0 after:left-[18px] after:h-0.5 after:rounded-[1px] after:bg-ax-accent after:content-['']";
+
+// Overlay del hero (.ax-hero-overlay).
+// rgba(12,36,30,x) = --ink-deep (#0c241e) del manual de marca: "la noche del Bajo Cauca" -- calza con una
+// foto nocturna real en vez del tono negro generico con el que se diseno originalmente el degradado.
+// Segunda capa (a la izquierda) refuerza el contraste donde va el texto, ya que la foto real tiene
+// detalle brillante (moto, malla) a la derecha.
+const HERO_OVERLAY = 'absolute inset-0 bg-[image:linear-gradient(to_right,rgba(12,36,30,0.55)_0%,rgba(12,36,30,0.1)_45%,rgba(12,36,30,0)_100%),linear-gradient(to_bottom,rgba(12,36,30,0.3)_0%,rgba(12,36,30,0.55)_45%,rgba(12,36,30,0.96)_100%)]';
+
+// Etiqueta de sección (.ax-section-label): h2 global fija font-size, letter-spacing y margin -> "!".
+const SECTION_LABEL = 'mb-5! text-[12px]! font-bold tracking-[0.15em]! text-ax-accent uppercase';
+
+// Botones dentro de .ax-hero-actions: en <=480px se centran (.ax-hero-actions .ax-btn)
+const HERO_BTN = `${AX_BTN} max480:justify-center max480:text-center`;
+
 function ArtistHero({ artist, featuredTrack }) {
   const [loaded, setLoaded] = useState(false);
   const heroRef = useRef(null);
@@ -61,47 +82,47 @@ function ArtistHero({ artist, featuredTrack }) {
     : {};
 
   return (
-    <section className={`ax-hero ${loaded ? 'ax-hero--loaded' : ''}`} ref={heroRef}>
-      <div className="ax-hero-bg" style={heroStyle}>
+    <section className={`relative flex min-h-screen items-end overflow-hidden transition-opacity duration-800 ease-[ease] ${loaded ? 'opacity-100' : 'opacity-0'}`} ref={heroRef}>
+      <div className="absolute inset-0 bg-cover bg-top bg-no-repeat" style={heroStyle}>
         {!heroStyle.backgroundImage && (
-          <div className="ax-hero-placeholder">
-            <span>{artist.stage_name?.charAt(0)}</span>
+          <div className="flex size-full items-center justify-center bg-[linear-gradient(135deg,#1a1a2e_0%,#16213e_50%,#0f3460_100%)]">
+            <span className="text-[200px] font-extrabold text-[rgba(212,168,67,0.15)]">{artist.stage_name?.charAt(0)}</span>
           </div>
         )}
-        <div className="ax-hero-overlay" />
+        <div className={HERO_OVERLAY} />
         <div className="ax-hero-grain" aria-hidden="true" />
       </div>
 
-      <div className="ax-hero-content">
-        <a href="#moneystack" className="ax-hero-back">
+      <div className="relative z-2 w-full px-[7vw] pb-20 max768:px-[5vw] max768:pb-15">
+        <a href="/#moneystack" className="mb-8 inline-flex items-center gap-2 text-[14px] text-ax-dim! transition-[color] duration-300 ease-in-out hover:text-ax-accent!">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
           <span>Moneystack</span>
         </a>
 
-        <div className="ax-hero-info">
-          <div className="ax-hero-tags">
-            {artist.genre && <span className="ax-hero-tag">{artist.genre}</span>}
-            {artist.city && <span className="ax-hero-tag">{artist.city}</span>}
-            {artist.region && <span className="ax-hero-tag">{artist.region}</span>}
+        <div className="max-w-[800px]">
+          <div className="mb-5 flex flex-wrap gap-2.5">
+            {artist.genre && <span className="rounded-[999px] border border-ax-border px-3.5 py-1.5 text-[11px] font-bold tracking-[0.12em] text-ax-dim uppercase">{artist.genre}</span>}
+            {artist.city && <span className="rounded-[999px] border border-ax-border px-3.5 py-1.5 text-[11px] font-bold tracking-[0.12em] text-ax-dim uppercase">{artist.city}</span>}
+            {artist.region && <span className="rounded-[999px] border border-ax-border px-3.5 py-1.5 text-[11px] font-bold tracking-[0.12em] text-ax-dim uppercase">{artist.region}</span>}
           </div>
 
-          <h1 className="ax-hero-name">{artist.stage_name}</h1>
+          <h1 className="mb-2! text-[length:clamp(48px,8vw,110px)]! leading-[1.2]! font-extrabold tracking-[-0.04em]! bg-[linear-gradient(135deg,#ffffff_0%,var(--ax-accent)_100%)] bg-clip-text [-webkit-text-fill-color:transparent] max768:text-[length:clamp(36px,12vw,72px)]!">{artist.stage_name}</h1>
           {artist.real_name && artist.real_name !== artist.stage_name && (
-            <p className="ax-hero-realname">{artist.real_name}</p>
+            <p className="mt-0 mb-8 text-[18px] font-normal text-ax-dim">{artist.real_name}</p>
           )}
 
-          <div className="ax-hero-actions">
+          <div className="flex flex-wrap gap-4 max480:flex-col">
             {featuredTrack?.spotify_url ? (
-              <a href={featuredTrack.spotify_url} target="_blank" rel="noopener noreferrer" className="ax-btn ax-btn--primary">
+              <a href={featuredTrack.spotify_url} target="_blank" rel="noopener noreferrer" className={`${HERO_BTN} ${AX_BTN_PRIMARY}`}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M8 5v14l11-7z"/>
                 </svg>
                 Escuchar ahora
               </a>
             ) : (
-              <button className="ax-btn ax-btn--primary" onClick={() => {
+              <button className={`${HERO_BTN} ${AX_BTN_PRIMARY}`} onClick={() => {
                 document.querySelector('.ax-discography')?.scrollIntoView({ behavior: 'smooth' });
               }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -110,7 +131,7 @@ function ArtistHero({ artist, featuredTrack }) {
                 Escuchar ahora
               </button>
             )}
-            <button className="ax-btn ax-btn--ghost" onClick={() => {
+            <button className={`${HERO_BTN} ${AX_BTN_GHOST}`} onClick={() => {
               document.querySelector('.ax-profile')?.scrollIntoView({ behavior: 'smooth' });
             }}>
               Conocer la historia
@@ -119,8 +140,8 @@ function ArtistHero({ artist, featuredTrack }) {
         </div>
       </div>
 
-      <div className="ax-hero-scroll" aria-hidden="true">
-        <div className="ax-hero-scroll-line" />
+      <div className="absolute bottom-7.5 left-1/2 z-2 -translate-x-1/2" aria-hidden="true">
+        <div className="h-15 w-px animate-[axScrollPulse_2s_ease-in-out_infinite] bg-[linear-gradient(to_bottom,var(--ax-accent),transparent)]" />
       </div>
     </section>
   );
@@ -154,12 +175,12 @@ function ArtistNav() {
   }
 
   return (
-    <nav className="ax-nav">
-      <div className="ax-nav-inner">
+    <nav className="sticky top-0 z-100 border-b border-ax-border bg-[rgba(10,10,10,0.85)] backdrop-blur-[20px]">
+      <div className="flex gap-1 overflow-x-auto px-[7vw] [scrollbar-width:none] max768:px-[5vw] [&::-webkit-scrollbar]:hidden">
         {navSections.map((s) => (
           <button
             key={s.id}
-            className={`ax-nav-btn ${active === s.id ? 'ax-nav-btn--active' : ''}`}
+            className={`${NAV_BTN} ${active === s.id ? NAV_BTN_ACTIVE : NAV_BTN_IDLE}`}
             onClick={() => scrollTo(s.id)}
           >
             {s.label}
@@ -172,35 +193,36 @@ function ArtistNav() {
 
 function ArtistProfile({ artist, socialLinks }) {
   return (
-    <section className="ax-profile">
-      <div className="ax-profile-inner">
-        <div className="ax-profile-image">
+    // "ax-profile" es solo un marcador (sin estilos): el boton "Conocer la historia" hace querySelector('.ax-profile')
+    <section className="ax-profile border-b border-ax-border px-[7vw] py-20">
+      <div className="mx-auto grid max-w-[1100px] grid-cols-[300px_1fr] items-start gap-15 max768:grid-cols-[1fr] max768:gap-8">
+        <div className="sticky top-[100px] aspect-[3/4] overflow-hidden rounded-ax max768:static max768:max-w-[250px]">
           {artist.image ? (
-            <img src={artist.image} alt={artist.stage_name} loading="lazy" />
+            <img className="size-full object-cover" src={artist.image} alt={artist.stage_name} loading="lazy" />
           ) : (
-            <div className="ax-profile-image-placeholder">
-              <span>{artist.stage_name?.charAt(0)}</span>
+            <div className="flex size-full items-center justify-center bg-[linear-gradient(135deg,#1a1a2e,#0f3460)]">
+              <span className="text-[80px] font-extrabold text-[rgba(212,168,67,0.2)]">{artist.stage_name?.charAt(0)}</span>
             </div>
           )}
         </div>
 
         <div className="ax-profile-info">
-          <h2 className="ax-section-label">Sobre el artista</h2>
-          <p className="ax-profile-bio">{artist.bio}</p>
+          <h2 className={SECTION_LABEL}>Sobre el artista</h2>
+          <p className="mt-0 mb-10 text-[17px] leading-[1.8] text-ax-dim">{artist.bio}</p>
 
           {socialLinks && socialLinks.length > 0 && (
-            <div className="ax-profile-social">
+            <div className="flex flex-wrap gap-3">
               {socialLinks.map((link) => (
                 <a
                   key={link.id}
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ax-social-link"
+                  className="inline-flex items-center gap-2.5 rounded-ax-sm border border-ax-border bg-ax-card px-5 py-3 text-[14px] font-semibold text-ax-text! transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:border-ax-accent-border hover:bg-ax-accent-dim hover:text-ax-accent!"
                   title={link.platform}
                 >
                   {platformIcons[link.platform] || <span>{link.platform.charAt(0).toUpperCase()}</span>}
-                  <span className="ax-social-link-label">{link.username || link.platform}</span>
+                  <span className="text-[13px] text-ax-dim">{link.username || link.platform}</span>
                 </a>
               ))}
             </div>

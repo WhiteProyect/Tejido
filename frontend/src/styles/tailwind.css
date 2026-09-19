@@ -1,0 +1,100 @@
+/*
+ * Tailwind CSS v4: integracion INCREMENTAL (sin preflight).
+ * Convencion de uso: frontend/README.md, seccion "Tailwind".
+ *
+ * Solo se importan theme + utilities. NO se importa preflight (el reset de
+ * Tailwind cambia h1-h6, ul/ol, img, button, a...) porque el CSS legado
+ * (main.css / artist.css / moneystack.css) depende del comportamiento
+ * nativo del navegador. Se activara al FINAL de la migracion, cuando el CSS
+ * legado ya no exista:
+ *
+ *     @import "tailwindcss/preflight.css" layer(base);
+ *
+ * CASCADA: las utilidades viven en @layer utilities y el CSS legado NO tiene
+ * capa. Una regla sin capa GANA siempre a una regla en capa, sin importar la
+ * especificidad. Por eso un elemento migrado debe quitar sus clases legadas
+ * (y los selectores de etiqueta globales de main.css tambien le afectan:
+ * ver la lista en el README).
+ */
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+/* Deteccion automatica de clases en frontend/ (ignora node_modules, lo que
+   esta en .gitignore y los .css). Se excluyen los .md: la documentacion cita
+   clases de ejemplo y no debe generar utilidades. */
+@source not "../../**/*.md";
+
+/* Replica exacta de @media (max-width: 768px) del CSS legado, que es INCLUSIVA
+   (aplica con 768px). max-[768px]: y max-md: de Tailwind generan
+   "width < 768px" (exclusiva), y a 768px exactos se veria el diseno de escritorio.
+   Usar `max768:` al migrar reglas legadas de ese breakpoint. */
+@custom-variant max768 (@media (max-width: 768px));
+/* Idem para @media (max-width: 480px) (perfil de artista, artist.css). */
+@custom-variant max480 (@media (max-width: 480px));
+
+/*
+ * Tokens de marca (docs/MANUAL_ESENCIA_TEJIDO.md).
+ *
+ * `inline` + var(--x): las utilidades emiten var(--ink) directamente, en vez
+ * de var(--color-ink) resuelto en :root. Asi los tokens apuntan a las
+ * variables que YA existen en main.css (:root) / artist.css (.ax-artist-page)
+ * y no hay dos fuentes de verdad, y ademas respetan redefiniciones dentro de
+ * un subarbol. Cuando el CSS legado se elimine, los valores se mueven aqui y
+ * se quita `inline`.
+ */
+@theme inline {
+  /* Solo colores de marca: sin la paleta por defecto de Tailwind (bg-red-500,
+     text-gray-600...) para no colar colores fuera de identidad. */
+  --color-*: initial;
+  --color-white: #fff;
+  --color-black: #000;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  /* Principales */
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-cream: var(--cream);
+  --color-yellow: var(--yellow);
+  --color-mint: var(--mint);
+  --color-purple: var(--purple);
+  --color-orange: var(--orange);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  /* Extendidos */
+  --color-river: var(--river);
+  --color-gold: var(--gold);
+  --color-earth: var(--earth);
+  --color-forest: var(--forest);
+  --color-sunset: var(--sunset);
+  --color-cream-warm: var(--cream-warm);
+  --color-ink-deep: var(--ink-deep);
+  /* Verde del footer (#0c241e) = ink-deep */
+  --color-footer: var(--ink-deep);
+
+  /* Tema oscuro de artista: solo validos dentro de .ax-artist-page (ahi se definen) */
+  --color-ax-bg: var(--ax-bg);
+  --color-ax-card: var(--ax-bg-card);
+  --color-ax-card-hover: var(--ax-bg-card-hover);
+  --color-ax-text: var(--ax-text);
+  --color-ax-dim: var(--ax-text-dim);
+  --color-ax-muted: var(--ax-text-muted);
+  --color-ax-accent: var(--ax-accent);
+  --color-ax-border: var(--ax-border);
+  --color-ax-border-hover: var(--ax-border-hover);
+  --color-ax-accent-dim: var(--ax-accent-dim);
+  --color-ax-accent-border: var(--ax-accent-border);
+
+  /* Tipografia. Playfair Display solo se carga en cursiva 700 (ver @import
+     de fuentes en main.css): usar `font-display italic font-bold`. */
+  --font-sans: "DM Sans", sans-serif;
+  --font-display: "Playfair Display", serif;
+
+  /* Radios (28px = footer y tarjetas grandes; 20px = footer en movil) */
+  --radius-footer: 28px;
+  --radius-footer-sm: 20px;
+  /* Perfil de artista (--ax-radius: 16px, --ax-radius-sm: 10px; definidos en .ax-artist-page) */
+  --radius-ax: var(--ax-radius);
+  --radius-ax-sm: var(--ax-radius-sm);
+}

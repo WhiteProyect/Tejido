@@ -33,71 +33,8 @@
   display: none !important;
 }
 
-/* ── Loading / Error ───────────────────────────────────────────── */
-.ax-loading, .ax-error {
-  min-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: var(--ax-bg);
-  color: var(--ax-text);
-  gap: 16px;
-  padding: 40px;
-}
-
-.ax-loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--ax-border);
-  border-top-color: var(--ax-accent);
-  border-radius: 50%;
-  animation: axSpin 0.8s linear infinite;
-}
-
 @keyframes axSpin {
   to { transform: rotate(360deg); }
-}
-
-.ax-error h2 { font-size: 28px; margin: 0; }
-.ax-error p { color: var(--ax-text-dim); margin: 0 0 24px; }
-
-/* ── Buttons ───────────────────────────────────────────────────── */
-.ax-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 28px;
-  border-radius: var(--ax-radius-sm);
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
-  cursor: pointer;
-  border: none;
-  transition: all var(--ax-transition);
-  letter-spacing: 0.02em;
-}
-
-.ax-btn--primary {
-  background: var(--ax-accent);
-  color: #0a0a0a;
-}
-
-.ax-btn--primary:hover {
-  background: #e0b84e;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(212, 168, 67, 0.3);
-}
-
-.ax-btn--ghost {
-  background: transparent;
-  color: var(--ax-text);
-  border: 1px solid var(--ax-border);
-}
-
-.ax-btn--ghost:hover {
-  border-color: var(--ax-accent-border);
-  color: var(--ax-accent);
 }
 
 /* ── Section Labels ────────────────────────────────────────────── */
@@ -107,15 +44,6 @@
   letter-spacing: -0.03em;
   margin: 0 0 32px;
   color: var(--ax-text);
-}
-
-.ax-section-label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--ax-accent);
-  margin: 0 0 20px;
 }
 
 .ax-empty {
@@ -128,54 +56,6 @@
    HERO — Pantalla completa de alto impacto
    ═══════════════════════════════════════════════════════════════════ */
 
-.ax-hero {
-  position: relative;
-  min-height: 100vh;
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity 0.8s ease;
-}
-
-.ax-hero--loaded {
-  opacity: 1;
-}
-
-.ax-hero-bg {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-}
-
-.ax-hero-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ax-hero-placeholder span {
-  font-size: 200px;
-  font-weight: 800;
-  color: rgba(212, 168, 67, 0.15);
-}
-
-.ax-hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(10, 10, 10, 0.2) 0%,
-    rgba(10, 10, 10, 0.4) 40%,
-    rgba(10, 10, 10, 0.92) 100%
-  );
-}
-
 .ax-hero-grain {
   position: absolute;
   inset: 0;
@@ -185,236 +65,9 @@
   pointer-events: none;
 }
 
-.ax-hero-content {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  padding: 0 7vw 80px;
-}
-
-.ax-hero-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ax-text-dim);
-  font-size: 14px;
-  text-decoration: none;
-  margin-bottom: 32px;
-  transition: color var(--ax-transition);
-}
-
-.ax-hero-back:hover {
-  color: var(--ax-accent);
-}
-
-.ax-hero-info {
-  max-width: 800px;
-}
-
-.ax-hero-tags {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-}
-
-.ax-hero-tag {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ax-text-dim);
-  border: 1px solid var(--ax-border);
-  padding: 6px 14px;
-  border-radius: 999px;
-}
-
-.ax-hero-name {
-  font-size: clamp(48px, 8vw, 110px);
-  font-weight: 800;
-  line-height: 0.92;
-  letter-spacing: -0.04em;
-  margin: 0 0 8px;
-  background: linear-gradient(135deg, #ffffff 0%, var(--ax-accent) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.ax-hero-realname {
-  font-size: 18px;
-  color: var(--ax-text-dim);
-  margin: 0 0 32px;
-  font-weight: 400;
-}
-
-.ax-hero-actions {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.ax-hero-scroll {
-  position: absolute;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-}
-
-.ax-hero-scroll-line {
-  width: 1px;
-  height: 60px;
-  background: linear-gradient(to bottom, var(--ax-accent), transparent);
-  animation: axScrollPulse 2s ease-in-out infinite;
-}
-
 @keyframes axScrollPulse {
   0%, 100% { opacity: 0.3; transform: scaleY(0.6); }
   50% { opacity: 1; transform: scaleY(1); }
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   NAV — Navegación interna sticky
-   ═══════════════════════════════════════════════════════════════════ */
-
-.ax-nav {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(10, 10, 10, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--ax-border);
-}
-
-.ax-nav-inner {
-  display: flex;
-  gap: 4px;
-  padding: 0 7vw;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.ax-nav-inner::-webkit-scrollbar { display: none; }
-
-.ax-nav-btn {
-  background: none;
-  border: none;
-  color: var(--ax-text-muted);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 16px 18px;
-  cursor: pointer;
-  white-space: nowrap;
-  position: relative;
-  transition: color var(--ax-transition);
-}
-
-.ax-nav-btn:hover {
-  color: var(--ax-text-dim);
-}
-
-.ax-nav-btn--active {
-  color: var(--ax-accent);
-}
-
-.ax-nav-btn--active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 18px;
-  right: 18px;
-  height: 2px;
-  background: var(--ax-accent);
-  border-radius: 1px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   PROFILE — Sección sobre el artista
-   ═══════════════════════════════════════════════════════════════════ */
-
-.ax-profile {
-  padding: 80px 7vw;
-  border-bottom: 1px solid var(--ax-border);
-}
-
-.ax-profile-inner {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 60px;
-  max-width: 1100px;
-  margin: 0 auto;
-  align-items: start;
-}
-
-.ax-profile-image {
-  position: sticky;
-  top: 100px;
-  border-radius: var(--ax-radius);
-  overflow: hidden;
-  aspect-ratio: 3/4;
-}
-
-.ax-profile-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.ax-profile-image-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #1a1a2e, #0f3460);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ax-profile-image-placeholder span {
-  font-size: 80px;
-  font-weight: 800;
-  color: rgba(212, 168, 67, 0.2);
-}
-
-.ax-profile-bio {
-  font-size: 17px;
-  line-height: 1.8;
-  color: var(--ax-text-dim);
-  margin: 0 0 40px;
-}
-
-.ax-profile-social {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.ax-social-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
-  background: var(--ax-bg-card);
-  border: 1px solid var(--ax-border);
-  border-radius: var(--ax-radius-sm);
-  color: var(--ax-text);
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: all var(--ax-transition);
-}
-
-.ax-social-link:hover {
-  background: var(--ax-accent-dim);
-  border-color: var(--ax-accent-border);
-  color: var(--ax-accent);
-  transform: translateY(-2px);
-}
-
-.ax-social-link-label {
-  font-size: 13px;
-  color: var(--ax-text-dim);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -557,130 +210,22 @@
    TIMELINE — Storytelling visual
    ═══════════════════════════════════════════════════════════════════ */
 
-.ax-timeline {
-  padding: 80px 7vw;
-  border-bottom: 1px solid var(--ax-border);
+/* El rio del timeline (svg) se queda en CSS propio: stroke con url(#gradiente), dasharray y
+   animacion axRiverFlow. El resto del timeline usa utilidades en ArtistInfo.jsx. */
+.ax-timeline-river-path {
+  fill: none;
+  stroke: url(#ax-timeline-river-gradient);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.55;
+  stroke-dasharray: 14 10;
+  animation: axRiverFlow 12s ease-in-out infinite;
 }
 
-.ax-timeline-track {
-  position: relative;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.ax-timeline-line {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(to bottom, var(--ax-accent), var(--ax-border), transparent);
-  transform: translateX(-50%);
-}
-
-.ax-timeline-item {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 48px;
-}
-
-.ax-timeline-item--left {
-  justify-content: flex-start;
-  padding-right: calc(50% + 40px);
-}
-
-.ax-timeline-item--right {
-  justify-content: flex-end;
-  padding-left: calc(50% + 40px);
-}
-
-.ax-timeline-dot {
-  position: absolute;
-  left: 50%;
-  top: 20px;
-  transform: translateX(-50%);
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--ax-bg);
-  border: 2px solid var(--ax-accent);
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ax-timeline-dot-inner {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ax-accent);
-}
-
-.ax-timeline-card {
-  background: var(--ax-bg-card);
-  border: 1px solid var(--ax-border);
-  border-radius: var(--ax-radius);
-  padding: 24px;
-  max-width: 380px;
-  transition: all var(--ax-transition);
-}
-
-.ax-timeline-card:hover {
-  background: var(--ax-bg-card-hover);
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-}
-
-.ax-timeline-year {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--ax-accent);
-  letter-spacing: 0.1em;
-  margin-bottom: 8px;
-}
-
-.ax-timeline-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0 0 10px;
-  color: var(--ax-text);
-}
-
-.ax-timeline-desc {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--ax-text-dim);
-  margin: 0;
-}
-
-.ax-timeline-image {
-  margin-top: 12px;
-  border-radius: var(--ax-radius-sm);
-  overflow: hidden;
-}
-
-.ax-timeline-image img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.ax-timeline-video-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ax-accent);
-  text-decoration: none;
-}
-
-.ax-timeline-video-link:hover {
-  text-decoration: underline;
+@keyframes axRiverFlow {
+  0%, 100% { stroke-dashoffset: 0; }
+  50% { stroke-dashoffset: -52; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -925,198 +470,20 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   TERRITORY — Desde el territorio
-   ═══════════════════════════════════════════════════════════════════ */
-
-.ax-territory {
-  padding: 80px 7vw;
-  border-bottom: 1px solid var(--ax-border);
-}
-
-.ax-territory-intro {
-  font-size: 16px;
-  color: var(--ax-text-dim);
-  line-height: 1.6;
-  margin: -16px 0 40px;
-}
-
-.ax-connections {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-}
-
-.ax-connection-card {
-  background: var(--ax-bg-card);
-  border: 1px solid var(--ax-border);
-  border-radius: var(--ax-radius);
-  padding: 24px;
-  transition: all var(--ax-transition);
-}
-
-.ax-connection-card:hover {
-  background: var(--ax-bg-card-hover);
-  transform: translateY(-3px);
-}
-
-.ax-connection-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.ax-connection-type {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.ax-connection-image {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.ax-connection-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.ax-connection-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0 0 8px;
-  color: var(--ax-text);
-}
-
-.ax-connection-desc {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--ax-text-dim);
-  margin: 0 0 16px;
-}
-
-.ax-connection-link {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ax-accent);
-  text-decoration: none;
-}
-
-.ax-connection-link:hover {
-  text-decoration: underline;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   EVENTS
-   ═══════════════════════════════════════════════════════════════════ */
-
-.ax-events {
-  padding: 80px 7vw;
-  border-bottom: 1px solid var(--ax-border);
-}
-
-.ax-events-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.ax-event-card {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 20px 24px;
-  background: var(--ax-bg-card);
-  border: 1px solid var(--ax-border);
-  border-radius: var(--ax-radius);
-  transition: all var(--ax-transition);
-}
-
-.ax-event-card:hover {
-  background: var(--ax-bg-card-hover);
-  transform: translateX(4px);
-}
-
-.ax-event-card--past {
-  opacity: 0.5;
-}
-
-.ax-event-date {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 60px;
-}
-
-.ax-event-month {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--ax-accent);
-  letter-spacing: 0.1em;
-}
-
-.ax-event-day {
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--ax-text);
-  line-height: 1;
-}
-
-.ax-event-info {
-  flex: 1;
-}
-
-.ax-event-info h3 {
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0 0 4px;
-  color: var(--ax-text);
-}
-
-.ax-event-info p {
-  font-size: 14px;
-  color: var(--ax-text-dim);
-  margin: 0;
-}
-
-.ax-event-summary {
-  display: block;
-  font-size: 13px;
-  color: var(--ax-text-muted);
-  margin-top: 6px;
-  line-height: 1.4;
-}
-
-.ax-event-badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 5px 12px;
-  border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.ax-event-badge--upcoming {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10B981;
-}
-
-.ax-event-badge--past {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--ax-text-muted);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
    FOOTER (del perfil del artista)
    ═══════════════════════════════════════════════════════════════════ */
 
 .ax-footer {
+  /* Reset explicito: sigue siendo un elemento <footer>, y la regla generica
+     "footer {...}" en main.css (tarjeta flotante con margen y bordes
+     redondeados) tambien lo alcanza al no estar scopeada -- eso dejaba
+     este footer con fondo verde/tarjeta y huecos con el fondo crema de
+     <html> por detras, rompiendo el tema oscuro de la pagina de artista. */
+  background: transparent;
+  border-radius: 0;
+  margin: 0;
+  overflow: visible;
+  position: static;
   padding: 40px 7vw;
   border-top: 1px solid var(--ax-border);
 }
@@ -1146,48 +513,7 @@
   text-decoration: none;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   RESPONSIVE
-   ═══════════════════════════════════════════════════════════════════ */
-
 @media (max-width: 768px) {
-  .ax-hero-name {
-    font-size: clamp(36px, 12vw, 72px);
-  }
-
-  .ax-hero-content {
-    padding: 0 5vw 60px;
-  }
-
-  .ax-profile-inner {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
-
-  .ax-profile-image {
-    position: static;
-    max-width: 250px;
-  }
-
-  .ax-timeline-line {
-    left: 20px;
-  }
-
-  .ax-timeline-item--left,
-  .ax-timeline-item--right {
-    padding-left: 52px;
-    padding-right: 0;
-    justify-content: flex-start;
-  }
-
-  .ax-timeline-dot {
-    left: 20px;
-  }
-
-  .ax-timeline-card {
-    max-width: 100%;
-  }
-
   .ax-gallery-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1208,15 +534,6 @@
   .ax-release-links {
     width: 100%;
     padding-left: 84px;
-  }
-
-  .ax-event-card {
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .ax-nav-inner {
-    padding: 0 5vw;
   }
 
   .ax-section-title {
@@ -1242,14 +559,6 @@
     padding-left: 72px;
   }
 
-  .ax-hero-actions {
-    flex-direction: column;
-  }
-
-  .ax-hero-actions .ax-btn {
-    text-align: center;
-    justify-content: center;
-  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════

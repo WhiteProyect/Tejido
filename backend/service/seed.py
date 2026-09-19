@@ -1,17 +1,10 @@
 """
-Seed idempotente para un Postgres nuevo (dev/CI/tests). Portado de
-backend/database/seed.py, con dos cambios deliberados:
+Seed idempotente para un Postgres nuevo (dev/CI/tests).
 
-  - Usa `INSERT ... ON CONFLICT DO NOTHING` real (Postgres) en vez de
-    `INSERT OR IGNORE` (SQLite) -- el original solo "ignoraba" cuando la
-    columna tenia UNIQUE; `rewards` no lo tenia y por eso se duplico 11 veces
-    en el `data/tejido.db` original (SQLite, ya retirado del proyecto tras
-    completar la migracion). Aqui `rewards.name` ya es UNIQUE (Fase 2), asi
-    que el conflicto es real.
-  - Las fechas se insertan como `datetime`/`date` real, no como texto ISO
-    armado a mano (las columnas de auditoria ya son TIMESTAMPTZ desde la
-    Fase 2; las fechas de contenido -- start_date, fecha, release_date,
-    deadline -- son DateTime/Date reales desde la Fase 6.1).
+  - Usa `INSERT ... ON CONFLICT DO NOTHING`; `rewards.name` es UNIQUE para
+    que el conflicto sea real y no se dupliquen filas al re-ejecutar.
+  - Las fechas se insertan como `datetime`/`date` reales (columnas TIMESTAMPTZ,
+    DateTime y Date), no como texto ISO.
 """
 from datetime import date, datetime, timezone
 
@@ -205,7 +198,7 @@ def seed_database(db: Session):
                 "Su musica conecta las raices del rio Cauca con el ritmo urbano, creando un sonido unico "
                 "que representa la identidad del Bajo Cauca antioqueno. Bajo el sello Moneystack, "
                 "Og Mauro ha consolidado una voz propia que habla del territorio, la calle y la cultura.",
-            image="/assets/artistas/og-mauro.jpg", hero_image="/assets/artistas/og-mauro-hero.jpg",
+            image="/assets/artistas/og-mauro/perfil.jpg", hero_image="/assets/artistas/og-mauro/hero.jpg",
             genre="Urbano / Rap / Hip-Hop", city="Caucasia", region="Bajo Cauca, Antioquia",
             featured=True, created_at=ts, updated_at=ts,
         )
@@ -253,13 +246,13 @@ def seed_database(db: Session):
             ))
 
         media = [
-            ("image", "/assets/artistas/og-mauro-1.jpg", "Ensayo fotografico",
+            ("image", "/assets/artistas/og-mauro/galeria-1.jpg", "Ensayo fotografico",
              "Sesion de fotos para la portada de Territorio", "2026-03-01", 1, True),
-            ("image", "/assets/artistas/og-mauro-2.jpg", "En el estudio",
+            ("image", "/assets/artistas/og-mauro/galeria-2.jpg", "En el estudio",
              "Grabando en el estudio de Moneystack", "2025-08-15", 2, False),
-            ("image", "/assets/artistas/og-mauro-3.jpg", "En vivo",
+            ("image", "/assets/artistas/og-mauro/galeria-3.jpg", "En vivo",
              "Presentacion en el Festival Rio y Sabana", "2025-07-18", 3, True),
-            ("image", "/assets/artistas/og-mauro-4.jpg", "Detras de escena",
+            ("image", "/assets/artistas/og-mauro/galeria-4.jpg", "Detras de escena",
              "Backstage antes del concierto", "2025-09-20", 4, False),
             ("video", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "Bajo Cauca - Video Oficial",
              "El video oficial del tema que define su carrera", "2024-08-20", 5, True),
@@ -281,7 +274,7 @@ def seed_database(db: Session):
 
         connections = [
             ("collective", "Moneystack", "Sello independiente nacido en Caucasia. El sello que mueve la "
-             "cultura del Bajo Cauca.", "/assets/logos/moneystack.png", 1),
+             "cultura del Bajo Cauca.", "/images/moneystack/logo.png", 1),
             ("place", "Caucasia", "Ciudad del Bajo Cauca, cuna del talento y la cultura urbana antioquena.", None, 2),
             ("event", "Festival Rio y Sabana 2026", "El festival mas importante del Bajo Cauca. Og Mauro "
              "participa como artista invitado.", None, 3),
@@ -299,5 +292,15 @@ def seed_database(db: Session):
         metrics_fecha = date.fromisoformat("2026-09-01")
         for tipo, valor in metrics:
             db.add(ArtistMetric(artist_id=artist.id, tipo=tipo, valor=valor, fecha=metrics_fecha))
+
+    if db.execute(select(Artist.id).where(Artist.slug == "dj-apolo")).first() is None:
+        ts = now_utc()
+        db.add(Artist(
+            name="DJ Apolo", stage_name="DJ Apolo", slug="dj-apolo",
+            bio="DJ del Bajo Cauca bajo el sello Moneystack.",
+            image="/assets/artistas/dj-apolo/perfil.jpg", hero_image="/assets/artistas/dj-apolo/perfil.jpg",
+            genre="DJ / Electronica", city="Caucasia", region="Bajo Cauca, Antioquia",
+            featured=False, created_at=ts, updated_at=ts,
+        ))
 
     db.commit()
