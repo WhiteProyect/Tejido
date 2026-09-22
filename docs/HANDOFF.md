@@ -378,3 +378,18 @@ borrar `main.css` y los `!` que sobran).
   (`.section`, `.status`, `.error`, `.eyebrow`, `.screen-section`, `html:has(.moneystack-section)`)
   si siguen en uso, el arte SVG/animado del hero y del mapa, y los `@keyframes`.
   Siguiente paso: el cierre.
+
+## 2026-09-22 (3) — main.css y moneystack.css eliminados
+
+- `main.css` se dividio: fuente, tokens (`:root`) y estilos base de etiqueta ->
+  `tailwind.css` (`@layer base`); arte SVG animado (hero, mapa, borde del footer),
+  `html:has(.moneystack-section)` y TODOS los `@keyframes` -> `art.css` (nuevo).
+  Los dos `@keyframes` de `moneystack.css` tambien pasaron a `art.css`; se borraron
+  ambos archivos. `main.jsx` importa `tailwind.css`, `art.css` y `artist.css`.
+- Antes se borraron las ultimas clases legadas sin uso (`.hero`, `.eyebrow`, `.section`,
+  `.status`, `.error`, `.screen-section`, `.pin-*`).
+- Verificado: 32 capturas de rutas y los 8 grupos de estados sin diferencias de estilo
+  (solo el texto de las cuentas regresivas, que cambio con la fecha, y ruido de 1 px).
+- Pendiente (menor, sin prisa segun el dueno): comentarios del JSX que aun citan
+  `main.css`, y quitar los `!` que ya sobran en Artista/Media Kit/dashboard.
+- Pendiente de decision del dueno: `preflight` (ver README).

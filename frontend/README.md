@@ -61,9 +61,16 @@ Los `!` que llevan hoy las pantallas migradas (Artista, Media Kit, dashboard) er
 
 De las 775 clases del CSS legado y 654 de los `className`, solo dos coinciden con utilidades de Tailwind: **`.sr-only`** (`HiloAssistant.jsx`; Tailwind añade `margin:-1px; padding:0; border-width:0`, sin efecto visible) y **`.visible`** (`HeroInteractive.jsx`, `TimelineSection.jsx`; añade `visibility:visible`, inerte porque ningún CSS usa `visibility`). No existen `.container`, `.flex`, `.grid`, `.hidden`, `.card`, `.relative`, `.absolute` en el legado. Al agregar clases legadas nuevas, evitar nombres que sean utilidades.
 
-### Preflight (al final de la migración)
+### Estado final de los estilos (2026-09-22)
 
-No activar hasta que ya no quede CSS legado. Con él activo hoy, las 32 capturas de referencia (16 rutas × 2 anchos) cambian de tamaño. Al terminar: añadir `@import "tailwindcss/preflight.css" layer(base);` en `tailwind.css`, mover los valores de `:root` al bloque `@theme` (y quitar `inline`), borrar los CSS legados y revisar h1–h6, listas, `img` y botones pantalla por pantalla.
+- `src/styles/tailwind.css`: fuentes, orden de capas, Tailwind (theme + utilities), variantes de breakpoint, tokens de marca (`@theme inline` + variables en `:root`) y estilos base de etiqueta en `@layer base`.
+- `src/styles/art.css`: el arte SVG animado (hero, mapa geográfico, borde del footer), el marcador `html:has(.moneystack-section)` y **todos** los `@keyframes` (también los que se usan con `animate-[nombre_…]`).
+- `src/styles/artist.css`: el tema oscuro del perfil de artista (`.ax-artist-page`) y sus piezas propias.
+- `main.css` y `moneystack.css` ya no existen. Todo componente nuevo usa utilidades; un `@keyframes` nuevo va en `art.css`.
+
+### Preflight (decisión pendiente)
+
+No está activado. El diseño aprobado cuenta con los estilos por defecto del navegador (márgenes de `p`, `h4`/`b` en negrita, el botón nativo del login, etc.). Activarlo cambia el diseño en muchas pantallas: es una decisión de diseño aparte, no parte de la migración.
 
 ### Editor y verificación
 

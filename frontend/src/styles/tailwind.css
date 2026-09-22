@@ -1,22 +1,22 @@
 /*
- * Tailwind CSS v4: integracion INCREMENTAL (sin preflight).
- * Convencion de uso: frontend/README.md, seccion "Tailwind".
+ * Tailwind CSS v4 -- hoja principal del sitio. Convencion: frontend/README.md, "Tailwind".
  *
- * Solo se importan theme + utilities. NO se importa preflight (el reset de
- * Tailwind cambia h1-h6, ul/ol, img, button, a...) porque el CSS legado
- * (main.css / artist.css / moneystack.css) depende del comportamiento
- * nativo del navegador. Se activara al FINAL de la migracion, cuando el CSS
- * legado ya no exista:
+ * Contiene: fuentes, orden de capas, Tailwind (theme + utilities), variantes de
+ * breakpoint, tokens de marca (@theme + variables en :root) y los estilos base.
+ * Las pantallas y componentes usan utilidades. Aparte quedan art.css (arte SVG
+ * animado y todos los @keyframes) y artist.css (tema del perfil de artista).
  *
- *     @import "tailwindcss/preflight.css" layer(base);
+ * Preflight NO se importa, a proposito: el diseno aprobado cuenta con los estilos por
+ * defecto del navegador (margenes de p, h4/b en negrita, boton nativo del login...).
+ * Activarlo es un cambio de diseno, no parte de la migracion: ver README.
  *
- * CASCADA: las utilidades viven en @layer utilities y el CSS legado NO tiene
- * capa. Una regla sin capa GANA siempre a una regla en capa, sin importar la
- * especificidad. Por eso un elemento migrado debe quitar sus clases legadas
- * (y los selectores de etiqueta globales de main.css tambien le afectan:
- * ver la lista en el README).
+ * CASCADA: base < utilities. Lo que no tiene capa (art.css, artist.css) gana a las
+ * utilidades, por eso ningun elemento mezcla esas clases con utilidades que compitan.
  */
 @layer theme, base, components, utilities;
+
+/* Fuentes: DM Sans (texto) y Playfair Display cursiva 700 (acentos). */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,700&display=swap');
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
@@ -33,7 +33,7 @@
    (igual que en el legado, donde el @media mas especifico iba despues). */
 @custom-variant max1024 (@media (max-width: 1024px)); /* artista destacado del inicio */
 @custom-variant max900 (@media (max-width: 900px));   /* pantalla de mapa */
-@custom-variant max800 (@media (max-width: 800px));   /* nav del header y .section */
+@custom-variant max800 (@media (max-width: 800px));   /* nav del header y secciones */
 @custom-variant max768 (@media (max-width: 768px));   /* Moneystack, perfil de artista, dashboard */
 @custom-variant max600 (@media (max-width: 600px));   /* footer, login, Media Kit */
 @custom-variant max480 (@media (max-width: 480px));   /* perfil de artista */
@@ -43,11 +43,10 @@
  * Tokens de marca (docs/MANUAL_ESENCIA_TEJIDO.md).
  *
  * `inline` + var(--x): las utilidades emiten var(--ink) directamente, en vez
- * de var(--color-ink) resuelto en :root. Asi los tokens apuntan a las
- * variables que YA existen en main.css (:root) / artist.css (.ax-artist-page)
- * y no hay dos fuentes de verdad, y ademas respetan redefiniciones dentro de
- * un subarbol. Cuando el CSS legado se elimine, los valores se mueven aqui y
- * se quita `inline`.
+ * de var(--color-ink) resuelto en :root. Los valores viven como variables CSS
+ * (en :root, abajo, y en .ax-artist-page de artist.css): una sola fuente de verdad,
+ * usable tambien desde el JSX (var(--river)), y los tokens ax-* se resuelven por
+ * subarbol (solo dentro de .ax-artist-page). Por eso se mantiene `inline`.
  */
 @theme inline {
   /* Solo colores de marca: sin la paleta por defecto de Tailwind (bg-red-500,
@@ -96,8 +95,8 @@
   --color-ax-red: var(--ax-red);
   --color-ax-apple: var(--ax-apple);
 
-  /* Tipografia. Playfair Display solo se carga en cursiva 700 (ver @import
-     de fuentes en main.css): usar `font-display italic font-bold`. */
+  /* Tipografia. Playfair Display solo se carga en cursiva 700 (ver el @import
+     de fuentes arriba): usar `font-display italic font-bold`. */
   --font-sans: "DM Sans", sans-serif;
   --font-display: "Playfair Display", serif;
 
@@ -107,4 +106,44 @@
   /* Perfil de artista (--ax-radius: 16px, --ax-radius-sm: 10px; definidos en .ax-artist-page) */
   --radius-ax: var(--ax-radius);
   --radius-ax-sm: var(--ax-radius-sm);
+}
+
+/*
+ * Estilos base del sitio. En @layer base: las utilidades les ganan
+ * sin `!`. Los tokens de marca son variables CSS en :root; el bloque @theme de arriba
+ * las expone como utilidades (bg-ink, text-gold...) y el JSX tambien las usa directo
+ * (var(--river), var(--gold)...). Preflight de Tailwind NO se importa: el diseno aprobado
+ * cuenta con los estilos por defecto del navegador (margenes de p, botones nativos...).
+ */
+@layer base {
+  :root {
+    /* Principales */
+    --ink: #173f36;
+    --cream: #f3e4c8;
+    --paper: #fff9ec;
+    --yellow: #f4b942;
+    --mint: #75b79b;
+    --purple: #8a4f7d;
+    --orange: #d85b36;
+    --line: #ddd5c7;
+    --muted: #66746f;
+    /* Extendidos (paleta cultural del Bajo Cauca) */
+    --river: #1d8fa3;
+    --gold: #d4a843;
+    --earth: #a0522d;
+    --forest: #2d5a3d;
+    --sunset: #e85d3a;
+    --cream-warm: #faf3e6;
+    --ink-deep: #0c241e;
+    color: var(--ink); background: var(--paper); font-family: 'DM Sans', sans-serif; font-synthesis: none;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  a { color: inherit; text-decoration: none; }
+  button, input { font: inherit; }
+  nav { display: flex; gap: 32px; font-size: 14px; font-weight: 600; }
+  h1, h2, h3 { font-family: 'DM Sans', sans-serif; letter-spacing: -.055em; margin: 0; }
+  h1, h2 { font-size: clamp(46px, 5.6vw, 84px); line-height: .98; }
+  h3 { font-size: 24px; }
+  @media (max-width: 800px) { nav { display: none; } }
 }

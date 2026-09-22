@@ -1,45 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,700&display=swap');
+/* ═══════════════════════════════════════════════════════════════════
+   ART.CSS — Arte animado y @keyframes
 
-:root { --ink: #173f36; --cream: #f3e4c8; --paper: #fff9ec; --yellow: #f4b942; --mint: #75b79b; --purple: #8a4f7d; --orange: #d85b36; --line: #ddd5c7; --muted: #66746f; color: var(--ink); background: var(--paper); font-family: 'DM Sans', sans-serif; font-synthesis: none; }
-* { box-sizing: border-box; }
-body { margin: 0; }
-/* Reglas globales por etiqueta, en @layer base (el orden de capas se declara en
-   tailwind.css). Las clases legadas no tienen capa y les ganan igual que antes (ya lo
-   hacian por especificidad); las utilidades de Tailwind (@layer utilities) tambien les
-   ganan, asi que los componentes nuevos ya no necesitan `!` contra estas etiquetas. */
-@layer base {
-  a { color: inherit; text-decoration: none; }
-  button, input { font: inherit; }
-  nav { display: flex; gap: 32px; font-size: 14px; font-weight: 600; }
-  h1, h2, h3 { font-family: 'DM Sans', sans-serif; letter-spacing: -.055em; margin: 0; }
-  h1, h2 { font-size: clamp(46px, 5.6vw, 84px); line-height: .98; }
-  h3 { font-size: 24px; }
-  @media (max-width: 800px) { nav { display: none; } }
-}
-.hero { align-items: center; background: var(--paper); color: var(--ink); display: flex; justify-content: space-between; min-height: 65vh; overflow: hidden; padding: 9vw 12vw; position: relative; }
-.hero::before { background: var(--mint); border-radius: 48% 48% 18% 48%; content: ''; height: 34vw; opacity: .8; position: absolute; right: 8vw; top: 10vw; width: 30vw; }
-.eyebrow { color: #6a7c75; font-size: 11px; font-weight: 800; letter-spacing: .18em; margin: 0 0 18px; text-transform: uppercase; }
-.section { padding: 100px 8vw; }
-.status { padding: 30px 0; }
-.error { color: #b3442b; }
-.screen-section { min-height: 62vh; }
-.pin-one { left: 25%; top: 35%; }.pin-two { right: 25%; top: 28%; }.pin-three { bottom: 22%; left: 55%; }
+   Lo que no se expresa bien con utilidades (convencion del README, punto 4):
+   - el arte SVG del hero del inicio (rio-serpiente, sol, agua, figuras, montana,
+     particulas) y del mapa geografico (region, rutas, rio, anillos, contadores);
+   - el borde animado del footer (.footer-threshold-line);
+   - el marcador html:has(.moneystack-section);
+   - TODOS los @keyframes del sitio, tambien los que se usan desde el JSX con
+     animate-[nombre_...] (por ejemplo heroOptionIn, stampAppear, msSpin).
+   Las pantallas y componentes usan Tailwind. El tema del perfil de artista vive en
+   artist.css.
+   ═══════════════════════════════════════════════════════════════════ */
+
 .footer-threshold-line { animation: snakeFlow 12s ease-in-out infinite; fill: none; opacity: .75; stroke: url(#footer-threshold-gradient); stroke-dasharray: 20 14; stroke-linecap: round; stroke-width: 3; }
 @keyframes hilo-float { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-7px) rotate(1deg); } }
-@media (max-width: 800px) { .hero { min-height: 72vh; padding: 70px 8vw; } .section { padding: 70px 6vw; } }
 @media (max-width: 600px) { .footer-threshold-line { rx: 20px; ry: 20px; } }
 
-/* ===== ESTILOS CULTURALES - BAJO CAUCA ===== */
 
-:root {
-  --river: #1d8fa3;
-  --gold: #d4a843;
-  --earth: #a0522d;
-  --forest: #2d5a3d;
-  --sunset: #e85d3a;
-  --cream-warm: #faf3e6;
-  --ink-deep: #0c241e;
-}
+
 
 .hero-river-svg {
   position: absolute;
@@ -854,3 +832,11 @@ html:has(.moneystack-section) {
   }
 }
 
+/* Dashboard Money Stack (antes en moneystack.css): animate-[msSpin_...], animate-[msPulse_...] */
+@keyframes msSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes msPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
