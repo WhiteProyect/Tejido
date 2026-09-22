@@ -211,3 +211,23 @@ revision se hizo pegandole el diff y los archivos dentro del prompt.
 
 **Falta:** Parte 5 (`ArtistDashboard.jsx` + `moneystack.css`); despues
 `HomeFeaturedArtist`, `SiteHeader`, `Footer`, `.ax-footer`; al final `preflight`.
+
+## 2026-09-21 (2) — Parte 5 (dashboard Money Stack) migrada: serie de Artista completa
+
+**Hecho:**
+
+- `screens/ArtistDashboard.jsx` pasa a Tailwind, con el mismo DOM (filas, stats y
+  actividad ahora salen de arrays). En `moneystack.css` solo quedan los dos
+  `@keyframes` (`msSpin`, `msPulse`): 506 -> 15 lineas.
+- Trampas del legado cubiertas con `!`: `nav` (display y gap; la regla global lo
+  oculta bajo 800 px y la barra lateral desapareceria entre 769 y 800), `button`
+  (`font: inherit`), `a`, `h1`/`h2`/`h3`. Se replica que en el legado el hover le
+  gana a la pestana activa (0,2,0 contra 0,1,0). README, patron 22.
+- Verificacion (`cap_dash.py`, con sesion y datos simulados): 4 pestanas x 6 anchos
+  (1300/801/800/769/768/390), hovers, carga y error de API -> **todo a 0 px**.
+  Estilos computados: solo `border-right-color` en botones con `border: none`
+  (invisible) y la opacidad del punto pulsante (ruido, tambien sale en ref vs ref).
+
+**Falta:** `HomeFeaturedArtist.jsx`, `SiteHeader.jsx`, `Footer.jsx` y `.ax-footer`
+(compartidos, se migran aparte); despues, el resto de pantallas en el orden del
+README; al final, `preflight` y borrar el CSS legado.
