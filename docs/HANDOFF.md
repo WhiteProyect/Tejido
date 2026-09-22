@@ -360,3 +360,21 @@ borrar `main.css` y los `!` que sobran).
   `/assets/municipios/{caucasia,caceres,taraza,nechi,elbagre,zaragoza}.jpg`, pero
   `frontend/public/assets/municipios/` no existe. La tarjeta de hover y el modal
   muestran solo el fondo crema. Ruta esperada: `frontend/public/assets/municipios/<id>.jpg`.
+
+## 2026-09-22 (2) — Hero del inicio (HeroInteractive) migrado
+
+- La parte HTML del hero (seccion, Hilo y su mensaje, opciones, publicaciones y
+  etiquetas de municipio, estadisticas, CTA y boton Volver) pasa a Tailwind. Los fondos
+  por escena (`.hero-bg-*`) son ahora un mapa `HERO_BG` de degradados. El contenedor de
+  fondo (`.hero-interactive-bg`) y todo su arte animado (rio-serpiente, sol, agua,
+  figuras, montana, particulas) conservan sus clases en CSS. Se borro
+  `.btn-primary-cultural` (ya sin usos). `main.css` 1159 -> 856.
+- Verificado: 16 estados (saludo, historias, 3 municipios con publicaciones, gente,
+  musica, Moneystack, hovers, 769/768/481/480/390) con 0 diferencias de estilo contra el
+  legado. Los pixeles distintos son solo el arte animado (sol, guiones del rio, montana)
+  segun el instante de la captura.
+- Con esto no queda ninguna pantalla con clases legadas de layout. Lo que queda en
+  `main.css` es: tokens de `:root`, reglas de etiqueta en `@layer base`, marcadores
+  (`.section`, `.status`, `.error`, `.eyebrow`, `.screen-section`, `html:has(.moneystack-section)`)
+  si siguen en uso, el arte SVG/animado del hero y del mapa, y los `@keyframes`.
+  Siguiente paso: el cierre.

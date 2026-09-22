@@ -15,6 +15,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { BTN_CULTURAL } from './uiStyles.js';
 
 /* --- ESCENAS -------------------------------------------------- */
 
@@ -159,6 +160,33 @@ const MUNICIPALITIES = {
   },
 };
 
+/* --- ESTILOS (Tailwind) ----------------------------------------
+ * El contenedor de fondo (.hero-interactive-bg) y todo su arte animado (rio-serpiente,
+ * sol, agua, figuras, montana, particulas) conservan sus clases propias en main.css.
+ * El resto usa utilidades. */
+
+// Fondo de la seccion segun la escena (legado: .hero-bg-*). Un solo degradado por escena.
+const HERO_BG = {
+  'hero-bg-default': 'bg-[linear-gradient(160deg,var(--cream-warm,#faf3e6)_0%,rgba(212,168,67,0.06)_50%,rgba(29,143,163,0.04)_100%)]',
+  'hero-bg-river': 'bg-[linear-gradient(160deg,#faf3e6_0%,rgba(29,143,163,0.06)_50%,rgba(212,168,67,0.04)_100%)]',
+  'hero-bg-people': 'bg-[linear-gradient(160deg,#faf3e6_0%,rgba(45,90,61,0.06)_50%,rgba(117,183,155,0.04)_100%)]',
+  'hero-bg-music': 'bg-[linear-gradient(160deg,#faf3e6_0%,rgba(138,79,125,0.06)_50%,rgba(232,93,58,0.04)_100%)]',
+  'hero-bg-muni-caucasia': 'bg-[linear-gradient(160deg,#faf3e6_0%,rgba(212,168,67,0.1)_50%,rgba(232,194,82,0.05)_100%)]',
+  'hero-bg-muni-caceres': 'bg-[linear-gradient(160deg,#faf3e6_0%,rgba(29,143,163,0.1)_50%,rgba(15,107,122,0.05)_100%)]',
+  'hero-bg-muni-taraza': 'bg-[linear-gradient(160deg,#faf3e6_0%,rgba(117,183,155,0.1)_50%,rgba(45,90,61,0.05)_100%)]',
+  'hero-bg-muni-nechi': 'bg-[linear-gradient(160deg,#faf3e6_0%,rgba(15,107,122,0.1)_50%,rgba(29,143,163,0.05)_100%)]',
+  'hero-bg-muni-elbagre': 'bg-[linear-gradient(160deg,#faf3e6_0%,rgba(196,113,58,0.1)_50%,rgba(212,168,67,0.05)_100%)]',
+  'hero-bg-muni-zaragoza': 'bg-[linear-gradient(160deg,#faf3e6_0%,rgba(107,58,125,0.1)_50%,rgba(138,79,125,0.05)_100%)]',
+};
+
+// Opcion de la conversacion. La animacion de entrada (fill: forwards) fija el transform, asi
+// que el hover solo cambia borde y sombra, igual que en el legado.
+const OPTION = 'flex flex-col items-center gap-1.5 min-w-[170px] py-6 px-7 text-center cursor-pointer bg-[rgba(255,255,255,0.75)] backdrop-blur-[12px] border-2 border-solid border-transparent rounded-[22px] transition-all duration-[350ms] ease-[cubic-bezier(.34,1.56,.64,1)] opacity-0 [transform:translateY(20px)] animate-[heroOptionIn_0.5s_cubic-bezier(.34,1.56,.64,1)_forwards] hover:border-[var(--option-color,var(--river,#1d8fa3))] hover:[transform:translateY(-8px)_scale(1.03)] hover:[box-shadow:0_20px_50px_rgba(18,60,52,0.12),0_0_0_1px_var(--option-color,rgba(29,143,163,0.1))] active:[transform:translateY(-4px)_scale(1.01)] max768:min-w-[140px] max768:py-[18px] max768:px-5 max480:w-full max480:max-w-[280px]';
+const STAT = 'flex flex-col items-center';
+const STAT_NUMBER = 'text-ink text-[32px] font-extrabold max768:text-[26px]';
+const STAT_LABEL = 'text-[var(--muted,#66746f)] text-[12px] font-semibold tracking-[0.05em] uppercase';
+const STAT_DIVIDER = 'bg-[var(--line,#ddd5c7)] h-10 w-px';
+
 /* --- UTILIDADES ----------------------------------------------- */
 
 function getGreeting() {
@@ -284,7 +312,7 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
   const bgClass = getSceneBackground(scene);
 
   return (
-    <section className={`hero-interactive ${bgClass}`} id="inicio">
+    <section className={`relative overflow-hidden flex flex-col items-center justify-center text-center min-h-screen pt-[100px] px-[7vw] pb-[60px] text-ink transition-[background] duration-[1.2s] ease-[ease] max768:pt-20 max768:px-[5vw] max768:pb-10 max768:min-h-[auto] ${HERO_BG[bgClass] || HERO_BG['hero-bg-default']}`} id="inicio">
       {/* Fondo animado con parallax */}
       <div
         className="hero-interactive-bg"
@@ -630,30 +658,30 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
 
       {/* Contenido principal con parallax inverso */}
       <div
-        className={`hero-interactive-content ${showContent ? 'visible' : ''}`}
+        className={`relative z-2 max-w-[800px] [transform:translateY(12px)] ${showContent ? 'opacity-100' : 'opacity-0'}`}
         style={{ transform: `translateY(${-parallaxShift * 0.5}px)`, transition: 'opacity 0.6s ease, transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)' }}
       >
         {/* Avatar de Hilo */}
-        <div className="hero-hilo">
-          <div className="hero-hilo-avatar-wrapper">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-[180px] h-[180px] rounded-[50%] overflow-hidden [box-shadow:0_20px_60px_rgba(12,36,30,0.18),0_0_0_4px_rgba(255,255,255,0.8)] mb-7 animate-[heroHiloFloat_3.6s_ease-in-out_infinite] bg-[var(--cream,#f3e4c8)] max768:w-[140px] max768:h-[140px]">
             <img
-              className="hero-hilo-avatar"
+              className="w-full h-full object-cover"
               src={`/images/hilo/${currentData.pose || 'hilo-saluda.png'}`}
               alt="Hilo, guia de TEJIDO"
             />
           </div>
 
           {/* Mensaje de Hilo */}
-          <p className="hero-hilo-message">{currentData.message}</p>
+          <p className="text-[length:clamp(20px,2.8vw,28px)] font-bold leading-[1.4] text-ink max-w-[600px] my-0 mx-auto max768:text-[20px]">{currentData.message}</p>
         </div>
 
         {/* Opciones interactivas */}
         {currentData.options && (
-          <div className="hero-options">
+          <div className="flex gap-4 justify-center mt-9 flex-wrap max768:gap-3 max480:flex-col max480:items-center">
             {currentData.options.map((option, index) => (
               <button
                 key={option.id}
-                className="hero-option"
+                className={OPTION}
                 type="button"
                 onClick={() => handleOptionClick(option)}
                 style={{
@@ -661,9 +689,9 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
                   '--option-color': option.color || 'var(--river)',
                 }}
               >
-                <span className="hero-option-icon">{option.icon}</span>
-                <span className="hero-option-label">{option.label}</span>
-                <span className="hero-option-sub">{option.sub}</span>
+                <span className="text-[32px] mb-1 max768:text-[26px]">{option.icon}</span>
+                <span className="text-[16px] font-bold text-ink leading-[1.2] max768:text-[14px]">{option.label}</span>
+                <span className="text-[12px] font-medium text-[var(--muted,#66746f)] leading-[1.3]">{option.sub}</span>
               </button>
             ))}
           </div>
@@ -671,14 +699,14 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
 
         {/* Tarjetas de publicaciones (solo en vista de municipio) */}
         {isMunicipality && pubsForMuni.length > 0 && (
-          <div className="hero-muni-pubs">
-            <h3 className="hero-muni-pubs-title">Lo que se esta contando</h3>
-            <div className="hero-muni-pubs-grid">
+          <div className="mt-8 max-w-[700px] w-full">
+            <h3 className="font-sans tracking-[-.055em] text-[16px] font-bold text-[var(--muted,#66746f)] mt-0 mx-0 mb-4">Lo que se esta contando</h3>
+            <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(200px,1fr))] max768:grid-cols-[1fr]">
               {pubsForMuni.map((pub) => (
-                <div key={pub.id} className="hero-muni-pub-card">
-                  <span className="hero-muni-pub-kind">{pub.kind}</span>
-                  <h4 className="hero-muni-pub-title">{pub.title}</h4>
-                  <p className="hero-muni-pub-summary">{pub.summary}</p>
+                <div key={pub.id} className="bg-[rgba(255,255,255,0.7)] backdrop-blur-[8px] border border-[rgba(23,58,49,0.06)] rounded-[16px] p-4 text-left transition-all duration-300 ease-[ease] hover:[transform:translateY(-3px)] hover:[box-shadow:0_8px_24px_rgba(18,60,52,0.1)] hover:border-[rgba(29,143,163,0.15)]">
+                  <span className="text-[var(--sunset,#d85b36)] text-[10px] font-bold tracking-[0.1em] uppercase">{pub.kind}</span>
+                  <h4 className="text-[15px] font-bold text-ink mt-1 mx-0 mb-1.5">{pub.title}</h4>
+                  <p className="text-[12px] text-[var(--muted,#66746f)] leading-[1.4] m-0 line-clamp-2">{pub.summary}</p>
                 </div>
               ))}
             </div>
@@ -687,10 +715,10 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
 
         {/* Tags del municipio */}
         {isMunicipality && (
-          <div className="hero-muni-info">
-            <div className="hero-muni-tags">
+          <div className="mt-6">
+            <div className="flex gap-2 justify-center flex-wrap">
               {currentData.tags.map((tag, i) => (
-                <span key={i} className="hero-muni-tag" style={{ borderColor: currentData.color }}>
+                <span key={i} className="bg-[rgba(255,255,255,0.6)] border border-solid rounded-[999px] text-ink text-[12px] font-semibold py-1.5 px-3.5" style={{ borderColor: currentData.color }}>
                   {tag}
                 </span>
               ))}
@@ -700,28 +728,28 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
 
         {/* Stats del ecosistema */}
         {scene === 'greeting' && (
-          <div className="hero-stats">
-            <div className="hero-stat">
-              <span className="hero-stat-number">6</span>
-              <span className="hero-stat-label">Municipios</span>
+          <div className="flex items-center gap-7 justify-center mt-12 pt-7 border-t border-t-[rgba(23,58,49,0.08)] max768:gap-4">
+            <div className={STAT}>
+              <span className={STAT_NUMBER}>6</span>
+              <span className={STAT_LABEL}>Municipios</span>
             </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat">
-              <span className="hero-stat-number">{publications.length || '247'}</span>
-              <span className="hero-stat-label">Historias</span>
+            <div className={STAT_DIVIDER} />
+            <div className={STAT}>
+              <span className={STAT_NUMBER}>{publications.length || '247'}</span>
+              <span className={STAT_LABEL}>Historias</span>
             </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat">
-              <span className="hero-stat-number">1</span>
-              <span className="hero-stat-label">Rio que conecta</span>
+            <div className={STAT_DIVIDER} />
+            <div className={STAT}>
+              <span className={STAT_NUMBER}>1</span>
+              <span className={STAT_LABEL}>Rio que conecta</span>
             </div>
           </div>
         )}
 
         {/* Boton de explorar (solo en greeting) */}
         {scene === 'greeting' && (
-          <div className="hero-explore-cta">
-            <button className="btn-primary-cultural" type="button" onClick={() => onExplore && onExplore()}>
+          <div className="mt-7">
+            <button className={BTN_CULTURAL} type="button" onClick={() => onExplore && onExplore()}>
               Explorar el Territorio
             </button>
           </div>
@@ -730,7 +758,7 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
 
       {/* Boton de regreso (no en greeting) */}
       {scene !== 'greeting' && (
-        <button className="hero-back-btn" type="button" onClick={goBack} aria-label="Volver">
+        <button className="absolute bottom-6 left-6 z-10 bg-[rgba(255,255,255,0.8)] backdrop-blur-[8px] border border-[rgba(23,58,49,0.12)] rounded-[999px] text-ink cursor-pointer text-[14px] font-semibold py-2.5 px-5 transition-all duration-300 ease-[ease] hover:bg-white hover:[box-shadow:0_4px_16px_rgba(23,58,49,0.1)] max480:bottom-3 max480:left-3 max480:py-2 max480:px-4 max480:text-[13px]" type="button" onClick={goBack} aria-label="Volver">
           ← Volver
         </button>
       )}
