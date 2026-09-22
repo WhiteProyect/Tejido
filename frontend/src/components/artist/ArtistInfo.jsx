@@ -1,8 +1,5 @@
 import { motion } from 'framer-motion';
-import { AX_SECTION_TITLE } from './axStyles.js';
-
-// Secciones (.ax-timeline / .ax-territory / .ax-events): mismo padding y borde inferior.
-const SECTION = 'border-b border-ax-border px-[7vw] py-20';
+import { AX_SECTION, AX_SECTION_TITLE } from './axStyles.js';
 
 // ── Linea de tiempo ──────────────────────────────────────────────────────────
 // Mobile (<=768px): una sola columna; la curva serpenteante (svg) no tiene espacio para mecerse,
@@ -60,7 +57,7 @@ function ArtistTimeline({ timeline }) {
   const riverPath = buildRiverPath(timeline.length);
 
   return (
-    <section className={SECTION}>
+    <section className={AX_SECTION}>
       <h2 className={AX_SECTION_TITLE}>Historia</h2>
 
       <div className={TRACK}>
@@ -143,7 +140,7 @@ function ArtistTerritory({ connections }) {
   if (!connections || connections.length === 0) return null;
 
   return (
-    <section className={SECTION}>
+    <section className={AX_SECTION}>
       <h2 className={AX_SECTION_TITLE}>Desde el territorio</h2>
       <p className="-mt-4 mb-10 text-[16px] leading-[1.6] text-ax-dim">
         Las conexiones de {connections[0]?.titulo ? 'este artista' : 'OG MAURO'} con el ecosistema cultural del Bajo Cauca.
@@ -196,7 +193,7 @@ function ArtistEvents({ events }) {
   }
 
   return (
-    <section className={SECTION}>
+    <section className={AX_SECTION}>
       <h2 className={AX_SECTION_TITLE}>Eventos</h2>
 
       <div className="flex flex-col gap-3">

@@ -85,6 +85,10 @@
   --color-ax-border-hover: var(--ax-border-hover);
   --color-ax-accent-dim: var(--ax-accent-dim);
   --color-ax-accent-border: var(--ax-accent-border);
+  /* Marcas de plataformas musicales (definidas en .ax-artist-page) */
+  --color-ax-green: var(--ax-green);
+  --color-ax-red: var(--ax-red);
+  --color-ax-apple: var(--ax-apple);
 
   /* Tipografia. Playfair Display solo se carga en cursiva 700 (ver @import
      de fuentes en main.css): usar `font-display italic font-bold`. */

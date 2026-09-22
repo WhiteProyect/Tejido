@@ -94,7 +94,8 @@ repo, en vez de dos sesiones de Claude.
   arquitecto/implementador; **Codex CLI** = analista/revisor en solo
   lectura. No se van a correr dos sesiones de Claude en paralelo.
 
-**Qué falta / pendiente:**
+**Qué falta / pendiente:** (cerrado 2026-09-21: el dueño confirmó que los tres
+puntos siguientes ya están resueltos)
 
 - El compañero (`agentwhite11`) debe apuntar su propio remoto local a
   `WhiteProyect/Tejido` (el mismo cambio que se hizo aquí) y, si su backend
@@ -104,3 +105,78 @@ repo, en vez de dos sesiones de Claude.
 - Instalar la extensión de Codex en VS Code (manual, la hace el dueño).
 - Confirmar que el modelo de esta sesión de Claude ya está en Opus
   (`/model`, lo hace el dueño).
+
+---
+
+## 2026-09-19 (2) — Migracion a Tailwind del perfil de artista: Partes 1-3 hechas
+
+**Contexto:** migracion incremental a Tailwind v4 (sin `preflight`), pantalla por
+pantalla, con el requisito de que el resultado sea **identico al pixel** (el diseno
+esta aprobado). Convencion y patrones: `frontend/README.md`, seccion "Tailwind".
+
+**Hecho hasta ahora (todo verificado con Playwright, antes/despues):**
+
+- **Moneystack** (`MoneystackScreen.jsx`): 12 estados x 2 anchos -> 0 px. Se
+  borraron 263 lineas de `main.css`.
+- **Artista Parte 1** (`ArtistScreen.jsx` + `ArtistHeader.jsx`: hero, nav, perfil):
+  69 capturas, 65 a 0 px y el resto ruido demostrado legado-vs-legado.
+- **Artista Parte 2** (`ArtistInfo.jsx`: timeline/rio, territorio, eventos):
+  84 capturas, 83 a 0 px (la otra es el `<animate>` del sol en `#inicio`).
+- **Artista Parte 3** (`ArtistMedia.jsx`: discografia, galeria, lightbox, videos):
+  128 capturas, 127 a 0 px; 0 diferencias de geometria y 36 de estilo computado,
+  todas invisibles (color de un borde con `border-style: none`).
+- `artist.css`: **1610 -> 447 lineas**. Ya no quedan los `@media` legados de 768 y
+  480 px. Solo sobreviven: el tema `.ax-artist-page`, 4 `@keyframes`,
+  `.ax-hero-grain`, `.ax-timeline-river-path`, `.ax-footer*` y los `mk-*`.
+- Constantes compartidas en `frontend/src/components/artist/axStyles.js`
+  (`AX_SECTION`, `AX_SECTION_TITLE`, `AX_BTN*`, `AX_STATE`).
+- `tailwind.css`: variantes `max768`/`max480` (los `@media` legados son inclusivos
+  y `max-[768px]:` NO lo es) y tokens `ax-*` de marca.
+
+**Bug real corregido (no cosmetico):** en `ArtistMedia.jsx` el badge "Destacado"
+comprobaba `track.featured === 1`, pero `tracks.featured` es `Mapped[bool]` en
+`backend/service/models/tables.py` y la API envia `true`/`false`: el badge no se
+mostraba nunca. Ahora usa la misma verdad que la tarjeta (ternario, para que un 0
+no se pinte como texto). Es el unico cambio visual deliberado de la Parte 3.
+
+**Qué falta / pendiente:**
+
+- **Parte 4 — `screens/ArtistMediaKit.jsx`** (154 lineas, 49 reglas `mk-*`).
+  Notas: no usa ninguna clase `ax-*` (no hay solape con lo ya migrado); tiene un
+  `@media (max-width: 600px)` con 4 reglas -> hace falta anadir
+  `@custom-variant max600` en `tailwind.css`; es una pagina independiente que **no**
+  lleva `body.ax-artist-page`, asi que los tokens `ax-*` del tema oscuro no
+  resuelven ahi (hay que mirar que variables usan las reglas `mk-*` antes de
+  traducir); no tiene estilos de impresion.
+- **Parte 5 — `screens/ArtistDashboard.jsx` + `styles/moneystack.css`** (`.ms-*`,
+  506 lineas, con su propio `@media` a 768 px).
+- Fuera de esta serie, se migran aparte: `HomeFeaturedArtist.jsx`, `SiteHeader.jsx`,
+  `Footer.jsx` y el `.ax-footer`.
+- Al final de toda la migracion: activar `preflight` y borrar el CSS legado
+  (hoy activarlo cambia el tamano de las 32 capturas de referencia).
+
+**Estado del working tree al escribir esto:** cambios de la Parte 3 SIN commitear
+(`ArtistMedia.jsx`, `ArtistInfo.jsx`, `axStyles.js`, `artist.css`, `tailwind.css`,
+`frontend/README.md`). `npm run build` compila sin errores ni warnings.
+
+**Revision de Codex (2026-09-19, solo lectura) — hallazgo verificado para la Parte 4:**
+Codex reviso el diff de la Parte 3 y no encontro regresiones; confirmo el arreglo del
+badge y que los ternarios de estado evitan las colisiones de utilidades. Su hallazgo
+principal, **comprobado despues en el navegador**: `ArtistMediaKit` NO anade
+`ax-artist-page` al body, pero 8 declaraciones `mk-*` usan `var(--ax-accent)`,
+`var(--ax-accent-dim)` y `var(--ax-accent-border)`. En esa pagina esas variables no
+existen: `--ax-accent` sale vacia y `.mk-label`, `.mk-section-title`,
+`.mk-social-platform` y `.mk-contact-email` se pintan **blancos** en vez del dorado
+`#d4a843`. Es un **bug preexistente**, no de la migracion.
+Decision pendiente del dueno ANTES de migrar la Parte 4: o se replica el estado actual
+(blanco, migracion neutra de verdad) o se arregla el acento (cambio visual deliberado,
+como el badge). No sirve traducir a `text-ax-accent` sin mas: esa utilidad depende de
+la misma variable ausente.
+Otras notas de Codex: el lightbox y los `div` con `onClick` (releases, fotos) arrastran
+deuda de accesibilidad previa (sin `role="dialog"`, sin foco ni Escape, no alcanzables
+por teclado) — no es regresion de la migracion, pero conviene anotarlo aparte. Para la
+Parte 4 pide capturar 600 y 601 px, el limite de 3 tracks, fecha de lanzamiento
+ausente, redes con y sin `username`, y la imagen del hero rota.
+Nota de entorno: `codex exec -s read-only` no pudo ejecutar comandos en esta maquina
+(`.sandbox-bin` es de Administradores y falla `SetNamedSecurityInfoW`, error 5); la
+revision se hizo pegandole el diff y los archivos dentro del prompt.

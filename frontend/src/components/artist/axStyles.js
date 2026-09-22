@@ -19,9 +19,12 @@ export const AX_BTN_PRIMARY =
 export const AX_BTN_GHOST =
   'border border-ax-border bg-transparent text-ax-text! hover:border-ax-accent-border hover:text-ax-accent!';
 
+// Seccion del perfil (.ax-discography / .ax-timeline / .ax-territory / .ax-gallery / .ax-videos / .ax-events):
+// mismo padding y borde inferior en todas.
+export const AX_SECTION = 'border-b border-b-ax-border px-[7vw] py-20';
+
 // Titulo de seccion (.ax-section-title). h2 global fija font-size, letter-spacing y margin -> "!".
-// ArtistInfo ya lo usa; ArtistMedia (Parte 3) lo adoptara y entonces se borra la regla legada .ax-section-title
-// de artist.css (hasta entonces la regla queda, pero ningun elemento migrado lleva la clase).
+// Lo usan ArtistInfo y ArtistMedia; la regla legada .ax-section-title ya no existe.
 export const AX_SECTION_TITLE =
   'mb-8! text-[length:clamp(28px,4vw,42px)]! font-extrabold tracking-[-0.03em]! text-ax-text max768:text-[length:clamp(24px,6vw,36px)]!';
 
