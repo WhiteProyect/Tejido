@@ -68,10 +68,10 @@ export default function ArtistScreen() {
         events={upcoming_events}
       />
 
-      <footer className="ax-footer">
-        <div className="ax-footer-inner">
-          <a href="/#moneystack" className="ax-footer-back">← Moneystack</a>
-          <a href="#inicio" className="ax-footer-home">TEJIDO</a>
+      <footer className="py-10 px-[7vw] border-t border-t-ax-border">
+        <div className="flex justify-between items-center">
+          <a href="/#moneystack" className="text-[14px] text-ax-dim no-underline transition-[color] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:text-ax-accent">← Moneystack</a>
+          <a href="#inicio" className="text-[16px] font-extrabold tracking-[0.16em] text-ax-text no-underline">TEJIDO</a>
         </div>
       </footer>
     </div>

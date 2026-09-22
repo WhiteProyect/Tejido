@@ -231,3 +231,41 @@ revision se hizo pegandole el diff y los archivos dentro del prompt.
 **Falta:** `HomeFeaturedArtist.jsx`, `SiteHeader.jsx`, `Footer.jsx` y `.ax-footer`
 (compartidos, se migran aparte); despues, el resto de pantallas en el orden del
 README; al final, `preflight` y borrar el CSS legado.
+
+## 2026-09-21 (3) — Fase de cierre de Tailwind: capa base + componentes compartidos
+
+**Decision del dueno:** terminar la migracion y la limpieza del CSS antes de crear
+contenido nuevo, de forma ordenada.
+
+**Hecho:**
+
+- `dc9dba2`: las reglas de etiqueta de `main.css` (`a`, `button, input`, `nav`,
+  `h1`-`h3`, `footer`) pasan a `@layer base`. Las utilidades ya les ganan sin `!`.
+  Neutro: 16 rutas x 2 anchos, 0 diferencias de estilo.
+- Compartidos migrados: `SiteHeader`, `Footer`, `Logo`, `ScreenIntro` y el footer de
+  `ArtistScreen` (`.ax-footer`). Se borraron `.site-header*`, `.brand*`, `.user-*`,
+  `.footer-*` (salvo `.footer-threshold-line`, animacion SVG), `.screen-intro*`,
+  `.ax-footer*`, la regla muerta `body.ax-artist-page .site-header/...` y la pildora
+  global `footer {...}`. `main.css` 4492 -> 4388; `artist.css` 134 -> 83.
+- **Cambio visual deliberado:** el footer del perfil de artista. La regla global
+  `footer` lo convertia en un grid de 4 columnas, con "<- Moneystack" y "TEJIDO"
+  apilados a la izquierda; ahora es la fila `space-between` que pedia `.ax-footer-inner`.
+- Clases compartidas nuevas: `components/uiStyles.js` (`EYEBROW`, `H1`).
+- Verificacion: `cap_all.py` (32 capturas + estilos de 3711 elementos) y `cap_states.py`
+  (16 estados: hovers de header/footer, header oculto/reaparecido, menu de usuario,
+  logo de Moneystack caido, anchos 801/800/601/600), comparando contra el legado
+  servido desde un worktree en 5174. Resultado: solo cambia el footer del artista,
+  mas el ruido conocido (medidas bimodales del texto: el mismo texto mide
+  60,125/60,1406 px segun la corrida).
+
+**Metodo para las siguientes partes:** 1) `cap_all.py ref` antes de tocar;
+2) migrar la pantalla; 3) `prune.py` para borrar su CSS (en seco primero); 4)
+`cap_all.py` + `diff_all.py`; 5) estados con `cap_states.py` contra el legado en 5174.
+(Scripts en el scratchpad de la sesion, no en el repo.)
+
+**Falta (en orden):** pantallas chicas (Login, Guardadas, Talento, NotFound, Agenda,
+Oportunidades, Explorar + `PublicationCard`), Home (`HomeScreen`,
+`HomeFeaturedArtist`, `ExploreSection`), las pesadas (`HeroInteractive`,
+`HomeMapSection` + `MapScreen`, `CollaboratorScreen`, `HiloAssistant`,
+`PassportSection`, `TimelineSection`) y el cierre (`preflight`, tokens a `@theme`,
+borrar `main.css` y los `!` que sobran).

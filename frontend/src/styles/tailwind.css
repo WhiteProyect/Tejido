@@ -30,6 +30,8 @@
    "width < 768px" (exclusiva), y a 768px exactos se veria el diseno de escritorio.
    Usar `max768:` al migrar reglas legadas de ese breakpoint. */
 @custom-variant max768 (@media (max-width: 768px));
+/* Idem para @media (max-width: 800px) (nav del header global, main.css). */
+@custom-variant max800 (@media (max-width: 800px));
 /* Idem para @media (max-width: 480px) (perfil de artista, artist.css). */
 @custom-variant max480 (@media (max-width: 480px));
 /* Idem para @media (max-width: 600px) (Media Kit, ArtistMediaKit.jsx). */

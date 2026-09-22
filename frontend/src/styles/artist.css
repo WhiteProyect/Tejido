@@ -27,14 +27,6 @@
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Solo en el body (lo pone ArtistScreen): el Media Kit usa .ax-artist-page en su
-   contenedor y su propio <footer> no debe ocultarse. */
-body.ax-artist-page .site-header,
-body.ax-artist-page footer:not(.ax-footer),
-body.ax-artist-page .hilo-assistant {
-  display: none !important;
-}
-
 @keyframes axSpin {
   to { transform: rotate(360deg); }
 }
@@ -89,46 +81,3 @@ body.ax-artist-page .hilo-assistant {
   to { opacity: 1; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   FOOTER (del perfil del artista)
-   ═══════════════════════════════════════════════════════════════════ */
-
-.ax-footer {
-  /* Reset explicito: sigue siendo un elemento <footer>, y la regla generica
-     "footer {...}" en main.css (tarjeta flotante con margen y bordes
-     redondeados) tambien lo alcanza al no estar scopeada -- eso dejaba
-     este footer con fondo verde/tarjeta y huecos con el fondo crema de
-     <html> por detras, rompiendo el tema oscuro de la pagina de artista. */
-  background: transparent;
-  border-radius: 0;
-  margin: 0;
-  overflow: visible;
-  position: static;
-  padding: 40px 7vw;
-  border-top: 1px solid var(--ax-border);
-}
-
-.ax-footer-inner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.ax-footer-back {
-  font-size: 14px;
-  color: var(--ax-text-dim);
-  text-decoration: none;
-  transition: color var(--ax-transition);
-}
-
-.ax-footer-back:hover {
-  color: var(--ax-accent);
-}
-
-.ax-footer-home {
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  color: var(--ax-text);
-  text-decoration: none;
-}
