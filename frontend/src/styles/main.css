@@ -1283,511 +1283,75 @@ html:has(.moneystack-section) {
   background: #0a0a0a;
 }
 
-/* ==================== COLLABORATOR DASHBOARD ==================== */
-
-.collab-section {
-  padding: 100px 7vw 80px;
-}
-
-.collab-header {
-  text-align: center;
-  margin-bottom: 48px;
-}
-
-.collab-header h1 {
-  font-size: clamp(32px, 4vw, 48px);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  margin: 0 0 12px;
-  color: var(--ink);
-}
-
-.collab-header p {
-  color: var(--muted);
-  font-size: 16px;
-}
-
-.collab-grid {
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 32px;
-  max-width: 1100px;
-  margin: 0 auto;
-}
-
-.collab-main, .collab-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-/* Auth required */
-.collab-auth-required {
-  text-align: center;
-  padding: 80px 20px;
-}
-
-.collab-auth-required h2 {
-  font-size: 28px;
-  font-weight: 800;
-  margin-bottom: 12px;
-}
-
-.collab-auth-required p {
-  color: var(--muted);
-  margin-bottom: 24px;
-}
-
-/* Register */
-.collab-register {
-  text-align: center;
-  padding: 80px 20px;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.collab-register h2 {
-  font-size: 32px;
-  font-weight: 800;
-  margin-bottom: 12px;
-}
-
-.collab-register > p {
-  color: var(--muted);
-  font-size: 16px;
-  margin-bottom: 32px;
-}
-
-.collab-register-benefits {
-  display: flex;
-  gap: 24px;
-  justify-content: center;
-  margin-bottom: 32px;
-}
-
-.collab-benefit {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--ink);
-}
-
-.collab-benefit-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--cream);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--river);
-  font-weight: 700;
-}
-
-.collab-loading {
-  text-align: center;
-  padding: 80px;
-  color: var(--muted);
-}
-
-/* Points Panel */
-.collab-points-panel {
-  background: linear-gradient(135deg, var(--ink) 0%, #1a3a2e 100%);
-  border-radius: 20px;
-  padding: 32px;
-  color: white;
-}
-
-.collab-points-big {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.collab-points-number {
-  font-size: 56px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-}
-
-.collab-points-label {
-  font-size: 18px;
-  color: rgba(255,255,255,0.7);
-}
-
-.collab-level-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.collab-level-badge {
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.collab-next-level {
-  font-size: 13px;
-  color: rgba(255,255,255,0.7);
-}
-
-.collab-progress-bar {
-  height: 8px;
-  background: rgba(255,255,255,0.15);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.collab-progress-fill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.6s ease;
-}
-
-/* Code Panel */
-.collab-code-panel {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 20px;
-}
-
-.collab-code-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 8px;
-}
-
-.collab-code-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.collab-code-value {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--ink);
-  letter-spacing: 0.05em;
-  flex: 1;
-}
-
-.collab-copy-btn {
-  background: var(--cream);
-  border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.collab-copy-btn:hover {
-  background: var(--gold);
-  color: white;
-}
-
-/* Report Button */
-.collab-actions-row {
-  display: flex;
-  gap: 12px;
-}
-
-.collab-report-btn {
-  flex: 1;
-  background: linear-gradient(135deg, var(--river) 0%, var(--forest) 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 14px 24px;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.collab-report-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(29, 143, 163, 0.3);
-}
-
-/* Report Form */
-.collab-report-form {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 24px;
-}
-
-.collab-form-group {
-  margin-bottom: 16px;
-}
-
-.collab-form-group label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-  margin-bottom: 6px;
-}
-
-.collab-form-group select,
-.collab-form-group input,
-.collab-form-group textarea {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  font-size: 14px;
-  font-family: inherit;
-  box-sizing: border-box;
-}
-
-.collab-form-group textarea {
-  min-height: 80px;
-  resize: vertical;
-}
-
-.collab-report-status {
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-
-.collab-status-success {
-  background: #d4edda;
-  color: #155724;
-}
-
-.collab-status-error {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.collab-form-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.btn-cancel {
-  background: var(--cream);
-  border: none;
-  border-radius: 10px;
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* Activity Timeline */
-.collab-activity h3, .collab-ranking h3, .collab-rewards h3 {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0 0 16px;
-  color: var(--ink);
-}
-
-.collab-empty {
-  color: var(--muted);
-  font-size: 14px;
-  text-align: center;
-  padding: 24px;
-}
-
-.collab-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.collab-timeline-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-
-.collab-timeline-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--cream);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--river);
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.collab-timeline-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.collab-timeline-desc {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ink);
-}
-
-.collab-timeline-date {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.collab-timeline-points {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--gold);
-}
-
-/* Ranking */
-.collab-ranking-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.collab-ranking-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-
-.collab-ranking-me {
-  border-color: var(--gold);
-  background: rgba(212, 168, 67, 0.05);
-}
-
-.collab-ranking-pos {
-  width: 24px;
-  height: 24px;
-  background: var(--cream);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ink);
-  flex-shrink: 0;
-}
-
-.collab-ranking-name {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.collab-ranking-points {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--river);
-}
-
-.collab-ranking-me-extra {
-  text-align: center;
-  font-size: 13px;
-  color: var(--muted);
-  padding: 8px;
-}
-
-/* Rewards */
-.collab-rewards-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.collab-reward-card {
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.collab-reward-category {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--river);
-  background: rgba(29, 143, 163, 0.1);
-  padding: 3px 8px;
-  border-radius: 4px;
-  margin-bottom: 8px;
-}
-
-.collab-reward-card h4 {
-  font-size: 15px;
-  font-weight: 700;
-  margin: 0 0 4px;
-}
-
-.collab-reward-card p {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 0 0 12px;
-  line-height: 1.4;
-}
-
-.collab-reward-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.collab-reward-cost {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--gold);
-}
-
-.collab-redeem-btn {
-  background: var(--ink);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.collab-redeem-btn:hover:not(:disabled) {
-  background: var(--forest);
-}
-
-.collab-redeem-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @keyframes fadeToast {
   0% { opacity: 1; }
@@ -1795,16 +1359,6 @@ html:has(.moneystack-section) {
   100% { opacity: 0; }
 }
 
-@media (max-width: 768px) {
-  .collab-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .collab-register-benefits {
-    flex-direction: column;
-    align-items: center;
-  }
-}
 
 
 

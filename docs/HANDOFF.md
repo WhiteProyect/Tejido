@@ -336,3 +336,13 @@ borrar `main.css` y los `!` que sobran).
 - Verificado: 12 estados (cerrado, hover, abierto, hover de tarjeta, busqueda con y sin
   resultado, 1300/601/600/401/400/390) con 0 px y 0 diferencias de estilo contra el
   legado; rutas sin cambios.
+
+## 2026-09-21 (9) — Colaborador migrado
+
+- `CollaboratorScreen` pasa a Tailwind (todas sus vistas: sin sesion, cargando, registro
+  y panel). Se borraron las 71 reglas `.collab-*` y `.btn-cancel`; `main.css` 1932 -> 1486.
+  `.btn-primary-cultural` sigue en CSS solo por `HeroInteractive`.
+- Verificado: 18 estados con sesion y datos simulados (niveles, formulario con exito y
+  error, listas vacias, posicion > 10, canje habilitado/deshabilitado, hovers,
+  1300/769/768/390) con 0 px y 0 diferencias de estilo contra el legado; rutas sin cambios.
+- Quedan: `HomeMapSection` y `HeroInteractive`, y el cierre.

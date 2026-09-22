@@ -1,4 +1,19 @@
 import { useState, useEffect } from 'react';
+import { BTN_CULTURAL } from '../components/uiStyles.js';
+
+// Clases repetidas del programa de colaboradores.
+const SECTION = 'pt-[100px] px-[7vw] pb-20';
+const H3 = 'font-sans tracking-[-.055em] text-[18px] font-bold mt-0 mx-0 mb-4 text-ink';
+const EMPTY = 'text-muted text-[14px] text-center p-6';
+const CARD = 'bg-white border border-line';
+const ICON_BOX = 'w-8 h-8 bg-cream rounded-[8px] flex items-center justify-center text-river';
+const LABEL = 'block text-[13px] font-semibold text-ink mb-1.5';
+// select y textarea no heredan la fuente por la regla base (solo button, input): va explicito.
+const FIELD = 'w-full py-2.5 px-3.5 border border-line rounded-[10px] text-[14px] [font-family:inherit] box-border';
+const REPORT_STATUS = {
+  success: 'bg-[#d4edda] text-[#155724]',
+  error: 'bg-[#f8d7da] text-[#721c24]',
+};
 
 const LEVELS = {
   INICIADO: { color: '#6b7280', next: 'ACTIVO', required: 500 },
@@ -130,11 +145,11 @@ export default function CollaboratorScreen({ user }) {
 
   if (!user) {
     return (
-      <section className="collab-section">
-        <div className="collab-auth-required">
-          <h2>Colaboradores TEJIDO</h2>
-          <p>Inicia sesión para unirte al programa de colaboradores.</p>
-          <a href="#login" onClick={() => sessionStorage.setItem('tejido_return_to', 'colaborador')} className="btn-primary-cultural">Iniciar Sesión</a>
+      <section className={SECTION}>
+        <div className="text-center py-20 px-5">
+          <h2 className="font-sans tracking-[-.055em] leading-[.98] m-0 text-[28px] font-extrabold mb-3">Colaboradores TEJIDO</h2>
+          <p className="text-muted mb-6">Inicia sesión para unirte al programa de colaboradores.</p>
+          <a href="#login" onClick={() => sessionStorage.setItem('tejido_return_to', 'colaborador')} className={BTN_CULTURAL}>Iniciar Sesión</a>
         </div>
       </section>
     );
@@ -142,33 +157,33 @@ export default function CollaboratorScreen({ user }) {
 
   if (loading) {
     return (
-      <section className="collab-section">
-        <div className="collab-loading">Cargando...</div>
+      <section className={SECTION}>
+        <div className="text-center p-20 text-muted">Cargando...</div>
       </section>
     );
   }
 
   if (!profile?.collaborator) {
     return (
-      <section className="collab-section">
-        <div className="collab-register">
-          <h2>Conviértete en Colaborador</h2>
-          <p>Comparte el Bajo Cauca con el mundo y acumula puntos canjeables por beneficios exclusivos.</p>
-          <div className="collab-register-benefits">
-            <div className="collab-benefit">
-              <span className="collab-benefit-icon">↗</span>
+      <section className={SECTION}>
+        <div className="text-center py-20 px-5 max-w-[600px] my-0 mx-auto">
+          <h2 className="font-sans tracking-[-.055em] leading-[.98] m-0 text-[32px] font-extrabold mb-3">Conviértete en Colaborador</h2>
+          <p className="text-muted text-[16px] mb-8">Comparte el Bajo Cauca con el mundo y acumula puntos canjeables por beneficios exclusivos.</p>
+          <div className="flex gap-6 justify-center mb-8 max768:flex-col max768:items-center">
+            <div className="flex items-center gap-2 text-[14px] text-ink">
+              <span className={`${ICON_BOX} font-bold`}>↗</span>
               <span>Comparte y gana puntos</span>
             </div>
-            <div className="collab-benefit">
-              <span className="collab-benefit-icon">★</span>
+            <div className="flex items-center gap-2 text-[14px] text-ink">
+              <span className={`${ICON_BOX} font-bold`}>★</span>
               <span>Alcanza niveles exclusivos</span>
             </div>
-            <div className="collab-benefit">
-              <span className="collab-benefit-icon">◉</span>
+            <div className="flex items-center gap-2 text-[14px] text-ink">
+              <span className={`${ICON_BOX} font-bold`}>◉</span>
               <span>Canjea por recompensas</span>
             </div>
           </div>
-          <button className="btn-primary-cultural" onClick={handleRegister}>
+          <button className={BTN_CULTURAL} onClick={handleRegister}>
             Unirme como Colaborador
           </button>
         </div>
@@ -181,55 +196,56 @@ export default function CollaboratorScreen({ user }) {
   const progress = levelInfo.required ? Math.min((collab.points / levelInfo.required) * 100, 100) : 100;
 
   return (
-    <section className="collab-section">
-      <div className="collab-header">
-        <h1>Mi Dashboard de Colaborador</h1>
-        <p>Comparte, participa y acumula puntos</p>
+    <section className={SECTION}>
+      <div className="text-center mb-12">
+        <h1 className="font-sans leading-[.98] text-[length:clamp(32px,4vw,48px)] font-extrabold tracking-[-0.04em] mt-0 mx-0 mb-3 text-ink">Mi Dashboard de Colaborador</h1>
+        <p className="text-muted text-[16px]">Comparte, participa y acumula puntos</p>
       </div>
 
-      <div className="collab-grid">
-        <div className="collab-main">
-          <div className="collab-points-panel">
-            <div className="collab-points-big">
-              <span className="collab-points-number">{collab.points}</span>
-              <span className="collab-points-label">puntos</span>
+      <div className="grid grid-cols-[1fr_360px] gap-8 max-w-[1100px] my-0 mx-auto max768:grid-cols-[1fr]">
+        <div className="flex flex-col gap-6">
+          <div className="bg-[linear-gradient(135deg,var(--ink)_0%,#1a3a2e_100%)] rounded-[20px] p-8 text-white">
+            <div className="flex items-baseline gap-2 mb-4">
+              <span className="text-[56px] font-extrabold tracking-[-0.04em]">{collab.points}</span>
+              <span className="text-[18px] text-[rgba(255,255,255,0.7)]">puntos</span>
             </div>
-            <div className="collab-level-info">
-              <span className="collab-level-badge" style={{ background: levelInfo.color }}>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="py-1 px-3 rounded-[999px] text-[12px] font-bold text-white uppercase tracking-[0.05em]" style={{ background: levelInfo.color }}>
                 {collab.level}
               </span>
               {levelInfo.next && (
-                <span className="collab-next-level">
+                <span className="text-[13px] text-[rgba(255,255,255,0.7)]">
                   {collab.points}/{levelInfo.required} para {levelInfo.next}
                 </span>
               )}
             </div>
-            <div className="collab-progress-bar">
-              <div className="collab-progress-fill" style={{ width: `${progress}%`, background: levelInfo.color }}></div>
+            <div className="h-2 bg-[rgba(255,255,255,0.15)] rounded-[4px] overflow-hidden">
+              <div className="h-full rounded-[4px] transition-[width] duration-600 ease-[ease]" style={{ width: `${progress}%`, background: levelInfo.color }}></div>
             </div>
           </div>
 
-          <div className="collab-code-panel">
-            <span className="collab-code-label">Tu código de referido</span>
-            <div className="collab-code-row">
-              <span className="collab-code-value">{collab.code}</span>
-              <button className="collab-copy-btn" onClick={copyCode}>
+          <div className={`${CARD} rounded-[16px] p-5`}>
+            <span className="block text-[12px] font-semibold text-muted uppercase tracking-[0.1em] mb-2">Tu código de referido</span>
+            <div className="flex items-center gap-3">
+              <span className="text-[20px] font-extrabold text-ink tracking-[0.05em] flex-1">{collab.code}</span>
+              <button className="bg-cream border-none rounded-[8px] py-2 px-4 text-[13px] font-semibold cursor-pointer transition-all duration-200 ease-[ease] hover:bg-gold hover:text-white" onClick={copyCode}>
                 {copiedCode ? 'Copiado' : 'Copiar'}
               </button>
             </div>
           </div>
 
-          <div className="collab-actions-row">
-            <button className="collab-report-btn" onClick={() => setShowReportForm(!showReportForm)}>
+          <div className="flex gap-3">
+            <button className="flex-1 bg-transparent bg-[linear-gradient(135deg,var(--river)_0%,var(--forest)_100%)] text-white border-none rounded-[12px] py-3.5 px-6 text-[15px] font-bold cursor-pointer transition-all duration-300 ease-[ease] hover:[transform:translateY(-2px)] hover:[box-shadow:0_8px_24px_rgba(29,143,163,0.3)]" onClick={() => setShowReportForm(!showReportForm)}>
               Reportar Actividad
             </button>
           </div>
 
           {showReportForm && (
-            <form className="collab-report-form" onSubmit={handleReport}>
-              <div className="collab-form-group">
-                <label>Tipo de actividad</label>
+            <form className={`${CARD} rounded-[16px] p-6`} onSubmit={handleReport}>
+              <div className="mb-4">
+                <label className={LABEL}>Tipo de actividad</label>
                 <select
+                  className={FIELD}
                   value={reportForm.type}
                   onChange={e => setReportForm({ ...reportForm, type: e.target.value })}
                   required
@@ -242,18 +258,20 @@ export default function CollaboratorScreen({ user }) {
                   ))}
                 </select>
               </div>
-              <div className="collab-form-group">
-                <label>Descripción</label>
+              <div className="mb-4">
+                <label className={LABEL}>Descripción</label>
                 <textarea
+                  className={`${FIELD} min-h-20 resize-y`}
                   value={reportForm.description}
                   onChange={e => setReportForm({ ...reportForm, description: e.target.value })}
                   placeholder="Cuéntanos qué hiciste..."
                   required
                 />
               </div>
-              <div className="collab-form-group">
-                <label>Evidencia (opcional)</label>
+              <div className="mb-4">
+                <label className={LABEL}>Evidencia (opcional)</label>
                 <input
+                  className={FIELD}
                   type="url"
                   value={reportForm.evidence_url}
                   onChange={e => setReportForm({ ...reportForm, evidence_url: e.target.value })}
@@ -261,35 +279,35 @@ export default function CollaboratorScreen({ user }) {
                 />
               </div>
               {reportStatus && (
-                <div className={`collab-report-status collab-status-${reportStatus.type}`}>
+                <div className={`py-2.5 px-3.5 rounded-[10px] text-[14px] font-semibold mb-3 ${REPORT_STATUS[reportStatus.type]}`}>
                   {reportStatus.type === 'success'
                     ? `+${reportStatus.points} puntos ganados`
                     : reportStatus.message}
                 </div>
               )}
-              <div className="collab-form-actions">
-                <button type="submit" className="btn-primary-cultural">Enviar</button>
-                <button type="button" className="btn-cancel" onClick={() => setShowReportForm(false)}>Cancelar</button>
+              <div className="flex gap-3">
+                <button type="submit" className={BTN_CULTURAL}>Enviar</button>
+                <button type="button" className="bg-cream border-none rounded-[10px] py-2.5 px-5 text-[14px] font-semibold cursor-pointer" onClick={() => setShowReportForm(false)}>Cancelar</button>
               </div>
             </form>
           )}
 
-          <div className="collab-activity">
-            <h3>Actividad Reciente</h3>
+          <div>
+            <h3 className={H3}>Actividad Reciente</h3>
             {profile.activities.length === 0 ? (
-              <p className="collab-empty">Aún no has registrado actividad</p>
+              <p className={EMPTY}>Aún no has registrado actividad</p>
             ) : (
-              <div className="collab-timeline">
+              <div className="flex flex-col gap-3">
                 {profile.activities.map(act => (
-                  <div className="collab-timeline-item" key={act.id}>
-                    <span className="collab-timeline-icon">{ACTIVITY_ICONS[act.type] || '·'}</span>
-                    <div className="collab-timeline-content">
-                      <span className="collab-timeline-desc">{act.description}</span>
-                      <span className="collab-timeline-date">
+                  <div className={`${CARD} flex items-center gap-3 py-3 px-4 rounded-[12px]`} key={act.id}>
+                    <span className={`${ICON_BOX} text-[14px] shrink-0`}>{ACTIVITY_ICONS[act.type] || '·'}</span>
+                    <div className="flex-1 flex flex-col">
+                      <span className="text-[14px] font-medium text-ink">{act.description}</span>
+                      <span className="text-[12px] text-muted">
                         {new Date(act.created_at).toLocaleDateString('es-CO')}
                       </span>
                     </div>
-                    <span className="collab-timeline-points">+{act.points}</span>
+                    <span className="text-[14px] font-bold text-gold">+{act.points}</span>
                   </div>
                 ))}
               </div>
@@ -297,22 +315,22 @@ export default function CollaboratorScreen({ user }) {
           </div>
         </div>
 
-        <div className="collab-sidebar">
-          <div className="collab-ranking">
-            <h3>Ranking del Mes</h3>
+        <div className="flex flex-col gap-6">
+          <div>
+            <h3 className={H3}>Ranking del Mes</h3>
             {profile.ranking.length === 0 ? (
-              <p className="collab-empty">Sin datos aún</p>
+              <p className={EMPTY}>Sin datos aún</p>
             ) : (
-              <div className="collab-ranking-list">
+              <div className="flex flex-col gap-2">
                 {profile.ranking.map((r, i) => (
-                  <div className={`collab-ranking-item ${r.id === collab.id ? 'collab-ranking-me' : ''}`} key={r.id}>
-                    <span className="collab-ranking-pos">{i + 1}</span>
-                    <span className="collab-ranking-name">{r.name}</span>
-                    <span className="collab-ranking-points">{r.points}</span>
+                  <div className={`flex items-center gap-3 py-2.5 px-3.5 border rounded-[10px] ${r.id === collab.id ? 'border-gold bg-[rgba(212,168,67,0.05)]' : 'border-line bg-white'}`} key={r.id}>
+                    <span className="w-6 h-6 bg-cream rounded-[50%] flex items-center justify-center text-[12px] font-bold text-ink shrink-0">{i + 1}</span>
+                    <span className="flex-1 text-[14px] font-medium">{r.name}</span>
+                    <span className="text-[14px] font-bold text-river">{r.points}</span>
                   </div>
                 ))}
                 {profile.user_position && profile.user_position > 10 && (
-                  <div className="collab-ranking-me-extra">
+                  <div className="text-center text-[13px] text-muted p-2">
                     Tu posición: #{profile.user_position}
                   </div>
                 )}
@@ -320,18 +338,18 @@ export default function CollaboratorScreen({ user }) {
             )}
           </div>
 
-          <div className="collab-rewards">
-            <h3>Recompensas</h3>
-            <div className="collab-rewards-grid">
+          <div>
+            <h3 className={H3}>Recompensas</h3>
+            <div className="flex flex-col gap-3">
               {rewards.map(reward => (
-                <div className="collab-reward-card" key={reward.id}>
-                  <span className="collab-reward-category">{reward.category}</span>
-                  <h4>{reward.name}</h4>
-                  <p>{reward.description}</p>
-                  <div className="collab-reward-footer">
-                    <span className="collab-reward-cost">{reward.points_cost} pts</span>
+                <div className={`${CARD} rounded-[12px] p-4`} key={reward.id}>
+                  <span className="inline-block text-[10px] font-bold uppercase tracking-[0.1em] text-river bg-[rgba(29,143,163,0.1)] py-[3px] px-2 rounded-[4px] mb-2">{reward.category}</span>
+                  <h4 className="text-[15px] font-bold mt-0 mx-0 mb-1">{reward.name}</h4>
+                  <p className="text-[12px] text-muted mt-0 mx-0 mb-3 leading-[1.4]">{reward.description}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[14px] font-bold text-gold">{reward.points_cost} pts</span>
                     <button
-                      className="collab-redeem-btn"
+                      className="bg-ink text-white border-none rounded-[8px] py-1.5 px-3.5 text-[13px] font-semibold cursor-pointer transition-all duration-200 ease-[ease] enabled:hover:bg-forest disabled:opacity-40 disabled:cursor-not-allowed"
                       onClick={() => handleRedeem(reward.id)}
                       disabled={collab.points < reward.points_cost}
                     >
