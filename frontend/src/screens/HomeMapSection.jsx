@@ -5,6 +5,13 @@ import {
   MUNICIPALITY_SVG_POSITIONS,
   normalizeText
 } from '../utils/constants.js';
+import { BADGE, SECTION_TITLE } from '../components/uiStyles.js';
+
+// La parte HTML usa utilidades. El arte SVG del mapa (region, rutas, rio, particulas,
+// anillos y contadores por municipio) conserva sus clases propias en CSS: son
+// animaciones y trazos SVG, y el JS busca `.geo-muni` para los eventos.
+const PILL = 'font-bold uppercase rounded-[999px] inline-block';
+const TAG = 'text-ink bg-[#f3e4c8] font-semibold rounded-[999px]';
 
 function groupPubsByMunicipality(publications) {
   const groups = {};
@@ -62,15 +69,15 @@ export default function HomeMapSection({ publications = [] }) {
   }, []);
 
   return (
-    <section className="geo-section">
-      <div className="geo-header">
-        <span className="section-badge">Geografía</span>
-        <h2 className="section-title">Nuestros <em>seis</em> municipios</h2>
-        <p className="geo-subtitle">Un recorrido por el Bajo Cauca Antioqueño</p>
+    <section className="py-20 px-[7vw] bg-[radial-gradient(ellipse_60%_40%_at_30%_60%,rgba(29,143,163,0.04)_0%,transparent_100%),radial-gradient(ellipse_50%_50%_at_70%_30%,rgba(212,168,67,0.03)_0%,transparent_100%),linear-gradient(180deg,transparent_0%,rgba(29,143,163,0.02)_50%,transparent_100%)] max768:py-[50px] max768:px-[5vw]">
+      <div className="text-center mb-12 max480:mb-8">
+        <span className={BADGE}>Geografía</span>
+        <h2 className={SECTION_TITLE}>Nuestros <em className="text-sunset font-display italic">seis</em> municipios</h2>
+        <p className="text-[15px] text-muted mt-3 mx-0 mb-0 font-medium">Un recorrido por el Bajo Cauca Antioqueño</p>
       </div>
 
-      <div className="geo-stage" ref={mapRef}>
-        <svg className="geo-map" viewBox="0 0 800 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <div className="relative overflow-hidden max-w-[900px] my-0 mx-auto pt-10 px-12 pb-8 bg-[linear-gradient(160deg,#fefefe_0%,#f8f5ee_40%,#f0efe8_100%)] rounded-[28px] [box-shadow:0_24px_80px_rgba(18,60,52,0.07),0_0_0_1px_rgba(18,60,52,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_40%_50%,rgba(29,143,163,0.03)_0%,transparent_70%)] before:pointer-events-none max768:pt-6 max768:px-5 max768:pb-5 max768:rounded-[22px]" ref={mapRef}>
+        <svg className="w-full h-auto block" viewBox="0 0 800 560" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <radialGradient id="geoGlow" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#1d8fa3" stopOpacity="0.25"/>
@@ -217,16 +224,16 @@ export default function HomeMapSection({ publications = [] }) {
         </svg>
 
         {hoveredMunicipality && (
-          <div className="geo-hover-card" style={{ left: hoverPos.x, top: hoverPos.y }}>
-            <div className="geo-hover-img" style={{backgroundImage: `url(${hoveredMunicipality.image})`}}></div>
-            <div className="geo-hover-body">
-              <span className="geo-hover-badge">Municipio</span>
-              <h4>{hoveredMunicipality.name}</h4>
-              <p className="geo-hover-title">{hoveredMunicipality.title}</p>
-              <p className="geo-hover-desc">{hoveredMunicipality.description}</p>
-              <div className="geo-hover-tags">
+          <div className="absolute [transform:translate(-50%,-100%)] bg-white rounded-[18px] overflow-hidden [box-shadow:0_16px_48px_rgba(18,60,52,0.14),0_0_0_1px_rgba(18,60,52,0.06)] w-[260px] z-20 pointer-events-none animate-[geoHoverIn_0.25s_cubic-bezier(.34,1.56,.64,1)] max768:w-[220px]" style={{ left: hoverPos.x, top: hoverPos.y }}>
+            <div className="relative h-[110px] bg-cover bg-center bg-cream after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-10 after:bg-[linear-gradient(transparent,white)]" style={{backgroundImage: `url(${hoveredMunicipality.image})`}}></div>
+            <div className="pt-4 px-[18px] pb-[18px]">
+              <span className={`${PILL} text-[9px] tracking-[0.12em] text-[#1d8fa3] bg-[rgba(29,143,163,0.08)] py-1 px-2.5 mb-2`}>Municipio</span>
+              <h4 className="text-[17px] font-extrabold mt-0 mx-0 mb-0.5 text-ink">{hoveredMunicipality.name}</h4>
+              <p className="text-[12px] font-semibold text-[#d4a843] mt-0! mx-0! mb-2!">{hoveredMunicipality.title}</p>
+              <p className="text-[12px] leading-[1.45] text-muted mt-0 mx-0 mb-2.5 line-clamp-3">{hoveredMunicipality.description}</p>
+              <div className="flex gap-1.5 flex-wrap">
                 {hoveredMunicipality.tags.map((tag, i) => (
-                  <span key={i} className="geo-hover-tag">{tag}</span>
+                  <span key={i} className={`${TAG} text-[10px] py-[3px] px-2`}>{tag}</span>
                 ))}
               </div>
             </div>
@@ -234,15 +241,15 @@ export default function HomeMapSection({ publications = [] }) {
         )}
       </div>
 
-      <div className="geo-cards">
+      <div className="max-w-[900px] mt-8 mx-auto mb-0 grid grid-cols-[repeat(3,1fr)] gap-3 max768:grid-cols-[repeat(2,1fr)] max480:grid-cols-[1fr]">
         {Object.entries(MUNICIPALITIES_DATA).map(([key, muni], index) => (
           <button
             key={key}
-            className="geo-card"
+            className="group flex items-center gap-3 py-3.5 px-4 bg-white border border-[rgba(18,60,52,0.06)] rounded-[14px] cursor-pointer relative overflow-hidden transition-all duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] [box-shadow:0_4px_16px_rgba(18,60,52,0.04)] text-left animate-[geoCardIn_0.5s_cubic-bezier(.34,1.56,.64,1)_both] hover:[transform:translateY(-3px)] hover:[box-shadow:0_8px_28px_rgba(18,60,52,0.1)] hover:border-[rgba(29,143,163,0.15)]"
             style={{ animationDelay: `${index * 0.1}s` }}
             onClick={() => setSelectedMunicipality(muni)}
           >
-            <div className="geo-card-accent" style={{
+            <div className="w-1 h-9 rounded-[4px] shrink-0" style={{
               background: `linear-gradient(135deg, ${
                 index === 0 ? '#d4a843' :
                 index === 1 ? '#1d8fa3' :
@@ -252,11 +259,11 @@ export default function HomeMapSection({ publications = [] }) {
                 '#8a4f7d'
               }, transparent)`
             }}></div>
-            <div className="geo-card-content">
-              <h4>{muni.name}</h4>
-              <p>{muni.title}</p>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-[14px] font-bold m-0 text-ink">{muni.name}</h4>
+              <p className="text-[11px] text-muted mt-0.5 mx-0 mb-0 font-medium">{muni.title}</p>
             </div>
-            <svg className="geo-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="w-[18px] h-[18px] text-muted shrink-0 opacity-0 [transform:translateX(-4px)] transition-all duration-300 ease-[ease] group-hover:opacity-100 group-hover:[transform:translateX(0)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
           </button>
@@ -264,23 +271,23 @@ export default function HomeMapSection({ publications = [] }) {
       </div>
 
       {selectedMunicipality && (
-        <div className="municipality-modal-overlay" onClick={() => setSelectedMunicipality(null)}>
-          <div className="municipality-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setSelectedMunicipality(null)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <div className="fixed top-0 left-0 right-0 bottom-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-[8px] flex items-center justify-center z-1000 p-5 animate-[fadeIn_0.3s_ease]" onClick={() => setSelectedMunicipality(null)}>
+          <div className="bg-white rounded-[24px] max-w-[500px] w-full overflow-hidden [box-shadow:0_32px_80px_rgba(0,0,0,0.3)] animate-[slideUp_0.4s_cubic-bezier(0.175,0.885,0.32,1.275)] relative" onClick={(e) => e.stopPropagation()}>
+            <button className="absolute top-4 right-4 w-9 h-9 bg-[rgba(255,255,255,0.9)] border-none rounded-[50%] cursor-pointer flex items-center justify-center z-10 transition-all duration-300 ease-[ease] hover:bg-white hover:[transform:rotate(90deg)]" onClick={() => setSelectedMunicipality(null)}>
+              <svg className="w-5 h-5 text-ink" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18"/>
                 <line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
             </button>
-            <div className="modal-image" style={{backgroundImage: `url(${selectedMunicipality.image})`}}></div>
-            <div className="modal-content">
-              <span className="modal-badge">Municipio</span>
-              <h3 className="modal-title">{selectedMunicipality.name}</h3>
-              <p className="modal-subtitle">{selectedMunicipality.title}</p>
-              <p className="modal-description">{selectedMunicipality.description}</p>
-              <div className="modal-tags">
+            <div className="h-[200px] bg-cover bg-center bg-cream" style={{backgroundImage: `url(${selectedMunicipality.image})`}}></div>
+            <div className="p-7">
+              <span className={`${PILL} bg-[rgba(29,143,163,0.1)] text-[#1d8fa3] text-[11px] tracking-[0.1em] py-1.5 px-3 mb-3`}>Municipio</span>
+              <h3 className="font-sans tracking-[-.055em] text-[28px] font-extrabold mt-0 mx-0 mb-1.5 text-ink">{selectedMunicipality.name}</h3>
+              <p className="text-[16px] font-semibold text-[#d4a843] mt-0 mx-0 mb-4">{selectedMunicipality.title}</p>
+              <p className="text-[14px] leading-[1.6] text-muted mt-0 mx-0 mb-5">{selectedMunicipality.description}</p>
+              <div className="flex gap-2 flex-wrap">
                 {selectedMunicipality.tags.map((tag, index) => (
-                  <span key={index} className="modal-tag">{tag}</span>
+                  <span key={index} className={`${TAG} text-[12px] py-1.5 px-3`}>{tag}</span>
                 ))}
               </div>
             </div>

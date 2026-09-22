@@ -681,89 +681,14 @@ body { margin: 0; }
   .hero-back-btn { bottom: 12px; left: 12px; padding: 8px 16px; font-size: 13px; }
 }
 
-/* Section Badge */
-.section-badge {
-  background: rgba(29, 143, 163, 0.1);
-  border: 1px solid rgba(29, 143, 163, 0.2);
-  border-radius: 999px;
-  color: var(--river);
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  margin-bottom: 16px;
-  padding: 6px 16px;
-  text-transform: uppercase;
-}
 
-/* Section Title */
-.section-title {
-  font-size: clamp(40px, 5vw, 64px);
-  font-weight: 800;
-  letter-spacing: -0.05em;
-  line-height: 1;
-  margin: 0 0 16px;
-}
 
-.section-title em {
-  color: var(--sunset);
-  font-family: 'Playfair Display', serif;
-  font-style: italic;
-}
 
-/* =========================================
-   GEOGRAFÍA — Mapa del Bajo Cauca
-   ========================================= */
 
-.geo-section {
-  padding: 80px 7vw;
-  background:
-    radial-gradient(ellipse 60% 40% at 30% 60%, rgba(29,143,163,0.04) 0%, transparent 100%),
-    radial-gradient(ellipse 50% 50% at 70% 30%, rgba(212,168,67,0.03) 0%, transparent 100%),
-    linear-gradient(180deg, transparent 0%, rgba(29,143,163,0.02) 50%, transparent 100%);
-}
 
-.geo-header {
-  text-align: center;
-  margin-bottom: 48px;
-}
 
-.geo-subtitle {
-  font-size: 15px;
-  color: var(--muted);
-  margin: 12px 0 0;
-  font-weight: 500;
-}
 
-/* ---- Mapa escenario ---- */
-.geo-stage {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 40px 48px 32px;
-  background:
-    linear-gradient(160deg, #fefefe 0%, #f8f5ee 40%, #f0efe8 100%);
-  border-radius: 28px;
-  box-shadow:
-    0 24px 80px rgba(18,60,52,0.07),
-    0 0 0 1px rgba(18,60,52,0.04),
-    inset 0 1px 0 rgba(255,255,255,0.9);
-  position: relative;
-  overflow: hidden;
-}
 
-.geo-stage::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 40% 50%, rgba(29,143,163,0.03) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.geo-map {
-  width: 100%;
-  height: auto;
-  display: block;
-}
 
 /* ---- Región ---- */
 .geo-region {
@@ -955,321 +880,69 @@ body { margin: 0; }
   opacity: 0.5;
 }
 
-/* ---- Hover Card ---- */
-.geo-hover-card {
-  position: absolute;
-  transform: translate(-50%, -100%);
-  background: white;
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow:
-    0 16px 48px rgba(18,60,52,0.14),
-    0 0 0 1px rgba(18,60,52,0.06);
-  width: 260px;
-  z-index: 20;
-  pointer-events: none;
-  animation: geoHoverIn 0.25s cubic-bezier(.34,1.56,.64,1);
-}
 
 @keyframes geoHoverIn {
   from { opacity: 0; transform: translate(-50%, -92%) scale(0.92); }
   to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
 }
 
-.geo-hover-img {
-  height: 110px;
-  background-size: cover;
-  background-position: center;
-  background-color: var(--cream);
-  position: relative;
-}
 
-.geo-hover-img::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 40px;
-  background: linear-gradient(transparent, white);
-}
 
-.geo-hover-body {
-  padding: 16px 18px 18px;
-}
 
-.geo-hover-badge {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #1d8fa3;
-  background: rgba(29,143,163,0.08);
-  padding: 4px 10px;
-  border-radius: 999px;
-  display: inline-block;
-  margin-bottom: 8px;
-}
 
-.geo-hover-body h4 {
-  font-size: 17px;
-  font-weight: 800;
-  margin: 0 0 2px;
-  color: var(--ink);
-}
 
-.geo-hover-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #d4a843;
-  margin: 0 0 8px !important;
-}
 
-.geo-hover-desc {
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--muted);
-  margin: 0 0 10px;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 
-.geo-hover-tags {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
 
-.geo-hover-tag {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--ink);
-  background: #f3e4c8;
-  padding: 3px 8px;
-  border-radius: 999px;
-}
 
-/* ---- Tarjetas de municipios ---- */
-.geo-cards {
-  max-width: 900px;
-  margin: 32px auto 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
 
-.geo-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  background: white;
-  border: 1px solid rgba(18,60,52,0.06);
-  border-radius: 14px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(.34,1.56,.64,1);
-  box-shadow: 0 4px 16px rgba(18,60,52,0.04);
-  text-align: left;
-  animation: geoCardIn 0.5s cubic-bezier(.34,1.56,.64,1) both;
-}
 
-.geo-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 28px rgba(18,60,52,0.1);
-  border-color: rgba(29,143,163,0.15);
-}
 
-.geo-card-accent {
-  width: 4px;
-  height: 36px;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
 
-.geo-card-content {
-  flex: 1;
-  min-width: 0;
-}
 
-.geo-card-content h4 {
-  font-size: 14px;
-  font-weight: 700;
-  margin: 0;
-  color: var(--ink);
-}
 
-.geo-card-content p {
-  font-size: 11px;
-  color: var(--muted);
-  margin: 2px 0 0;
-  font-weight: 500;
-}
 
-.geo-card-arrow {
-  width: 18px;
-  height: 18px;
-  color: var(--muted);
-  flex-shrink: 0;
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: all 0.3s ease;
-}
 
-.geo-card:hover .geo-card-arrow {
-  opacity: 1;
-  transform: translateX(0);
-}
 
 @keyframes geoCardIn {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ---- Modal de Municipio ---- */
-.municipality-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  animation: fadeIn 0.3s ease;
-}
 
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-.municipality-modal {
-  background: white;
-  border-radius: 24px;
-  max-width: 500px;
-  width: 100%;
-  overflow: hidden;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.3);
-  animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  position: relative;
-}
 
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(40px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.modal-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  transition: all 0.3s ease;
-}
 
-.modal-close:hover {
-  background: white;
-  transform: rotate(90deg);
-}
 
-.modal-close svg {
-  width: 20px;
-  height: 20px;
-  color: var(--ink);
-}
 
-.modal-image {
-  height: 200px;
-  background-size: cover;
-  background-position: center;
-  background-color: var(--cream);
-}
 
-.modal-content {
-  padding: 28px;
-}
 
-.modal-badge {
-  background: rgba(29, 143, 163, 0.1);
-  color: #1d8fa3;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 6px 12px;
-  border-radius: 999px;
-  display: inline-block;
-  margin-bottom: 12px;
-}
 
-.modal-title {
-  font-size: 28px;
-  font-weight: 800;
-  margin: 0 0 6px;
-  color: var(--ink);
-}
 
-.modal-subtitle {
-  font-size: 16px;
-  font-weight: 600;
-  color: #d4a843;
-  margin: 0 0 16px;
-}
 
-.modal-description {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--muted);
-  margin: 0 0 20px;
-}
 
-.modal-tags {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 
-.modal-tag {
-  background: #f3e4c8;
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 999px;
-}
 
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
-  .geo-section { padding: 50px 5vw; }
-  .geo-stage { padding: 24px 20px 20px; border-radius: 22px; }
+  
+  
   .muni-name { font-size: 11px; }
   .muni-role { font-size: 8px; }
   .geo-map-title { font-size: 10px; }
-  .geo-cards { grid-template-columns: repeat(2, 1fr); }
-  .geo-hover-card { width: 220px; }
+  
+  
 }
 
-@media (max-width: 480px) {
-  .geo-cards { grid-template-columns: 1fr; }
-  .geo-header { margin-bottom: 32px; }
-}
 
 /* =========================================
    MONEystack — Home del sello (la pantalla usa Tailwind; aqui solo el fondo global)

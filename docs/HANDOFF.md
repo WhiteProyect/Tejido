@@ -346,3 +346,17 @@ borrar `main.css` y los `!` que sobran).
   error, listas vacias, posicion > 10, canje habilitado/deshabilitado, hovers,
   1300/769/768/390) con 0 px y 0 diferencias de estilo contra el legado; rutas sin cambios.
 - Quedan: `HomeMapSection` y `HeroInteractive`, y el cierre.
+
+## 2026-09-22 — Mapa del inicio (HomeMapSection) migrado
+
+- La parte HTML de `HomeMapSection` (seccion, encabezado, escenario, tarjeta de hover,
+  tarjetas de municipio y modal) pasa a Tailwind. El arte SVG (region, rutas, rio,
+  particulas, anillos y contadores) conserva sus clases en CSS: son animaciones y
+  trazos SVG, y el JS busca `.geo-muni`. Se borraron `.section-badge` y
+  `.section-title` (ya sin usos). `main.css` 1486 -> 1159.
+- Verificado: 11 estados (hover de municipio, modal, cierre, tarjetas, 769/768/481/480/390)
+  con 0 diferencias de estilo contra el legado (solo el host de las URLs); rutas sin cambios.
+- **Imagenes faltantes (preexistente, no se toco):** `utils/constants.js` usa
+  `/assets/municipios/{caucasia,caceres,taraza,nechi,elbagre,zaragoza}.jpg`, pero
+  `frontend/public/assets/municipios/` no existe. La tarjeta de hover y el modal
+  muestran solo el fondo crema. Ruta esperada: `frontend/public/assets/municipios/<id>.jpg`.
