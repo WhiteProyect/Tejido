@@ -51,9 +51,9 @@ Las utilidades viven en `@layer utilities` y las **clases** del CSS legado **no 
 
 ### Selectores de etiqueta globales (`main.css`, en `@layer base`)
 
-Desde 2026-09-21, las reglas de etiqueta viven en `@layer base`: `a`, `button, input`, `nav` (con su `display:none` bajo 800 px), `h1`–`h3` y la píldora verde de `footer` (`footer`, `footer > div`, `footer a`, `footer > div > b`, `footer > div:nth-child(3)`). **Las utilidades les ganan sin `!`**: `<h2 class="text-[16px] m-8">`, `<a class="text-orange underline">`, `<button class="font-bold">`, `<nav class="block">` o `<footer class="bg-transparent p-0">` funcionan directo. Las clases legadas les siguen ganando igual que antes (por especificidad y porque no tienen capa). Cambio verificado como neutro: 16 rutas × 2 anchos, 0 diferencias de estilo computado.
+Desde 2026-09-21, las reglas de etiqueta viven en `@layer base`: `a`, `button, input`, `nav` (con su `display:none` bajo 800 px) y `h1`–`h3`. (La píldora verde de `footer` se fue con la migración de `Footer.jsx`.) **Las utilidades les ganan sin `!`**: `<h2 class="text-[16px] m-8">`, `<a class="text-orange underline">`, `<button class="font-bold">`, `<nav class="block">` o `<footer class="bg-transparent p-0">` funcionan directo. Las clases legadas les siguen ganando igual que antes (por especificidad y porque no tienen capa). Cambio verificado como neutro: 16 rutas × 2 anchos, 0 diferencias de estilo computado.
 
-Ojo: estas reglas **siguen aplicando** en lo que no se sobrescriba. Un `<h2>` sin utilidad de tamaño sale a `clamp(46px…84px)`, un `<footer>` sin nada sale como la píldora verde y un `<nav>` se oculta bajo 800 px. `:root`, `*` (`box-sizing`), `body` (`margin`) y `html:has(.moneystack-section)` se quedan fuera de la capa, porque ninguna utilidad compite con ellas.
+Ojo: estas reglas **siguen aplicando** en lo que no se sobrescriba. Un `<h2>` sin utilidad de tamaño sale a `clamp(46px…84px)` y un `<nav>` se oculta bajo 800 px. `:root`, `*` (`box-sizing`), `body` (`margin`) y `html:has(.moneystack-section)` se quedan fuera de la capa, porque ninguna utilidad compite con ellas.
 
 Los `!` que llevan hoy las pantallas migradas (Artista, Media Kit, dashboard) eran contra estas etiquetas y ya sobran. Se quitan en la fase final, junto con `preflight`, verificando con capturas.
 
@@ -116,5 +116,11 @@ Proceso que funcionó: 1) capturas de referencia (dos veces, para medir el ruido
 29. **`items-end` es `flex-end`, `items-start` es `flex-start`.** Si el legado decía `align-items: end` o `start` (sin `flex-`), usa `[align-items:end]` o `[align-items:start]`.
 30. **`npm run build` no detecta constantes sin importar.** Un `className={EYEBROW}` sin su `import` compila y revienta en el navegador (`EYEBROW is not defined`). Por eso cada migración se prueba cargando la pantalla, no solo compilando.
 31. **Clases compartidas entre pantallas: a `uiStyles.js`; la regla legada se queda hasta que migre su último usuario.** `SECTION`, `SCREEN_SECTION`, `STATUS`, `EYEBROW` y `H1` ya existen, pero `.section`, `.screen-section`, `.status`, `.error` y `.eyebrow` siguen en `main.css` porque Mapa, Inicio y Colaborador las usan.
+
+**Añadidos con Inicio (artista destacado, pasaporte, timeline, invitación):**
+
+32. **`background: linear-gradient(…)` en un `<button>` también anula su gris nativo.** `bg-[linear-gradient(…)]` solo pone `background-image`: sin preflight, debajo queda el `rgb(240,240,240)` del navegador, que asoma en los bordes redondeados. Suma `bg-transparent` (`BTN_CULTURAL` ya lo trae).
+33. **Variantes de breakpoint, de la más ancha a la más angosta.** Tailwind las emite en el orden en que se registran; en `tailwind.css` están ordenadas `max1024` → `max800` → `max768` → `max600` → `max480`, así que la más angosta gana cuando dos tocan la misma propiedad. Una variante nueva va en su lugar de esa lista, no al final.
+34. **Estados por `localStorage` o datos: se simulan en la verificación.** El pasaporte (vacío, parcial, completo) se prueba escribiendo `tejido_passport` antes de cargar; el artista destacado, con respuestas de `/api/artists/home` sin imagen, sin enlaces o sin tema.
 
 22. **(Parte 5, dashboard) `nav`, `button` y la especificidad de los estados.** Un `<nav>` migrado necesita `flex!` y su `gap` con `!`: la regla global lo pone en `display:none` bajo 800 px, y entre 769 y 800 px desaparecería la barra lateral. Un `<button>` necesita `!` en `font-size`, `font-weight` y `font-family` para ganarle a `button { font: inherit }`. Antes de traducir un estado activo, mira la especificidad del legado: `.x:hover` (0,2,0) le gana a `.x--active` (0,1,0), así que el hover también pisa al activo, y por eso los `hover:` van en la base.

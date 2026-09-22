@@ -286,3 +286,20 @@ borrar `main.css` y los `!` que sobran).
   `btn btn-primary`, que nunca tuvieron reglas CSS: se ve como boton nativo del
   navegador. Se migro tal cual; si se quiere con el estilo de la marca, es un
   cambio de diseno aparte.
+
+## 2026-09-21 (5) — Inicio migrado (salvo Hero y mapa)
+
+- `HomeScreen` (invitacion), `HomeFeaturedArtist`, `PassportSection` y
+  `TimelineSection` pasan a Tailwind; la insignia de `MoneystackScreen` usa `BADGE_LIGHT`.
+  Nuevas en `uiStyles.js`: `BADGE(_LIGHT)`, `SECTION_TITLE`, `BTN_CULTURAL(_BASE)`.
+- Variantes de breakpoint reordenadas de ancha a angosta en `tailwind.css` y nueva
+  `max1024`.
+- `main.css` 4214 -> 3570. Siguen `.section-badge`, `.section-title` (las usa
+  `HomeMapSection`) y `.btn-primary-cultural` (Hero, Colaborador).
+- Verificado: rutas sin diferencias de estilo; 25 estados contra el legado (pasaporte
+  vacio/parcial/completo, artista sin imagen/solo YouTube/sin enlaces/sin tema,
+  hovers, foco, anchos 1025/1024/769/768/601/600). Unica correccion durante la
+  verificacion: `bg-transparent` en `BTN_CULTURAL` (README 32).
+- Pendiente detectado: mucho CSS muerto de un `ArtistScreen` antiguo
+  (`.artist-screen*`, `.artist-hero*`, `.artist-track*`, `.artist-events*`, ...).
+  Va en un barrido aparte.

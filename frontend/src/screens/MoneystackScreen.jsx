@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { BADGE_LIGHT } from '../components/uiStyles.js';
 
 // "moneystack-section" es solo un marcador (sin estilos propios): dispara la regla
 // html:has(.moneystack-section) de main.css, que pinta de negro el fondo tras el footer flotante.
@@ -59,7 +60,7 @@ export default function MoneystackScreen() {
       {/* Hero del sello */}
       <div className="mx-auto mb-15 flex max-w-[1000px] items-center justify-between gap-10 max768:flex-col-reverse max768:gap-6 max768:text-center">
         <div className="flex-1">
-          <span className="section-badge section-badge-light">Sello Independiente</span>
+          <span className={BADGE_LIGHT}>Sello Independiente</span>
           {/* h1 global: font-size, margin y letter-spacing con "!" */}
           <h1 className="mt-3! mb-4! text-[length:clamp(48px,6vw,80px)]! font-extrabold tracking-[-0.03em]! bg-[linear-gradient(135deg,#ffffff,#b0b0b0)] bg-clip-text [-webkit-text-fill-color:transparent]">Moneystack</h1>
           <p className="mb-6 max-w-[500px] text-[18px] leading-[1.6] text-[rgba(255,255,255,0.7)] max768:mx-auto max768:mt-0">

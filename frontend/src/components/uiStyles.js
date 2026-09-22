@@ -41,3 +41,17 @@ export const SMALL_DATE = 'text-muted block text-[12px] mt-1';
 
 // Boton principal (legado: .primary-button).
 export const PRIMARY_BUTTON = 'border-0 rounded-[999px] cursor-pointer font-bold py-[13px] px-[22px] bg-ink text-white inline-block mt-[18px]';
+
+// Insignia redondeada sobre los titulos de seccion (legado: .section-badge / .section-badge-light).
+const BADGE_BASE = 'inline-block rounded-[999px] border text-[11px] font-bold tracking-[0.15em] mb-4 py-1.5 px-4 uppercase';
+export const BADGE = `${BADGE_BASE} bg-[rgba(29,143,163,0.1)] border-[rgba(29,143,163,0.2)] text-river`;
+export const BADGE_LIGHT = `${BADGE_BASE} bg-[rgba(255,255,255,0.2)] border-[rgba(255,255,255,0.3)] text-white`;
+
+// Titulo de seccion del inicio (legado: .section-title sobre un h2).
+export const SECTION_TITLE = 'font-sans text-[length:clamp(40px,5vw,64px)] font-extrabold tracking-[-0.05em] leading-none mt-0 mx-0 mb-4';
+
+// Boton "cultural" en pildora (legado: .btn-primary-cultural). La base no lleva fondo ni color:
+// cada variante pone los suyos, para que no compitan dos utilidades de la misma propiedad.
+export const BTN_CULTURAL_BASE = 'border-0 rounded-[999px] cursor-pointer font-bold py-4 px-8 transition-all duration-300 ease-[ease] no-underline hover:[transform:translateY(-3px)] hover:[box-shadow:0_12px_32px_rgba(45,90,61,0.3)]';
+// bg-transparent: el legado usaba el atajo `background:`, que tambien anula el gris nativo del boton.
+export const BTN_CULTURAL = `${BTN_CULTURAL_BASE} bg-transparent bg-[linear-gradient(135deg,var(--forest)_0%,var(--river)_100%)] text-white`;

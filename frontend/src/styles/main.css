@@ -404,9 +404,6 @@ body { margin: 0; }
   padding: 8px 18px;
 }
 
-.badge-icon {
-  font-size: 14px;
-}
 
 .badge-text {
   color: var(--river);
@@ -1148,11 +1145,6 @@ body { margin: 0; }
   text-transform: uppercase;
 }
 
-.section-badge-light {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: white;
-}
 
 /* Section Title */
 .section-title {
@@ -1274,232 +1266,35 @@ body { margin: 0; }
   border-left: 4px solid var(--river);
 }
 
-/* Artist Section - Og Mauro / Moneystack */
-.artist-section {
-  background: #0a0a0a;
-  color: white;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 80px;
-  margin: 0 4vw;
-  padding: 100px 8vw;
-  border-radius: 40px;
-  position: relative;
-  overflow: hidden;
-}
 
-.artist-content {
-  position: relative;
-  z-index: 2;
-}
 
-.artist-title {
-  font-size: clamp(48px, 5.5vw, 76px);
-  font-weight: 800;
-  letter-spacing: -0.05em;
-  margin: 0 0 24px;
-}
 
-.artist-description {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 18px;
-  line-height: 1.7;
-  margin: 0 0 32px;
-  max-width: 480px;
-}
 
-.artist-meta {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
 
-.artist-tag {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  padding: 8px 16px;
-  text-transform: uppercase;
-}
 
-/* Artist Audio Player */
-.artist-audio {
-  margin: 24px 0;
-}
 
-.audio-player {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 16px;
-}
 
-.audio-play-btn {
-  width: 48px;
-  height: 48px;
-  background: var(--gold);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
 
-.audio-play-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 8px 24px rgba(212, 168, 67, 0.4);
-}
 
-.audio-play-btn svg {
-  width: 20px;
-  height: 20px;
-  color: white;
-  margin-left: 3px;
-}
 
-.audio-info {
-  flex: 1;
-}
 
-.audio-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  display: block;
-}
 
-.audio-progress {
-  height: 4px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-  margin-bottom: 6px;
-  overflow: hidden;
-}
 
-.audio-progress-bar {
-  height: 100%;
-  width: 36%;
-  background: var(--gold);
-  border-radius: 2px;
-}
 
-.audio-time {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-}
 
-/* Artist Social Links */
-.artist-social {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-}
 
-.social-link {
-  width: 44px;
-  height: 44px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-}
 
-.social-link:hover {
-  background: var(--gold);
-  border-color: var(--gold);
-  transform: translateY(-3px);
-}
 
-.social-link svg {
-  width: 20px;
-  height: 20px;
-  color: white;
-}
 
-/* Artist Concert */
-.artist-concert {
-  background: linear-gradient(135deg, rgba(212, 168, 67, 0.15) 0%, rgba(232, 93, 58, 0.1) 100%);
-  border: 1px solid rgba(212, 168, 67, 0.3);
-  border-radius: 16px;
-  padding: 16px 20px;
-}
 
-.concert-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--gold);
-  display: block;
-  margin-bottom: 6px;
-}
 
-.concert-date {
-  font-size: 20px;
-  font-weight: 800;
-  display: block;
-  margin-bottom: 4px;
-}
 
-.concert-place {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
-}
 
-.artist-visual {
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  justify-content: center;
-}
 
-.artist-image-container {
-  position: relative;
-}
 
-.artist-image-placeholder {
-  background: linear-gradient(135deg, var(--gold) 0%, var(--sunset) 100%);
-  border-radius: 28px;
-  height: 420px;
-  width: 420px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 32px 80px rgba(212, 168, 67, 0.25);
-}
 
-.artist-initials {
-  color: white;
-  font-size: 100px;
-  font-weight: 800;
-  letter-spacing: -0.05em;
-}
 
-.artist-logo {
-  text-align: center;
-}
 
-.logo-text {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
 
 /* Artist Gallery */
 .artist-gallery {
@@ -2234,31 +2029,8 @@ html:has(.moneystack-section) {
   flex-wrap: wrap;
 }
 
-.artist-social-links .social-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
 
-.artist-social-links .social-link svg {
-  width: 20px;
-  height: 20px;
-}
 
-.artist-social-links .social-link:hover {
-  background: rgba(212,168,67,0.15);
-  border-color: rgba(212,168,67,0.3);
-  color: #d4a843;
-  transform: translateY(-2px);
-}
 
 .artist-no-links {
   color: rgba(255,255,255,0.3);
@@ -2458,13 +2230,6 @@ html:has(.moneystack-section) {
   margin: 0;
 }
 
-/* Imagen real del artista en HomeScreen */
-.artist-image-real {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 28px;
-}
 
 /* Responsive Artist */
 @media (max-width: 768px) {
@@ -2629,70 +2394,14 @@ html:has(.moneystack-section) {
   text-align: center;
 }
 
-/* Invitation Section */
-.invitation-section {
-  background: linear-gradient(135deg, var(--sunset) 0%, var(--gold) 100%);
-  margin: 60px 4vw 0;
-  padding: 100px 8vw;
-  border-radius: 40px;
-  text-align: center;
-}
 
-.invitation-content {
-  max-width: 600px;
-  margin: 0 auto;
-}
 
-.invitation-title {
-  color: white;
-  font-size: clamp(40px, 5vw, 64px);
-  font-weight: 800;
-  letter-spacing: -0.05em;
-  margin: 0 0 20px;
-}
 
-.invitation-title em {
-  font-family: 'Playfair Display', serif;
-  font-style: italic;
-  text-decoration: underline;
-  text-underline-offset: 8px;
-}
 
-.invitation-text {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 18px;
-  line-height: 1.7;
-  margin: 0 0 32px;
-}
 
-/* Invitation Form */
-.invitation-form {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin-bottom: 40px;
-}
 
-.invitation-input {
-  padding: 14px 20px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  font-size: 14px;
-  width: 280px;
-  backdrop-filter: blur(10px);
-}
 
-.invitation-input::placeholder {
-  color: rgba(255, 255, 255, 0.7);
-}
 
-.invitation-input:focus {
-  outline: none;
-  border-color: white;
-  background: rgba(255, 255, 255, 0.25);
-}
 
 /* Invitation Testimonials */
 .invitation-testimonials {
@@ -2758,38 +2467,10 @@ html:has(.moneystack-section) {
   font-weight: 600;
 }
 
-.invitation-actions {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-}
 
-.invitation-actions .btn-primary-cultural {
-  background: white;
-  color: var(--sunset);
-}
 
-.invitation-actions .btn-primary-cultural:hover {
-  background: var(--ink-deep);
-  color: white;
-}
 
-.btn-outline-cultural {
-  background: transparent;
-  border: 2px solid white;
-  border-radius: 999px;
-  color: white;
-  cursor: pointer;
-  font-weight: 700;
-  padding: 14px 30px;
-  transition: all 0.3s ease;
-  text-decoration: none;
-}
 
-.btn-outline-cultural:hover {
-  background: white;
-  color: var(--sunset);
-}
 
 /* Responsive */
 @media (max-width: 1024px) {
@@ -2807,15 +2488,9 @@ html:has(.moneystack-section) {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  .artist-section {
-    grid-template-columns: 1fr;
-    gap: 48px;
-    padding: 80px 6vw;
-  }
   
-  .artist-visual {
-    order: -1;
-  }
+  
+  
   
   .municipalities-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -2839,9 +2514,7 @@ html:has(.moneystack-section) {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  .invitation-actions {
-    flex-direction: column;
-  }
+  
 }
 
 @media (max-width: 480px) {
@@ -3790,93 +3463,16 @@ html:has(.moneystack-section) {
   }
 }
 
-/* ============================================================
-   PASAPORTE DEL TERRITORIO — FASE 5
-   Sellos digitales por municipio del Bajo Cauca
-   ============================================================ */
 
-/* Contenedor principal del pasaporte */
-.passport-section {
-  max-width: 900px;
-  margin: 0 auto;
-}
 
-/* Encabezado */
-.passport-header {
-  text-align: center;
-  margin-bottom: 30px;
-}
 
-.passport-subtitle {
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1.5;
-  margin-top: 8px;
-}
 
-/* Barra de progreso */
-.passport-progress {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 30px;
-}
 
-.passport-progress-bar {
-  flex: 1;
-  background: rgba(23, 58, 49, 0.08);
-  border-radius: 999px;
-  height: 8px;
-  overflow: hidden;
-}
 
-.passport-progress-fill {
-  background: linear-gradient(90deg, #1d8fa3, #d4a843);
-  border-radius: 999px;
-  height: 100%;
-  transition: width 0.6s ease;
-}
 
-.passport-progress-text {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
 
-/* Grid de sellos — 3 columnas en desktop, 2 en mobile */
-.passport-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(3, 1fr);
-}
 
-/* Sello individual */
-.passport-stamp {
-  align-items: center;
-  border: 2px solid rgba(23, 58, 49, 0.08);
-  border-radius: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 24px 16px;
-  text-align: center;
-  transition: all 0.3s ease;
-}
 
-/* Sello desbloqueado */
-.passport-stamp.collected {
-  background: rgba(29, 143, 163, 0.06);
-  border-color: var(--stamp-color, #1d8fa3);
-  box-shadow: 0 4px 20px rgba(29, 143, 163, 0.12);
-  animation: stampAppear 0.5s ease backwards;
-}
-
-/* Sello bloqueado */
-.passport-stamp.locked {
-  background: rgba(102, 116, 111, 0.04);
-  opacity: 0.5;
-}
 
 /* Animación de aparición del sello */
 @keyframes stampAppear {
@@ -3893,71 +3489,15 @@ html:has(.moneystack-section) {
   }
 }
 
-/* Emoji del sello */
-.stamp-emoji {
-  font-size: 32px;
-  line-height: 1;
-}
 
-/* Nombre del municipio */
-.stamp-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink);
-}
 
-/* Tema del municipio */
-.stamp-theme {
-  color: var(--muted);
-  font-size: 11px;
-}
 
-/* Indicador de estado (check o círculo) */
-.stamp-status {
-  font-size: 16px;
-  margin-top: 4px;
-}
 
-.passport-stamp.collected .stamp-status {
-  color: #16a085;
-}
 
-.passport-stamp.locked .stamp-status {
-  color: var(--muted);
-}
 
-/* Badge de completado */
-.passport-badge {
-  align-items: center;
-  background: linear-gradient(135deg, rgba(212, 168, 67, 0.1), rgba(29, 143, 163, 0.1));
-  border: 2px solid #d4a843;
-  border-radius: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 30px;
-  padding: 30px;
-  text-align: center;
-  animation: badgeGlow 2s ease-in-out infinite;
-}
 
-.badge-icon {
-  font-size: 48px;
-}
 
-.passport-badge h3 {
-  color: #d4a843;
-  font-size: 22px;
-  margin: 0;
-}
 
-.passport-badge p {
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 0;
-  max-width: 400px;
-}
 
 /* Animación de brillo del badge */
 @keyframes badgeGlow {
@@ -3965,28 +3505,7 @@ html:has(.moneystack-section) {
   50% { box-shadow: 0 0 40px rgba(212, 168, 67, 0.3); }
 }
 
-/* Mensaje motivacional */
-.passport-motivation {
-  color: var(--muted);
-  font-size: 14px;
-  text-align: center;
-  margin-top: 20px;
-}
 
-/* Responsive: 2 columnas en mobile */
-@media (max-width: 600px) {
-  .passport-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .passport-stamp {
-    padding: 18px 12px;
-  }
-
-  .stamp-emoji {
-    font-size: 26px;
-  }
-}
 
 /* ============================================================
    SPOTIFY EMBED — FASE 8
@@ -4017,89 +3536,16 @@ html:has(.moneystack-section) {
   margin-bottom: 16px;
 }
 
-/* ============================================================
-   TIMELINE DEL TERRITORIO — FASE 7
-   Línea de tiempo horizontal con publicaciones cronológicas
-   ============================================================ */
 
-/* Contenedor de la sección */
-.timeline-section {
-  max-width: 100%;
-  overflow: hidden;
-}
 
-/* Encabezado */
-.timeline-header {
-  text-align: center;
-  margin-bottom: 40px;
-}
 
-.timeline-subtitle {
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1.5;
-  margin-top: 8px;
-}
 
-/* Contenedor de scroll horizontal */
-.timeline-scroll {
-  overflow-x: auto;
-  overflow-y: visible;
-  padding: 40px 0 60px;
-  scrollbar-width: thin;
-  position: relative;
-}
 
-.timeline-scroll::-webkit-scrollbar {
-  height: 6px;
-}
 
-.timeline-scroll::-webkit-scrollbar-track {
-  background: rgba(23, 58, 49, 0.05);
-  border-radius: 3px;
-}
 
-.timeline-scroll::-webkit-scrollbar-thumb {
-  background: rgba(23, 58, 49, 0.15);
-  border-radius: 3px;
-}
 
-/* Línea central horizontal */
-.timeline-line {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, rgba(29, 143, 163, 0.3), rgba(212, 168, 67, 0.3), transparent);
-  transform: translateY(-50%);
-}
 
-/* Contenedor de items */
-.timeline-items {
-  display: flex;
-  gap: 60px;
-  padding: 0 40px;
-  position: relative;
-  min-width: max-content;
-}
 
-/* Item individual de la timeline */
-.timeline-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 200px;
-  max-width: 240px;
-  position: relative;
-  opacity: 0;
-  animation: timelineItemIn 0.5s ease forwards;
-}
-
-/* Items arriba de la línea */
-.timeline-item.above {
-  flex-direction: column-reverse;
-}
 
 /* Animación de entrada */
 @keyframes timelineItemIn {
@@ -4113,102 +3559,12 @@ html:has(.moneystack-section) {
   }
 }
 
-/* Punto central en la línea */
-.timeline-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 3px solid var(--paper);
-  box-shadow: 0 0 0 2px currentColor;
-  z-index: 2;
-  flex-shrink: 0;
-}
 
-/* Conector visual entre punto y tarjeta */
-.timeline-connector {
-  width: 2px;
-  height: 30px;
-  opacity: 0.4;
-  flex-shrink: 0;
-}
 
-/* Tarjeta de contenido */
-.timeline-card {
-  background: #fffaf2;
-  border: 1px solid #e2d9ca;
-  border-radius: 16px;
-  padding: 16px;
-  text-align: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  cursor: default;
-}
 
-.timeline-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(23, 58, 49, 0.12);
-}
 
-/* Icono del tipo */
-.timeline-icon {
-  font-size: 20px;
-  display: block;
-  margin-bottom: 6px;
-}
 
-/* Fecha */
-.timeline-date {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
 
-/* Título */
-.timeline-title {
-  font-size: 15px;
-  line-height: 1.3;
-  margin: 6px 0;
-  color: var(--ink);
-}
 
-/* Resumen */
-.timeline-summary {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 
-/* Ubicación */
-.timeline-location {
-  color: var(--muted);
-  font-size: 10px;
-  display: block;
-  margin-top: 6px;
-}
 
-/* Responsive */
-@media (max-width: 600px) {
-  .timeline-items {
-    gap: 40px;
-    padding: 0 20px;
-  }
-
-  .timeline-item {
-    min-width: 160px;
-    max-width: 180px;
-  }
-
-  .timeline-card {
-    padding: 12px;
-  }
-
-  .timeline-title {
-    font-size: 13px;
-  }
-}

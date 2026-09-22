@@ -25,17 +25,17 @@
    clases de ejemplo y no debe generar utilidades. */
 @source not "../../**/*.md";
 
-/* Replica exacta de @media (max-width: 768px) del CSS legado, que es INCLUSIVA
-   (aplica con 768px). max-[768px]: y max-md: de Tailwind generan
-   "width < 768px" (exclusiva), y a 768px exactos se veria el diseno de escritorio.
-   Usar `max768:` al migrar reglas legadas de ese breakpoint. */
-@custom-variant max768 (@media (max-width: 768px));
-/* Idem para @media (max-width: 800px) (nav del header global, main.css). */
-@custom-variant max800 (@media (max-width: 800px));
-/* Idem para @media (max-width: 480px) (perfil de artista, artist.css). */
-@custom-variant max480 (@media (max-width: 480px));
-/* Idem para @media (max-width: 600px) (Media Kit, ArtistMediaKit.jsx). */
-@custom-variant max600 (@media (max-width: 600px));
+/* Variantes para los @media (max-width: N) del CSS legado, que son INCLUSIVAS (aplican
+   con N px exactos). max-[768px]: y max-md: de Tailwind generan "width < 768px"
+   (exclusiva), y a 768 px exactos se veria el diseno de escritorio.
+   ORDEN: de la mas ancha a la mas angosta. Tailwind emite las variantes en el orden en
+   que se registran, asi la mas angosta gana cuando dos aplican a la misma propiedad
+   (igual que en el legado, donde el @media mas especifico iba despues). */
+@custom-variant max1024 (@media (max-width: 1024px)); /* artista destacado del inicio */
+@custom-variant max800 (@media (max-width: 800px));   /* nav del header y .section */
+@custom-variant max768 (@media (max-width: 768px));   /* Moneystack, perfil de artista, dashboard */
+@custom-variant max600 (@media (max-width: 600px));   /* footer, login, Media Kit */
+@custom-variant max480 (@media (max-width: 480px));   /* perfil de artista */
 
 /*
  * Tokens de marca (docs/MANUAL_ESENCIA_TEJIDO.md).
