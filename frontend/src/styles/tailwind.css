@@ -37,6 +37,7 @@
 @custom-variant max768 (@media (max-width: 768px));   /* Moneystack, perfil de artista, dashboard */
 @custom-variant max600 (@media (max-width: 600px));   /* footer, login, Media Kit */
 @custom-variant max480 (@media (max-width: 480px));   /* perfil de artista */
+@custom-variant max400 (@media (max-width: 400px));   /* tarjetas de Hilo */
 
 /*
  * Tokens de marca (docs/MANUAL_ESENCIA_TEJIDO.md).

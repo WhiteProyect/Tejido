@@ -32,6 +32,23 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  * Acciones disponibles para Hilo.
  * Cada acción tiene: key, emoji, label, sublabel, navegación, pose de Hilo
  */
+// Colores de cada tarjeta de Hilo (legado: .hilo-card-<clave>): la franja de arriba
+// (::before) y el fondo del arte. Se pasan como variables CSS, igual que antes.
+const CARD_COLORS = {
+  gente: '[--card-accent:#cde5d5] [--card-art-bg:#e7f1d0]',
+  plan: '[--card-accent:#f6dfae] [--card-art-bg:#fff2c9]',
+  feedback: '[--card-accent:#e8d8e7] [--card-art-bg:#f3e4c8]',
+  mapa: '[--card-accent:#c7e3e7] [--card-art-bg:#e1f1e5]',
+  oportunidades: '[--card-accent:#f4d0b8] [--card-art-bg:#ffe5bf]',
+  buscar: '[--card-accent:#dce7d1] [--card-art-bg:#eff4db]',
+  ajustes: '[--card-accent:#ddd5c7] [--card-art-bg:#f3e4c8]',
+  guardado: '[--card-accent:#d8e4ef] [--card-art-bg:#eaf0f4]',
+  red: '[--card-accent:#d9c8eb] [--card-art-bg:#efe4f3]',
+};
+const CARD = "relative flex flex-col items-center gap-2 min-h-[136px] overflow-hidden bg-white border border-[rgba(23,58,49,.08)] rounded-[18px] cursor-pointer pt-2.5 px-2 pb-3.5 text-center transition-[border-color,box-shadow,transform] duration-[180ms] ease-[ease] hover:border-ink hover:[box-shadow:0_18px_35px_rgba(18,60,52,.12)] hover:[transform:translateY(-4px)] max600:py-3.5 max600:px-2 before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-14 before:bg-[var(--card-accent,#cde5d5)]";
+const MESSAGE = 'rounded-[16px] text-[12px] leading-[1.45] mt-0 mx-0 mb-2.5 max-w-[88%] py-2.5 px-[13px]';
+const BUBBLE = "absolute bottom-[134px] left-1/2 [transform:translateX(-50%)] w-[min(240px,46vw)] bg-[#fffdf8] border border-[rgba(23,58,49,.15)] rounded-[22px] [box-shadow:0_14px_34px_rgba(23,58,49,.18)] text-ink text-[13px] font-extrabold leading-[1.35] py-[13px] px-4 after:content-[''] after:absolute after:-bottom-2.5 after:left-1/2 after:h-5 after:w-5 after:bg-[#fffdf8] after:border-r after:border-t after:border-[rgba(23,58,49,.15)] after:[transform:translateX(-50%)_rotate(135deg)]";
+
 const OPTIONS = [
   ['gente', '\uD83D\uDC65', 'Conocer gente', 'Talentos locales', 'talento', 'hilo-saluda.png'],
   ['plan', '\uD83D\uDCC5', 'Encontrar un plan', 'Eventos para hoy', 'agenda', 'hilo-descubre.png'],
@@ -265,18 +282,18 @@ export default function HiloAssistant({ publications = [] }) {
 
   return (
     <section
-      className={open ? 'virtual-assistant assistant-open' : 'virtual-assistant'}
+      className="fixed bottom-3 right-[18px] z-70 font-sans max600:bottom-1 max600:right-1"
       aria-label="Asistente virtual de TEJIDO"
     >
       {/* Burbuja de mensaje cuando el panel está cerrado */}
       {!open && (
-        <div className="assistant-bubble">{message}</div>
+        <div className={BUBBLE}>{message}</div>
       )}
 
       {/* Botón flotante de Hilo */}
       {!open && (
         <button
-          className="assistant-toggle"
+          className="group relative grid [align-items:end] justify-items-center h-[166px] w-[136px] p-0 bg-transparent border-0 [filter:drop-shadow(0_14px_14px_rgba(23,58,49,.22))]"
           type="button"
           onClick={() => {
             setOpen(true);
@@ -286,45 +303,45 @@ export default function HiloAssistant({ publications = [] }) {
           aria-label="Hablar con Hilo"
         >
           <img
-            className="assistant-character-img"
+            className="block h-[152px] w-[118px] object-contain bg-transparent [filter:drop-shadow(0_10px_14px_rgba(23,58,49,.18))] animate-[hilo-float_3.4s_ease-in-out_infinite] group-hover:[filter:drop-shadow(0_12px_18px_rgba(23,58,49,.22))_saturate(1.08)] group-hover:[transform:translateY(-5px)_scale(1.04)]"
             src={`/images/hilo/${pose}`}
             alt="Hilo, asistente virtual de TEJIDO"
           />
-          <span className="assistant-name">Habla con Hilo</span>
+          <span className="absolute bottom-0 left-1/2 [transform:translateX(-50%)] whitespace-nowrap bg-ink rounded-[999px] [box-shadow:0_8px_18px_rgba(23,58,49,.25)] text-white text-[11px] font-black py-[7px] px-[13px]">Habla con Hilo</span>
         </button>
       )}
 
       {/* Panel de conversación abierto */}
       {open && (
-        <aside className="assistant-panel" role="dialog" aria-label="Conversación con Hilo">
+        <aside className="fixed bottom-[18px] right-[18px] grid grid-rows-[auto_auto_1fr_auto] h-[min(730px,calc(100dvh-36px))] w-[min(510px,calc(100vw-36px))] overflow-hidden bg-[#fffaf0] border border-[rgba(23,58,49,.14)] rounded-[32px] [box-shadow:0_30px_90px_rgba(23,58,49,.32)] max600:inset-1.5 max600:w-auto max600:rounded-[25px]" role="dialog" aria-label="Conversación con Hilo">
           {/* Barra superior */}
-          <div className="hilo-toolbar">
-            <span>HILO ESTÁ CONTIGO | Una conversación para descubrir Caucasia</span>
-            <button type="button" onClick={close} aria-label="Cerrar asistente">
+          <div className="relative flex items-center min-h-14 overflow-hidden whitespace-nowrap bg-ink text-white text-[12px] font-bold py-3 pr-[62px] pl-5">
+            <span className="overflow-hidden text-ellipsis">HILO ESTÁ CONTIGO | Una conversación para descubrir Caucasia</span>
+            <button className="absolute right-[13px] top-2.5 h-10 w-10 bg-[rgba(255,255,255,.16)] border-0 rounded-[50%] text-white text-[22px]" type="button" onClick={close} aria-label="Cerrar asistente">
               &times;
             </button>
           </div>
 
           {/* Escena del avatar con saludo contextual */}
-          <div className="hilo-scene-new">
-            <div className="hilo-avatar-wrapper">
+          <div className="flex items-center gap-[18px] py-5 px-[18px] bg-[linear-gradient(145deg,#cde5d5_0_48%,#f6dfae_100%)] border-b border-b-[rgba(23,58,49,.1)] max600:gap-3.5 max600:p-4">
+            <div className="flex items-center justify-center shrink-0 h-[92px] w-[92px] overflow-hidden bg-[rgba(255,255,255,.35)] border-2 border-solid border-[rgba(23,58,49,.08)] rounded-[50%] [box-shadow:0_8px_18px_rgba(23,58,49,.12)] max600:h-[72px] max600:w-[72px]">
               <img
-                className="hilo-avatar"
+                className="h-full w-full object-contain bg-transparent"
                 src={`/images/hilo/${pose}`}
                 alt="Hilo, guía de TEJIDO"
               />
             </div>
-            <p className="hilo-greeting">
+            <p className="text-ink text-[17px] font-bold leading-[1.3] m-0 max600:text-[15px]">
               {getGreeting()}Cuéntame qué quieres hacer hoy en Caucasia.
             </p>
           </div>
 
           {/* Área de contenido: mensajes + tarjetas de acción */}
-          <div className="hilo-content">
+          <div className="min-h-0 overflow-auto bg-[linear-gradient(180deg,#fffaf0,#f6eddd)] pt-4 px-[18px] pb-3">
             {/* Historial de conversación */}
             {conversation.map((item, index) => (
               <p
-                className={`hilo-message ${item.type === 'user' ? 'user-message' : 'bot-message'}`}
+                className={`${MESSAGE} ${item.type === 'user' ? 'bg-ink rounded-br-[5px] text-white ml-auto' : 'bg-white border border-line rounded-bl-[5px]'}`}
                 key={`${item.text}-${index}`}
               >
                 {item.text}
@@ -332,38 +349,39 @@ export default function HiloAssistant({ publications = [] }) {
             ))}
 
             {/* Grid de acciones */}
-            <div className="hilo-grid">
+            <div className="grid gap-3 grid-cols-[repeat(3,1fr)] max400:grid-cols-[repeat(2,1fr)]">
               {OPTIONS.map(([key, icon, label, sub, action, nextPose]) => (
                 <button
-                  className={`hilo-card hilo-card-${key}`}
+                  className={`${CARD} ${CARD_COLORS[key]}`}
                   type="button"
                   key={key}
                   onMouseEnter={() => handleCardHover(nextPose)}
                   onClick={() => runAction(action, label, nextPose)}
                 >
-                  <span className="hilo-card-art">
-                    <img src={`/images/hilo/${nextPose}`} alt="" aria-hidden="true" />
+                  <span className="relative z-1 flex [align-items:end] justify-center h-[60px] w-[60px] mt-2 overflow-hidden bg-[var(--card-art-bg,#f6dfae)] border-[3px] border-solid border-[rgba(255,255,255,.86)] rounded-[38%_62%_57%_43%/42%_48%_52%_58%]">
+                    <img className="h-[86px] w-[72px] object-contain object-[center_bottom]" src={`/images/hilo/${nextPose}`} alt="" aria-hidden="true" />
                   </span>
-                  <span className="hilo-card-icon">{icon}</span>
-                  <span className="hilo-card-label">{label}</span>
-                  <span className="hilo-card-sub">{sub}</span>
+                  <span className="absolute right-[9px] top-[9px] z-2 grid items-center justify-center h-[30px] w-[30px] bg-yellow rounded-[50%] text-[17px]">{icon}</span>
+                  <span className="text-ink text-[12px] font-extrabold leading-[1.15] mt-1">{label}</span>
+                  <span className="text-muted text-[9px] font-semibold leading-[1.2]">{sub}</span>
                 </button>
               ))}
             </div>
           </div>
 
           {/* Formulario de búsqueda */}
-          <form className="assistant-form" onSubmit={sendMessage}>
+          <form className="flex gap-2 bg-[#fffaf0] border-t border-t-line pt-3 px-4 pb-4" onSubmit={sendMessage}>
             <label className="sr-only" htmlFor="hilo-input">
               Cuéntaselo a Hilo
             </label>
             <input
+              className="flex-1 min-w-0 bg-white border border-line rounded-[999px] outline-0 py-[13px] px-5"
               id="hilo-input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Cuéntaselo a Hilo..."
             />
-            <button type="submit" aria-label="Enviar">
+            <button className="h-12 w-12 bg-ink border-0 rounded-[50%] text-white cursor-pointer text-[22px]" type="submit" aria-label="Enviar">
               ➜
             </button>
           </form>

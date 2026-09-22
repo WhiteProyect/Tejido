@@ -325,3 +325,14 @@ borrar `main.css` y los `!` que sobran).
 - Verificado: 13 estados (filtros, sin resultados, detalle, hovers, 1300/901/900/601/
   600/390) con 0 px y 0 diferencias de estilo contra el legado; rutas sin cambios.
 - Quedan: `HiloAssistant`, `CollaboratorScreen`, `HomeMapSection`, `HeroInteractive`.
+
+## 2026-09-21 (8) — Hilo (asistente) migrado
+
+- `HiloAssistant` pasa a Tailwind (variante nueva `max400`). Los colores por tarjeta
+  (`.hilo-card-<clave>`) son ahora un mapa `CARD_COLORS` con las mismas variables CSS
+  (`--card-accent`, `--card-art-bg`; `--card-icon` no la usaba ninguna regla y se
+  omitio). `.sr-only` pasa a la utilidad de Tailwind. Siguen en CSS los keyframes
+  `hilo-float` y `hiloConfettiFall`. `main.css` 1957 -> 1932.
+- Verificado: 12 estados (cerrado, hover, abierto, hover de tarjeta, busqueda con y sin
+  resultado, 1300/601/600/401/400/390) con 0 px y 0 diferencias de estilo contra el
+  legado; rutas sin cambios.
