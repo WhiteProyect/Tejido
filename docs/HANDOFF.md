@@ -303,3 +303,16 @@ borrar `main.css` y los `!` que sobran).
 - Pendiente detectado: mucho CSS muerto de un `ArtistScreen` antiguo
   (`.artist-screen*`, `.artist-hero*`, `.artist-track*`, `.artist-events*`, ...).
   Va en un barrido aparte.
+
+## 2026-09-21 (6) — Barrido de CSS muerto en main.css
+
+- Se borraron las reglas de 133 clases que ningun `.js`/`.jsx` usa (un `ArtistScreen`
+  antiguo: `.artist-screen*`, `.artist-hero*`, `.artist-track*`, `.artist-events*`;
+  un hero anterior: `.hero-cultural*`, `.hero-sun*`, `.hero-snake-*`; `.impact-*`,
+  `.gallery-*`, `.territory-*`, `.testimonial-*`, `.visual-card*`, `.track-*`, etc.) y 5
+  `@keyframes` que solo usaban ellas (`riverFlow`, `snakeGlow`, `sunGlow`, `sunHalo`,
+  `sunRaysSpin`). `main.css` 3570 -> 2261.
+- La deteccion considera prefijos dinamicos (`p${i}`, `hero-bg-${x}`, `hilo-card-${id}`):
+  un primer intento sin prefijos sin guion borro `.p9`-`.p12` (particulas del hero); la
+  verificacion lo detecto y se rehizo el barrido antes de commitear.
+- Verificado: 32 capturas de rutas y los 3 grupos de estados, sin diferencias de estilo.
