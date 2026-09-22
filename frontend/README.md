@@ -111,3 +111,8 @@ Proceso que funcionó: 1) capturas de referencia (dos veces, para medir el ruido
 17. **Animar exactamente la misma propiedad que el legado.** `transition-transform` + `scale-105` funciona y anima igual, pero `transition-property` pasa a `transform, translate, scale, rotate`. Para copiar literal: `transition-[transform]` + `[transform:scale(1.05)]`. Con `transition-all` no hay diferencia, porque `all` ya cubre `scale`.
 18. **Spans de grid literales.** `col-span-2` emite `grid-column: span 2 / span 2`; el legado usa `span 2` (final en `auto`). Con `[grid-column:span_2]` y `[grid-row:span_2]` la copia es exacta, y las variantes se combinan (`max768:[grid-row:span_1] max480:[grid-column:span_1]`).
 19. **Un comentario JSX `{/* … */}` justo después de `return (` rompe el build** (`Expected ',' or ')'`). Va como comentario `//` en la línea anterior al `return`.
+
+**Añadidos con Artista (Parte 4: Media Kit):**
+
+20. **Una página independiente del tema de artista lleva `ax-artist-page` en su contenedor.** Sin esa clase, los `var(--ax-*)` no existen y los `text-ax-accent` salen blancos (le pasaba al Media Kit desde antes de la migración). Esa regla sin capa ya fija `background`, `color` y `font-family`, así que el contenedor no lleva esas utilidades: perderían. La regla que oculta el header, el footer y Hilo globales está limitada a `body.ax-artist-page`, para no ocultar el `<footer>` propio de la página.
+21. **Un `<footer>` propio necesita anular la píldora verde global con `!`:** `block! static! overflow-visible! m-0! rounded-none! bg-transparent!`, además de padding y color con `!`. Lo que la regla `footer {}` no fija (borde, `font-size`, `text-align`) va sin `!`.

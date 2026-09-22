@@ -32,6 +32,8 @@
 @custom-variant max768 (@media (max-width: 768px));
 /* Idem para @media (max-width: 480px) (perfil de artista, artist.css). */
 @custom-variant max480 (@media (max-width: 480px));
+/* Idem para @media (max-width: 600px) (Media Kit, ArtistMediaKit.jsx). */
+@custom-variant max600 (@media (max-width: 600px));
 
 /*
  * Tokens de marca (docs/MANUAL_ESENCIA_TEJIDO.md).

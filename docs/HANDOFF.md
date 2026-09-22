@@ -177,6 +177,37 @@ deuda de accesibilidad previa (sin `role="dialog"`, sin foco ni Escape, no alcan
 por teclado) — no es regresion de la migracion, pero conviene anotarlo aparte. Para la
 Parte 4 pide capturar 600 y 601 px, el limite de 3 tracks, fecha de lanzamiento
 ausente, redes con y sin `username`, y la imagen del hero rota.
+**Resuelto 2026-09-21 (Parte 4, ver entrada siguiente):** el dueno eligio arreglar el acento.
+
 Nota de entorno: `codex exec -s read-only` no pudo ejecutar comandos en esta maquina
 (`.sandbox-bin` es de Administradores y falla `SetNamedSecurityInfoW`, error 5); la
 revision se hizo pegandole el diff y los archivos dentro del prompt.
+
+---
+
+## 2026-09-21 — Parte 4 (Media Kit) migrada + bug del acento arreglado
+
+**Hecho:**
+
+- Parte 3 commiteada y pusheada (`365dbe3`).
+- `screens/ArtistMediaKit.jsx` pasa a Tailwind. Se borraron las 314 lineas `mk-*`
+  de `artist.css` (449 -> 135). Nueva variante `max600` en `tailwind.css`.
+- **Bug del acento (hallazgo de Codex), arreglado por decision del dueno:**
+  `ax-artist-page` va en el contenedor del Media Kit, asi que los tokens `ax-*`
+  resuelven y los acentos salen dorados `#d4a843`: etiqueta, titulos, plataformas,
+  fechas, email, "Volver" y el hover de las redes. La regla que oculta el
+  header/footer/Hilo globales se limito a `body.ax-artist-page` (solo la pone
+  `ArtistScreen`, que no cambia: 0 px).
+- **Segundo bug de la misma familia, arreglado:** el `<footer>` del Media Kit
+  recibia la pildora verde global de `main.css` (texto descentrado y franja crema
+  debajo). Ahora se ve como decian sus reglas `mk-footer`: centrado, con borde
+  superior, a todo el ancho.
+- Verificacion (script `cap_mk.py`: real, simulado completo con 5 tracks, sin fecha,
+  redes con y sin `username`, imagen rota, minimo, carga y 404, a 1300/390/601/600 px,
+  con hovers): la referencia contra si misma da 0 diferencias. Migrado contra
+  referencia: las unicas diferencias son los acentos, el footer y la cadena de
+  respaldo de `font-family` del tema (invisible). Carga 0 px; artista y Moneystack
+  0 px.
+
+**Falta:** Parte 5 (`ArtistDashboard.jsx` + `moneystack.css`); despues
+`HomeFeaturedArtist`, `SiteHeader`, `Footer`, `.ax-footer`; al final `preflight`.
