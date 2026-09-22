@@ -111,4 +111,10 @@ Proceso que funcionó: 1) capturas de referencia (dos veces, para medir el ruido
 27. **Contexto por props, no por selector descendiente.** `.site-header .brand`, `.site-header-moneystack nav a` o `.footer-brand .brand-mark i` se vuelven props del componente (`Logo className/ringClassName`, un objeto `tone` en `SiteHeader`). Un estado que el JS ponía con `classList` (logo de Moneystack caído) pasa a estado de React.
 28. **Reglas de etiqueta de un componente: se van con él.** La píldora verde de `footer {…}` ahora vive en `Footer.jsx`; al borrarla de `main.css` dejó de filtrarse al footer del artista, que desde hace tiempo salía como un grid de 4 columnas con el contenido apilado.
 
+**Añadidos con las pantallas chicas (Login, Guardadas, Talento, NotFound, Agenda, Oportunidades, Explorar, `PublicationCard`):**
+
+29. **`items-end` es `flex-end`, `items-start` es `flex-start`.** Si el legado decía `align-items: end` o `start` (sin `flex-`), usa `[align-items:end]` o `[align-items:start]`.
+30. **`npm run build` no detecta constantes sin importar.** Un `className={EYEBROW}` sin su `import` compila y revienta en el navegador (`EYEBROW is not defined`). Por eso cada migración se prueba cargando la pantalla, no solo compilando.
+31. **Clases compartidas entre pantallas: a `uiStyles.js`; la regla legada se queda hasta que migre su último usuario.** `SECTION`, `SCREEN_SECTION`, `STATUS`, `EYEBROW` y `H1` ya existen, pero `.section`, `.screen-section`, `.status`, `.error` y `.eyebrow` siguen en `main.css` porque Mapa, Inicio y Colaborador las usan.
+
 22. **(Parte 5, dashboard) `nav`, `button` y la especificidad de los estados.** Un `<nav>` migrado necesita `flex!` y su `gap` con `!`: la regla global lo pone en `display:none` bajo 800 px, y entre 769 y 800 px desaparecería la barra lateral. Un `<button>` necesita `!` en `font-size`, `font-weight` y `font-family` para ganarle a `button { font: inherit }`. Antes de traducir un estado activo, mira la especificidad del legado: `.x:hover` (0,2,0) le gana a `.x--active` (0,1,0), así que el hover también pisa al activo, y por eso los `hover:` van en la base.

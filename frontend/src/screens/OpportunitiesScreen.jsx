@@ -15,17 +15,18 @@
 
 import ScreenIntro from '../components/ScreenIntro.jsx';
 import { getDeadlineText, getDateUrgency, formatDateShort } from '../utils/dateUtils.js';
+import { PUB_KIND, SCREEN_LIST, SCREEN_LIST_ITEM, SCREEN_LIST_TEXT, SCREEN_LIST_TITLE, SCREEN_SECTION, SMALL_DATE, STATUS, URGENCY, URGENCY_PILL } from '../components/uiStyles.js';
 
 export default function OpportunitiesScreen({ opportunities = [] }) {
   return (
-    <section className="section screen-section">
+    <section className={SCREEN_SECTION}>
       <ScreenIntro
         eyebrow="Abre una puerta"
         title="Oportunidades"
         description="Convocatorias, proyectos y espacios para participar en el territorio."
       />
 
-      <div className="screen-list opportunity-list">
+      <div className={SCREEN_LIST}>
         {opportunities.length ? (
           opportunities.map((opportunity) => {
             /** Texto del plazo restante */
@@ -34,27 +35,27 @@ export default function OpportunitiesScreen({ opportunities = [] }) {
             const urgency = getDateUrgency(opportunity.end_date);
 
             return (
-              <article className="screen-list-item" key={opportunity.id}>
+              <article className={SCREEN_LIST_ITEM} key={opportunity.id}>
                 {/* Etiqueta del tipo */}
-                <span className="publication-kind">OPORTUNIDAD</span>
+                <span className={PUB_KIND}>OPORTUNIDAD</span>
 
                 {/* Título */}
-                <h2>{opportunity.title}</h2>
+                <h2 className={SCREEN_LIST_TITLE}>{opportunity.title}</h2>
 
                 {/* Resumen */}
-                <p>{opportunity.summary}</p>
+                <p className={SCREEN_LIST_TEXT}>{opportunity.summary}</p>
 
                 {/* Plazo con countdown */}
-                <div className={`opportunity-deadline ${urgency}`}>
-                  <span className="deadline-icon">
+                <div className={`${URGENCY_PILL} ${URGENCY[urgency]}`}>
+                  <span className="text-[14px]">
                     {urgency === 'urgent' ? '\u26A0' : '\u23F0'}
                   </span>
-                  <span className="deadline-text">{deadlineText}</span>
+                  <span>{deadlineText}</span>
                 </div>
 
                 {/* Fecha de cierre formateada */}
                 {opportunity.end_date && (
-                  <small className="opportunity-date">
+                  <small className={SMALL_DATE}>
                     Fecha límite: {formatDateShort(opportunity.end_date)}
                   </small>
                 )}
@@ -62,7 +63,7 @@ export default function OpportunitiesScreen({ opportunities = [] }) {
             );
           })
         ) : (
-          <p className="status">Pronto encontrarás nuevas oportunidades.</p>
+          <p className={STATUS}>Pronto encontrarás nuevas oportunidades.</p>
         )}
       </div>
     </section>

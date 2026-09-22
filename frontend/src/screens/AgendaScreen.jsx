@@ -13,17 +13,18 @@
 import ScreenIntro from '../components/ScreenIntro.jsx';
 import { formatDate, getCountdown, getDateUrgency } from '../utils/dateUtils.js';
 import { KIND_LABELS } from '../utils/constants.js';
+import { PUB_KIND, SCREEN_LIST, SCREEN_LIST_ITEM, SCREEN_LIST_TEXT, SCREEN_LIST_TITLE, SCREEN_SECTION, SMALL_DATE, STATUS, URGENCY, URGENCY_PILL } from '../components/uiStyles.js';
 
 export default function AgendaScreen({ events = [] }) {
   return (
-    <section className="section screen-section">
+    <section className={SCREEN_SECTION}>
       <ScreenIntro
         eyebrow="La ronda continúa"
         title="Agenda de Caucasia"
         description="Planes para encontrarnos, aprender y celebrar lo nuestro."
       />
 
-      <div className="screen-list">
+      <div className={SCREEN_LIST}>
         {events.length ? (
           events.map((event) => {
             /** Countdown del evento */
@@ -32,44 +33,44 @@ export default function AgendaScreen({ events = [] }) {
             const urgency = getDateUrgency(event.start_date);
 
             return (
-              <article className="screen-list-item" key={event.id}>
+              <article className={SCREEN_LIST_ITEM} key={event.id}>
                 {/* Etiqueta del tipo */}
-                <span className="publication-kind">
+                <span className={PUB_KIND}>
                   {KIND_LABELS[event.kind] || event.kind}
                 </span>
 
                 {/* Título del evento */}
-                <h2>{event.title}</h2>
+                <h2 className={SCREEN_LIST_TITLE}>{event.title}</h2>
 
                 {/* Resumen */}
-                <p>{event.summary}</p>
+                <p className={SCREEN_LIST_TEXT}>{event.summary}</p>
 
                 {/* Fecha formateada */}
                 {event.start_date && (
-                  <small className="event-date">
+                  <small className={SMALL_DATE}>
                     {formatDate(event.start_date)}
                   </small>
                 )}
 
                 {/* Countdown visual */}
                 {event.start_date && (
-                  <div className={`event-countdown ${urgency}`}>
-                    <span className="countdown-icon">
+                  <div className={`${URGENCY_PILL} ${URGENCY[urgency]}`}>
+                    <span className="text-[14px]">
                       {countdown.isToday ? '!' : countdown.isPast ? '\u2713' : '\u23F0'}
                     </span>
-                    <span className="countdown-text">{countdown.text}</span>
+                    <span>{countdown.text}</span>
                   </div>
                 )}
 
                 {/* Ubicación */}
-                <small className="event-location">
+                <small className="text-muted block text-[11px] mt-0.5">
                   {event.location || 'Caucasia'}
                 </small>
               </article>
             );
           })
         ) : (
-          <p className="status">Pronto encontrarás nuevos eventos.</p>
+          <p className={STATUS}>Pronto encontrarás nuevos eventos.</p>
         )}
       </div>
     </section>

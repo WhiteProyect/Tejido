@@ -269,3 +269,20 @@ Oportunidades, Explorar + `PublicationCard`), Home (`HomeScreen`,
 `HomeMapSection` + `MapScreen`, `CollaboratorScreen`, `HiloAssistant`,
 `PassportSection`, `TimelineSection`) y el cierre (`preflight`, tokens a `@theme`,
 borrar `main.css` y los `!` que sobran).
+
+## 2026-09-21 (4) — Pantallas chicas migradas
+
+- Login, Guardadas, Talento, NotFound, Agenda, Oportunidades, Explorar
+  (`ExploreSection`) y `PublicationCard` pasan a Tailwind. Clases compartidas nuevas
+  en `uiStyles.js` (`SECTION`, `SCREEN_SECTION`, `STATUS(_ERROR)`, `PUB_KIND`,
+  `SCREEN_LIST*`, `URGENCY_PILL`/`URGENCY`, `SMALL_DATE`, `PRIMARY_BUTTON`).
+- Se borraron sus reglas en `main.css` (4388 -> 4214). Siguen `.section`,
+  `.screen-section`, `.status`, `.error` y `.eyebrow` (las usan Mapa, Inicio y
+  Colaborador).
+- Verificado: 32 capturas de rutas con 0 diferencias de estilo, y 30 estados
+  contra el legado en 5174 (urgencias con fechas simuladas, chips, busqueda, error de
+  API, menu de compartir, login con error/cargando/foco, anchos 801/800/601/600).
+- **Observacion para el dueno (no se cambio):** el boton "Ingresar" del login usa
+  `btn btn-primary`, que nunca tuvieron reglas CSS: se ve como boton nativo del
+  navegador. Se migro tal cual; si se quiere con el estilo de la marca, es un
+  cambio de diseno aparte.
