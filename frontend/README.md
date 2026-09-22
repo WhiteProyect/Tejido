@@ -123,4 +123,8 @@ Proceso que funcionó: 1) capturas de referencia (dos veces, para medir el ruido
 33. **Variantes de breakpoint, de la más ancha a la más angosta.** Tailwind las emite en el orden en que se registran; en `tailwind.css` están ordenadas `max1024` → `max800` → `max768` → `max600` → `max480`, así que la más angosta gana cuando dos tocan la misma propiedad. Una variante nueva va en su lugar de esa lista, no al final.
 34. **Estados por `localStorage` o datos: se simulan en la verificación.** El pasaporte (vacío, parcial, completo) se prueba escribiendo `tejido_passport` antes de cargar; el artista destacado, con respuestas de `/api/artists/home` sin imagen, sin enlaces o sin tema.
 
+**Añadidos con el Mapa:**
+
+35. **Mira qué regla gana de verdad, no solo la clase del elemento.** En el detalle del mapa, `.map-detail-card p` (0,1,1) le ganaba a `.map-detail-meta` (0,1,0): los metadatos se veían a 14 px, no a los 11 que dice su clase. Se replica lo que se ve (el estilo computado), no lo que parece decir el CSS.
+
 22. **(Parte 5, dashboard) `nav`, `button` y la especificidad de los estados.** Un `<nav>` migrado necesita `flex!` y su `gap` con `!`: la regla global lo pone en `display:none` bajo 800 px, y entre 769 y 800 px desaparecería la barra lateral. Un `<button>` necesita `!` en `font-size`, `font-weight` y `font-family` para ganarle a `button { font: inherit }`. Antes de traducir un estado activo, mira la especificidad del legado: `.x:hover` (0,2,0) le gana a `.x--active` (0,1,0), así que el hover también pisa al activo, y por eso los `hover:` van en la base.

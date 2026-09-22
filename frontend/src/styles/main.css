@@ -1831,338 +1831,34 @@ html:has(.moneystack-section) {
   }
 }
 
-/* ============================================================
-   MAPA INTERACTIVO — FASE 1
-   Estilos para el mapa real de OpenStreetMap en MapScreen.jsx
-   Portado del CSS del frontend vanilla (map.js / styles.css)
-   ============================================================ */
 
-/* Barra de filtros horizontal sobre el mapa */
-.map-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 24px;
-}
 
-/* Chip de filtro individual */
-.map-filter-chip {
-  background: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(23, 58, 49, 0.25);
-  border-radius: 999px;
-  color: var(--ink);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 800;
-  padding: 9px 15px;
-  transition: background 0.15s ease, color 0.15s ease;
-}
 
-/* Filtro activo o hover */
-.map-filter-chip.active,
-.map-filter-chip:hover {
-  background: var(--ink);
-  color: white;
-}
 
-/* Layout principal: mapa a la izquierda, sidebar a la derecha */
-.map-layout {
-  display: grid;
-  gap: 22px;
-  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.6fr);
-}
 
-/* Contenedor del mapa con bordes redondeados y sombra */
-.map-container {
-  min-height: 540px;
-  border-radius: 30px;
-  position: relative;
-  overflow: hidden;
-  background: #d6e7d4;
-  box-shadow: inset 0 0 0 1px rgba(23, 58, 49, 0.1);
-}
 
-/* Iframe de OpenStreetMap: ocupa todo el contenedor */
-.map-iframe {
-  width: 100%;
-  height: 100%;
-  min-height: 540px;
-  border: 0;
-  display: block;
-}
 
-/* Leyenda de colores: flotante inferior derecha sobre el mapa */
-.map-legend {
-  position: absolute;
-  z-index: 10;
-  right: 14px;
-  bottom: 14px;
-  display: flex;
-  gap: 10px;
-  padding: 10px 14px;
-  background: rgba(255, 253, 248, 0.94);
-  backdrop-filter: blur(8px);
-  border-radius: 14px;
-  box-shadow: 0 5px 14px rgba(23, 58, 49, 0.12);
-  font-size: 10px;
-  font-weight: 700;
-}
 
-/* Elemento individual de la leyenda */
-.map-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-}
 
-/* Punto de color en la leyenda */
-.map-legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
 
-/* ============================================================
-   SIDEBAR DEL MAPA
-   Lista de publicaciones filtradas que aparecen en el mapa
-   ============================================================ */
 
-/* Sidebar flotante sobre el mapa (en mobile va debajo) */
-.map-sidebar {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(23, 58, 49, 0.06);
-  border-radius: 20px;
-  box-shadow: 0 12px 40px rgba(18, 60, 52, 0.14);
-  display: flex;
-  flex-direction: column;
-  max-height: 600px;
-  overflow: hidden;
-  padding: 24px;
-}
 
-/* Encabezado del sidebar */
-.map-sidebar-header {
-  border-bottom: 1px solid rgba(23, 58, 49, 0.08);
-  margin-bottom: 18px;
-  padding-bottom: 14px;
-}
 
-.map-sidebar-header .eyebrow {
-  font-size: 10px;
-  margin-bottom: 4px;
-}
 
-.map-sidebar-header h2 {
-  font-size: 22px;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  margin: 0 0 6px;
-}
 
-.map-sidebar-sub {
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.4;
-  margin: 0;
-}
 
-/* Lista scrolleable de publicaciones */
-.map-sidebar-list {
-  display: grid;
-  gap: 8px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
 
-/* Publicación individual en el sidebar */
-.map-sidebar-item {
-  align-items: flex-start;
-  background: #fff;
-  border: 1px solid rgba(23, 58, 49, 0.06);
-  border-radius: 14px;
-  cursor: pointer;
-  display: flex;
-  gap: 10px;
-  padding: 12px 14px;
-  transition: background 0.15s ease, border-color 0.15s ease;
-  text-align: left;
-}
 
-/* Hover y estado activo (seleccionado) */
-.map-sidebar-item:hover,
-.map-sidebar-item.active {
-  background: #eef6f0;
-  border-color: rgba(23, 58, 49, 0.12);
-}
 
-/* Punto de color al inicio de cada publicación */
-.map-place-dot {
-  border-radius: 50%;
-  flex-shrink: 0;
-  height: 10px;
-  margin-top: 4px;
-  width: 10px;
-}
 
-/* Texto del título */
-.map-sidebar-item b {
-  display: block;
-  font-size: 13px;
-  line-height: 1.25;
-  color: var(--ink);
-}
 
-/* Texto de la ubicación */
-.map-sidebar-item small {
-  color: var(--muted);
-  font-size: 11px;
-}
 
-/* Estado vacío cuando no hay publicaciones */
-.map-empty-state {
-  padding: 30px 20px;
-  text-align: center;
-  color: var(--muted);
-}
 
-/* ============================================================
-   TARJETA DE DETALLE
-   Aparece al seleccionar una publicación del sidebar
-   ============================================================ */
 
-/* Tarjeta flotante en la parte inferior */
-.map-detail-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(23, 58, 49, 0.06);
-  border-radius: 18px;
-  box-shadow: 0 12px 36px rgba(18, 60, 52, 0.15);
-  margin-top: 22px;
-  max-width: 480px;
-  padding: 24px;
-}
 
-/* Icono circular de la tarjeta */
-.map-detail-icon {
-  display: inline-block;
-  font-size: 18px;
-  margin-bottom: 8px;
-}
 
-/* Metadata: tipo + ubicación */
-.map-detail-meta {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-}
 
-/* Título de la publicación */
-.map-detail-card h3 {
-  font-size: 18px;
-  line-height: 1.2;
-  margin: 0 0 8px;
-}
 
-/* Resumen de la publicación */
-.map-detail-card p {
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 0 0 12px;
-}
-
-/* Enlace para abrir en OpenStreetMap */
-.map-detail-link {
-  color: var(--river, #227c8c);
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-/* ============================================================
-   RESPONSIVE — Mapa interactivo
-   ============================================================ */
-
-/* Tablet: sidebar debajo del mapa */
-@media (max-width: 900px) {
-  .map-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .map-container {
-    min-height: 470px;
-  }
-
-  .map-iframe {
-    min-height: 470px;
-  }
-
-  .map-sidebar {
-    max-height: 40vh;
-  }
-
-  .map-sidebar-header h2 {
-    font-size: 18px;
-  }
-}
-
-/* Mobile: ajustes compactos */
-@media (max-width: 600px) {
-  .map-filters {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 5px;
-    scrollbar-width: none;
-  }
-
-  .map-filters::-webkit-scrollbar {
-    display: none;
-  }
-
-  .map-filter-chip {
-    white-space: nowrap;
-  }
-
-  .map-container {
-    border-radius: 22px;
-    min-height: 400px;
-  }
-
-  .map-iframe {
-    min-height: 400px;
-    border-radius: 22px;
-  }
-
-  .map-sidebar {
-    border-radius: 16px;
-    max-height: 35vh;
-    padding: 14px;
-  }
-
-  .map-sidebar-header h2 {
-    font-size: 16px;
-  }
-
-  .map-sidebar-item {
-    padding: 10px 12px;
-  }
-
-  .map-sidebar-item b {
-    font-size: 12px;
-  }
-
-  .map-detail-card {
-    border-radius: 14px;
-    padding: 18px;
-  }
-}
 
 /* ============================================================
    MAPA SVG CON PUBLICACIONES VIVAS — FASE 2

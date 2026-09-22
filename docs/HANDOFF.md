@@ -316,3 +316,12 @@ borrar `main.css` y los `!` que sobran).
   un primer intento sin prefijos sin guion borro `.p9`-`.p12` (particulas del hero); la
   verificacion lo detecto y se rehizo el barrido antes de commitear.
 - Verificado: 32 capturas de rutas y los 3 grupos de estados, sin diferencias de estilo.
+
+## 2026-09-21 (7) — Mapa migrado
+
+- `MapScreen` pasa a Tailwind (variante nueva `max900`). Se borraron sus 29 reglas
+  `.map-*`; `main.css` 2261 -> 1957. Se quitaron las clases sin reglas `.map-screen` y
+  la de tipo en minusculas del punto de color.
+- Verificado: 13 estados (filtros, sin resultados, detalle, hovers, 1300/901/900/601/
+  600/390) con 0 px y 0 diferencias de estilo contra el legado; rutas sin cambios.
+- Quedan: `HiloAssistant`, `CollaboratorScreen`, `HomeMapSection`, `HeroInteractive`.

@@ -32,6 +32,7 @@
    que se registran, asi la mas angosta gana cuando dos aplican a la misma propiedad
    (igual que en el legado, donde el @media mas especifico iba despues). */
 @custom-variant max1024 (@media (max-width: 1024px)); /* artista destacado del inicio */
+@custom-variant max900 (@media (max-width: 900px));   /* pantalla de mapa */
 @custom-variant max800 (@media (max-width: 800px));   /* nav del header y .section */
 @custom-variant max768 (@media (max-width: 768px));   /* Moneystack, perfil de artista, dashboard */
 @custom-variant max600 (@media (max-width: 600px));   /* footer, login, Media Kit */
