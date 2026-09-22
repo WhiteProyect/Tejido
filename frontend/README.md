@@ -45,31 +45,17 @@ Tailwind CSS v4 (`@tailwindcss/vite`) está integrado de forma **incremental**. 
 4. Animaciones, SVG, `clip-path` y gradientes complejos pueden seguir en CSS propio o en framer-motion; no hay que forzarlos a utilidades.
 5. Los colores, tipografías y radios salen de los tokens de `tailwind.css` (`bg-ink`, `text-cream`, `bg-ink-deep`, `font-display`, `rounded-footer`…). Apuntan a las variables de `:root`, así que no hay dos fuentes de verdad. Solo existen los colores de marca: no hay paleta por defecto (`bg-red-500` no genera nada). `font-display` (Playfair) solo está cargada en cursiva 700: usar `font-display italic font-bold`.
 
-### El CSS legado siempre gana (verificado)
+### Las clases legadas siempre ganan (verificado)
 
-Las utilidades viven en `@layer utilities` y el CSS legado **no tiene capa**: una regla sin capa gana a una con capa, sin importar la especificidad. Probado en el navegador con estilos computados:
+Las utilidades viven en `@layer utilities` y las **clases** del CSS legado **no tienen capa**: una regla sin capa gana a una con capa, sin importar la especificidad. Por eso un elemento migrado pierde todas sus clases legadas (punto 2 de la convención). El modificador `!` gana al legado, pero úsalo solo cuando no haya otra salida.
 
-| Elemento con utilidad | Resultado con CSS legado presente |
-|---|---|
-| `<h2 class="m-8 font-display">` | pierde: margen 0, fuente DM Sans |
-| `<a class="text-orange underline">` | pierde: hereda color, sin subrayado |
-| `<button class="text-3xl font-bold">` | pierde: 16 px, peso 400 |
-| `<nav class="block">` | pierde: sigue `display:flex` |
-| `<footer class="bg-ink p-0">` | pierde: fondo `#0c241e`, padding 70 px |
-| `<div class="bg-ink text-cream p-8">` (sin regla legada) | funciona |
+### Selectores de etiqueta globales (`main.css`, en `@layer base`)
 
-Escape puntual: el modificador `!` (`m-8!`, `text-orange!`, `block!`) sí gana al legado; verificado en los mismos casos. Úsalo solo mientras el legado exista.
+Desde 2026-09-21, las reglas de etiqueta viven en `@layer base`: `a`, `button, input`, `nav` (con su `display:none` bajo 800 px), `h1`–`h3` y la píldora verde de `footer` (`footer`, `footer > div`, `footer a`, `footer > div > b`, `footer > div:nth-child(3)`). **Las utilidades les ganan sin `!`**: `<h2 class="text-[16px] m-8">`, `<a class="text-orange underline">`, `<button class="font-bold">`, `<nav class="block">` o `<footer class="bg-transparent p-0">` funcionan directo. Las clases legadas les siguen ganando igual que antes (por especificidad y porque no tienen capa). Cambio verificado como neutro: 16 rutas × 2 anchos, 0 diferencias de estilo computado.
 
-### Selectores de etiqueta globales (todos en `main.css`)
+Ojo: estas reglas **siguen aplicando** en lo que no se sobrescriba. Un `<h2>` sin utilidad de tamaño sale a `clamp(46px…84px)`, un `<footer>` sin nada sale como la píldora verde y un `<nav>` se oculta bajo 800 px. `:root`, `*` (`box-sizing`), `body` (`margin`) y `html:has(.moneystack-section)` se quedan fuera de la capa, porque ninguna utilidad compite con ellas.
 
-Afectan a **cualquier** elemento de esa etiqueta, también en componentes nuevos:
-
-- `a` (`color`, `text-decoration`); `button, input` (`font`); `nav` (`display`, `gap`, `font-*`; **`display:none` bajo 800 px**).
-- `h1`, `h2` (`font-family`, `letter-spacing`, `margin`, `font-size`, `line-height`) y `h3` (los mismos salvo `line-height`). `h4`–`h6` están libres.
-- `footer`, `footer > div`, `footer a`, `footer > div > b`, `footer > div:nth-child(3)`: convierten cualquier `<footer>` en la píldora verde del sitio (ya mordió a `.ax-footer`).
-- `:root`, `*` (`box-sizing`), `body` (`margin`), `html:has(.moneystack-section)` (fondo).
-
-En componentes nuevos, para esas etiquetas usa `div`/`span`/`p` con la utilidad, `h4`–`h6`, o el modificador `!`.
+Los `!` que llevan hoy las pantallas migradas (Artista, Media Kit, dashboard) eran contra estas etiquetas y ya sobran. Se quitan en la fase final, junto con `preflight`, verificando con capturas.
 
 ### Colisiones de nombres
 

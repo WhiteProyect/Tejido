@@ -3,8 +3,31 @@
 :root { --ink: #173f36; --cream: #f3e4c8; --paper: #fff9ec; --yellow: #f4b942; --mint: #75b79b; --purple: #8a4f7d; --orange: #d85b36; --line: #ddd5c7; --muted: #66746f; color: var(--ink); background: var(--paper); font-family: 'DM Sans', sans-serif; font-synthesis: none; }
 * { box-sizing: border-box; }
 body { margin: 0; }
-a { color: inherit; text-decoration: none; }
-button, input { font: inherit; }
+/* Reglas globales por etiqueta, en @layer base (el orden de capas se declara en
+   tailwind.css). Las clases legadas no tienen capa y les ganan igual que antes (ya lo
+   hacian por especificidad); las utilidades de Tailwind (@layer utilities) tambien les
+   ganan, asi que los componentes nuevos ya no necesitan `!` contra estas etiquetas. */
+@layer base {
+  a { color: inherit; text-decoration: none; }
+  button, input { font: inherit; }
+  nav { display: flex; gap: 32px; font-size: 14px; font-weight: 600; }
+  h1, h2, h3 { font-family: 'DM Sans', sans-serif; letter-spacing: -.055em; margin: 0; }
+  h1, h2 { font-size: clamp(46px, 5.6vw, 84px); line-height: .98; }
+  h3 { font-size: 24px; }
+  /* Footer del sitio (Footer.jsx). */
+  footer { background: #0c241e; border-radius: 28px; color: white; display: grid; gap: 50px; grid-template-columns: 2fr 1fr 1fr 1.2fr; margin: 60px clamp(16px, 3vw, 40px) 40px; overflow: hidden; padding: 70px 7vw 40px; position: relative; }
+  footer > div { align-items: flex-start; display: flex; flex-direction: column; gap: 9px; }
+  footer a { color: #aebdb8; font-size: 13px; transition: color .2s ease; }
+  footer a:hover { color: var(--gold, #d4a843); }
+  footer > div > b { color: var(--gold, #d4a843); font-size: 11px; font-weight: 700; letter-spacing: .14em; margin-bottom: 7px; text-transform: uppercase; }
+  /* Divisor sutil entre las dos columnas de navegacion: se desvanece arriba y abajo. */
+  footer > div:nth-child(3) { border-left: 1px solid; border-image: linear-gradient(to bottom, transparent, rgba(255,255,255,.16), transparent) 1; padding-left: 34px; }
+  @media (max-width: 800px) { nav { display: none; } }
+  @media (max-width: 600px) {
+    footer { border-radius: 20px; margin: 40px 12px 24px; grid-template-columns: 1fr; padding: 60px 20px; }
+    footer > div:nth-child(3) { border-left: none; padding-left: 0; }
+  }
+}
 .sr-only { clip: rect(0, 0, 0, 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 .site-header { align-items: center; background: var(--paper); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; padding: 18px 5vw; position: sticky; top: 0; transform: translateY(0); transition: transform 220ms ease; z-index: 5; }
 .site-header.header-hidden { transform: translateY(-100%); }
@@ -18,7 +41,6 @@ button, input { font: inherit; }
 .brand-mark i:nth-child(1) { left: 10px; top: 1px; }
 .brand-mark i:nth-child(2) { bottom: 1px; left: 1px; }
 .brand-mark i:nth-child(3) { bottom: 1px; right: 1px; }
-nav { display: flex; gap: 32px; font-size: 14px; font-weight: 600; }
 .site-header nav a { color: var(--ink); }
 .site-header nav a:hover { color: var(--orange); }
 .login-button, .primary-button { border: 0; border-radius: 999px; cursor: pointer; font-weight: 700; padding: 13px 22px; }
@@ -36,9 +58,6 @@ nav { display: flex; gap: 32px; font-size: 14px; font-weight: 600; }
 .hero::before { background: var(--mint); border-radius: 48% 48% 18% 48%; content: ''; height: 34vw; opacity: .8; position: absolute; right: 8vw; top: 10vw; width: 30vw; }
 .hero-copy { max-width: 650px; position: relative; z-index: 1; }
 .eyebrow { color: #6a7c75; font-size: 11px; font-weight: 800; letter-spacing: .18em; margin: 0 0 18px; text-transform: uppercase; }
-h1, h2, h3 { font-family: 'DM Sans', sans-serif; letter-spacing: -.055em; margin: 0; }
-h1, h2 { font-size: clamp(46px, 5.6vw, 84px); line-height: .98; }
-h3 { font-size: 24px; }
 .hero-copy > p:not(.eyebrow) { color: #53655f; font-size: 19px; line-height: 1.6; max-width: 500px; }
 .primary-button { background: var(--ink); color: white; display: inline-block; margin-top: 18px; }
 .hero-stamp { color: var(--purple); font-family: 'Playfair Display', serif; font-size: 12vw; font-weight: 700; line-height: .78; opacity: .9; transform: rotate(-8deg); }
@@ -105,17 +124,9 @@ h3 { font-size: 24px; }
 .split-section { align-items: center; background: #df6d43; color: #fff9ef; display: flex; justify-content: space-between; }
 .split-section .eyebrow { color: #173b32; }
 .feature-note { border-left: 1px solid rgba(255,255,255,.7); display: grid; gap: 8px; max-width: 300px; padding-left: 30px; }
-footer { background: #0c241e; border-radius: 28px; color: white; display: grid; gap: 50px; grid-template-columns: 2fr 1fr 1fr 1.2fr; margin: 60px clamp(16px, 3vw, 40px) 40px; overflow: hidden; padding: 70px 7vw 40px; position: relative; }
-footer > div { align-items: flex-start; display: flex; flex-direction: column; gap: 9px; }
-footer a { color: #aebdb8; font-size: 13px; transition: color .2s ease; }
-footer a:hover { color: var(--gold, #d4a843); }
-footer > div > b { color: var(--gold, #d4a843); font-size: 11px; font-weight: 700; letter-spacing: .14em; margin-bottom: 7px; text-transform: uppercase; }
 .footer-brand > b { font-size: 24px; letter-spacing: .16em; }
 .footer-brand p, .footer-note { color: #aebdb8; }
 .footer-brand .brand-mark i { border-color: white; }
-/* Divisor sutil entre las dos columnas de navegacion -- no una linea dura,
-   se desvanece arriba y abajo. */
-footer > div:nth-child(3) { border-left: 1px solid; border-image: linear-gradient(to bottom, transparent, rgba(255,255,255,.16), transparent) 1; padding-left: 34px; }
 .footer-threshold { inset: 0; pointer-events: none; position: absolute; width: 100%; height: 100%; z-index: 1; }
 .footer-threshold-line { animation: snakeFlow 12s ease-in-out infinite; fill: none; opacity: .75; stroke: url(#footer-threshold-gradient); stroke-dasharray: 20 14; stroke-linecap: round; stroke-width: 3; }
 .footer-partners { align-items: start; display: flex; flex-wrap: wrap; gap: 28px; margin-top: 24px; }
@@ -150,8 +161,8 @@ footer > div:nth-child(3) { border-left: 1px solid; border-image: linear-gradien
 .hilo-card-art img { height: 86px; object-fit: contain; object-position: center bottom; width: 72px; }
 .hilo-card-gente { --card-accent: #cde5d5; --card-art-bg: #e7f1d0; --card-icon: #f4b942; }.hilo-card-plan { --card-accent: #f6dfae; --card-art-bg: #fff2c9; --card-icon: #d85b36; }.hilo-card-feedback { --card-accent: #e8d8e7; --card-art-bg: #f3e4c8; --card-icon: #8a4f7d; }.hilo-card-mapa { --card-accent: #c7e3e7; --card-art-bg: #e1f1e5; --card-icon: #227c8c; }.hilo-card-oportunidades { --card-accent: #f4d0b8; --card-art-bg: #ffe5bf; --card-icon: #d85b36; }.hilo-card-buscar { --card-accent: #dce7d1; --card-art-bg: #eff4db; --card-icon: #75b79b; }.hilo-card-ajustes { --card-accent: #ddd5c7; --card-art-bg: #f3e4c8; --card-icon: #66746f; }.hilo-card-guardado { --card-accent: #d8e4ef; --card-art-bg: #eaf0f4; --card-icon: #227c8c; }.hilo-card-red { --card-accent: #d9c8eb; --card-art-bg: #efe4f3; --card-icon: #8a4f7d; }
 @keyframes hilo-float { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-7px) rotate(1deg); } }
-@media (max-width: 800px) { nav { display: none; } .site-header { padding: 18px 5vw; } .hero { min-height: 72vh; padding: 70px 8vw; } .hero-stamp { bottom: 35px; position: absolute; right: 5vw; } .section { padding: 70px 6vw; } .section-heading, .toolbar, .split-section, .home-invitation { align-items: flex-start; flex-direction: column; gap: 24px; } .content-grid, .screen-list { grid-template-columns: 1fr; } .search-box, .search-box input { width: 100%; } }
-@media (max-width: 600px) { footer { border-radius: 20px; margin: 40px 12px 24px; grid-template-columns: 1fr; padding: 60px 20px; } .footer-threshold-line { rx: 20px; ry: 20px; } footer > div:nth-child(3) { border-left: none; padding-left: 0; } .login-screen { grid-template-columns: 1fr; } .login-art { min-height: 300px; } .login-art i { height: 60px; width: 60px; } .login-panel { padding: 55px 24px; } .virtual-assistant { bottom: 4px; right: 4px; } .assistant-panel { border-radius: 25px; inset: 6px; width: auto; } .hilo-scene-new { gap: 14px; padding: 16px; } .hilo-avatar-wrapper { height: 72px; width: 72px; } .hilo-greeting { font-size: 15px; } .hilo-card { padding: 14px 8px; } }
+@media (max-width: 800px) { .site-header { padding: 18px 5vw; } .hero { min-height: 72vh; padding: 70px 8vw; } .hero-stamp { bottom: 35px; position: absolute; right: 5vw; } .section { padding: 70px 6vw; } .section-heading, .toolbar, .split-section, .home-invitation { align-items: flex-start; flex-direction: column; gap: 24px; } .content-grid, .screen-list { grid-template-columns: 1fr; } .search-box, .search-box input { width: 100%; } }
+@media (max-width: 600px) { .footer-threshold-line { rx: 20px; ry: 20px; } .login-screen { grid-template-columns: 1fr; } .login-art { min-height: 300px; } .login-art i { height: 60px; width: 60px; } .login-panel { padding: 55px 24px; } .virtual-assistant { bottom: 4px; right: 4px; } .assistant-panel { border-radius: 25px; inset: 6px; width: auto; } .hilo-scene-new { gap: 14px; padding: 16px; } .hilo-avatar-wrapper { height: 72px; width: 72px; } .hilo-greeting { font-size: 15px; } .hilo-card { padding: 14px 8px; } }
 @media (max-width: 400px) { .hilo-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* ===== ESTILOS CULTURALES - BAJO CAUCA ===== */
