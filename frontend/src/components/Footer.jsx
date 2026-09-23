@@ -79,7 +79,7 @@ export default function Footer() {
       </motion.div>
       <motion.div className={COL} variants={footerItem}>
         <b className={HEADING}>Proyecto</b>
-        <a href="#inicio" className={LINK}>Acerca de TEJIDO</a>
+        <a href="#nosotros" className={LINK}>Nosotros</a>
         <a href="#mapa" className={LINK}>Mapa vivo</a>
         <a href="#guardadas" className={LINK}>Guardadas</a>
       </motion.div>

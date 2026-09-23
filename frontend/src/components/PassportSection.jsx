@@ -6,7 +6,7 @@
  *
  * Cada sello:
  * - Se ilumina cuando el usuario ha interactuado con contenido de ese municipio
- * - Muestra un emoji y nombre
+ * - Muestra el icono de trazo del municipio (Icon.jsx) y su nombre
  * - Tiene una animación de "stamping" cuando se desbloquea
  *
  * Cuando se completan los 6 sellos:
@@ -24,7 +24,11 @@ import {
   loadPassport,
   getPassportProgress,
 } from '../utils/passportUtils.js';
+import Icon from './Icon.jsx';
 import { BADGE, SECTION_TITLE } from './uiStyles.js';
+
+// Icono de cada municipio (mismo sistema que las opciones del hero).
+const MUNI_ICONS = { caucasia: 'confluence', caceres: 'columns', taraza: 'coffee', nechi: 'waves', elbagre: 'gem', zaragoza: 'anchor' };
 
 // Sello: base comun y un estado excluyente (borde, fondo y sombra no compiten entre clases).
 const STAMP = 'items-center border-2 border-solid rounded-[20px] flex flex-col gap-1.5 py-6 px-4 text-center transition-all duration-300 ease-[ease] max600:py-[18px] max600:px-3';
@@ -80,15 +84,17 @@ export default function PassportSection() {
                 animationDelay: `${MUNICIPALITIES.indexOf(muni) * 0.1}s`,
               }}
             >
-              {/* Emoji del municipio */}
-              <span className="text-[32px] leading-none max600:text-[26px]">{muni.emoji}</span>
+              {/* Icono del municipio: color del sello si esta coleccionado */}
+              <span className={isCollected ? 'text-[var(--stamp-color,#1d8fa3)]' : 'text-muted'}>
+                <Icon name={MUNI_ICONS[muni.id]} className="size-8 max600:size-7" />
+              </span>
               {/* Nombre */}
               <span className="text-[14px] font-bold text-ink">{muni.name}</span>
               {/* Tema */}
               <span className="text-muted text-[11px]">{muni.theme}</span>
               {/* Indicador de estado */}
-              <span className={`text-[16px] mt-1 ${isCollected ? 'text-[#16a085]' : 'text-muted'}`}>
-                {isCollected ? '\u2713' : '\u25CB'}
+              <span className={`mt-1 ${isCollected ? 'text-river' : 'text-muted'}`}>
+                <Icon name={isCollected ? 'check' : 'circle'} className="size-4" title={isCollected ? 'Sello coleccionado' : 'Sello pendiente'} />
               </span>
             </div>
           );
@@ -98,7 +104,7 @@ export default function PassportSection() {
       {/* Badge de completado */}
       {progress.isComplete && (
         <div className="items-center bg-[linear-gradient(135deg,rgba(212,168,67,0.1),rgba(29,143,163,0.1))] border-2 border-solid border-[#d4a843] rounded-[24px] flex flex-col gap-2 mt-[30px] p-[30px] text-center animate-[badgeGlow_2s_ease-in-out_infinite]">
-          <span className="text-[48px]">{'\uD83C\uDFC6'}</span>
+          <Icon name="seal" className="size-12 text-gold" />
           <h3 className="font-sans tracking-[-.055em] text-[#d4a843] text-[22px] m-0">Ciudadano del Bajo Cauca</h3>
           <p className="text-muted text-[14px] leading-[1.5] m-0 max-w-[400px]">Has explorado los 6 municipios. Tu conocimiento del territorio es completo.</p>
         </div>

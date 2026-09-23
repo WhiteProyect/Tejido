@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { BTN_CULTURAL } from './uiStyles.js';
+import Icon from './Icon.jsx';
 
 /* --- ESCENAS -------------------------------------------------- */
 
@@ -25,9 +26,9 @@ const SCENES = {
     message: '¡Buenos días! Soy Hilo. Soy el hilo que une al Bajo Cauca. ¿Qué quieres descubrir?',
     background: 'default',
     options: [
-      { id: 'historias', icon: '📖', label: 'Historias del río', sub: 'Lo que el Bajo Cauca cuenta' },
-      { id: 'gente', icon: '🏘️', label: 'Conocer gente', sub: 'Quiénes mueven el territorio' },
-      { id: 'musica', icon: '🎵', label: 'Música viva', sub: 'El sonido del territorio' },
+      { id: 'historias', icon: 'book', label: 'Historias del río', sub: 'Lo que el Bajo Cauca cuenta' },
+      { id: 'gente', icon: 'people', label: 'Conocer gente', sub: 'Quiénes mueven el territorio' },
+      { id: 'musica', icon: 'music', label: 'Música viva', sub: 'El sonido del territorio' },
     ],
   },
   historias: {
@@ -35,12 +36,12 @@ const SCENES = {
     message: 'Las historias nacen del río. Cada piedra guarda un secreto. ¿De cuál municipio quieres saber?',
     background: 'river',
     options: [
-      { id: 'muni-caucasia', icon: '🏛️', label: 'Caucasia', sub: 'Capital, confluencia', color: '#d4a843' },
-      { id: 'muni-caceres', icon: '🏰', label: 'Cáceres', sub: 'Historia, 1576', color: '#1d8fa3' },
-      { id: 'muni-taraza', icon: '☕', label: 'Tarazá', sub: 'Tierra de café', color: '#75b79b' },
-      { id: 'muni-nechi', icon: '🌊', label: 'Nechí', sub: 'Río y tradición', color: '#0f6b7a' },
-      { id: 'muni-elbagre', icon: '⭐', label: 'El Bagre', sub: 'Oro ancestral', color: '#c4713a' },
-      { id: 'muni-zaragoza', icon: '⚓', label: 'Zaragoza', sub: 'Fundación, 1581', color: '#6b3a7d' },
+      { id: 'muni-caucasia', icon: 'confluence', label: 'Caucasia', sub: 'Capital, confluencia', color: '#d4a843' },
+      { id: 'muni-caceres', icon: 'columns', label: 'Cáceres', sub: 'Historia, 1576', color: '#1d8fa3' },
+      { id: 'muni-taraza', icon: 'coffee', label: 'Tarazá', sub: 'Tierra de café', color: '#75b79b' },
+      { id: 'muni-nechi', icon: 'waves', label: 'Nechí', sub: 'Río y tradición', color: '#0f6b7a' },
+      { id: 'muni-elbagre', icon: 'gem', label: 'El Bagre', sub: 'Oro ancestral', color: '#c4713a' },
+      { id: 'muni-zaragoza', icon: 'anchor', label: 'Zaragoza', sub: 'Fundación, 1581', color: '#6b3a7d' },
     ],
   },
   gente: {
@@ -48,9 +49,9 @@ const SCENES = {
     message: 'El Bajo Cauca está vivo por su gente. Los gestores son los hilos que tejen la comunidad.',
     background: 'people',
     options: [
-      { id: 'gestores', icon: '🧵', label: 'Gestores', sub: 'Los que tejen el territorio' },
-      { id: 'artistas', icon: '🎨', label: 'Artistas', sub: 'Las voces del Bajo Cauca' },
-      { id: 'back', icon: '↩️', label: 'Volver', sub: 'Seguir explorando' },
+      { id: 'gestores', icon: 'thread', label: 'Gestores', sub: 'Los que tejen el territorio' },
+      { id: 'artistas', icon: 'palette', label: 'Artistas', sub: 'Las voces del Bajo Cauca' },
+      { id: 'back', icon: 'arrow-left', label: 'Volver', sub: 'Seguir explorando' },
     ],
   },
   musica: {
@@ -58,9 +59,9 @@ const SCENES = {
     message: 'La música es el latido del Bajo Cauca. De las corralejas a la música urbana, todo se conecta.',
     background: 'music',
     options: [
-      { id: 'moneystack', icon: '🎶', label: 'Moneystack', sub: 'El sello del territorio' },
-      { id: 'folklore', icon: '🪘', label: 'Folklore', sub: 'Tuna, tambora y décima' },
-      { id: 'back', icon: '↩️', label: 'Volver', sub: 'Seguir explorando' },
+      { id: 'moneystack', icon: 'music', label: 'Moneystack', sub: 'El sello del territorio' },
+      { id: 'folklore', icon: 'drum', label: 'Folklore', sub: 'Tuna, tambora y décima' },
+      { id: 'back', icon: 'arrow-left', label: 'Volver', sub: 'Seguir explorando' },
     ],
   },
   gestores: {
@@ -68,8 +69,8 @@ const SCENES = {
     message: 'Los gestores son personas que conectan al Bajo Cauca a través del pensamiento crítico. Cada gestor es un hilo del tejido.',
     background: 'people',
     options: [
-      { id: 'explorar-gestores', icon: '🔍', label: 'Ver gestores', sub: 'En la plataforma' },
-      { id: 'back-gente', icon: '↩️', label: 'Volver', sub: 'Más opciones' },
+      { id: 'explorar-gestores', icon: 'search', label: 'Ver gestores', sub: 'En la plataforma' },
+      { id: 'back-gente', icon: 'arrow-left', label: 'Volver', sub: 'Más opciones' },
     ],
   },
   artistas: {
@@ -77,8 +78,8 @@ const SCENES = {
     message: 'Los artistas del Bajo Cauca cuentan historias que el río guarda. Moneystack es su sello.',
     background: 'music',
     options: [
-      { id: 'explorar-artistas', icon: '🎤', label: 'Ver artistas', sub: 'En la plataforma' },
-      { id: 'back-gente', icon: '↩️', label: 'Volver', sub: 'Más opciones' },
+      { id: 'explorar-artistas', icon: 'mic', label: 'Ver artistas', sub: 'En la plataforma' },
+      { id: 'back-gente', icon: 'arrow-left', label: 'Volver', sub: 'Más opciones' },
     ],
   },
   moneystack: {
@@ -86,8 +87,8 @@ const SCENES = {
     message: 'Moneystack es el sello independiente del Bajo Cauca. Aquí nacen los artistas que hacen latir al territorio.',
     background: 'music',
     options: [
-      { id: 'ir-moneystack', icon: '🎵', label: 'Ir a Moneystack', sub: 'Explorar el sello' },
-      { id: 'back-musica', icon: '↩️', label: 'Volver', sub: 'Más opciones' },
+      { id: 'ir-moneystack', icon: 'music', label: 'Ir a Moneystack', sub: 'Explorar el sello' },
+      { id: 'back-musica', icon: 'arrow-left', label: 'Volver', sub: 'Más opciones' },
     ],
   },
   folklore: {
@@ -95,8 +96,8 @@ const SCENES = {
     message: 'La tuna y la tambora, la décima, los cantos de vaquería, la zafra, el grito del monte. La música que acompaña las corralejas y los fandangos.',
     background: 'music',
     options: [
-      { id: 'explorar-folklore', icon: '📖', label: 'Explorar historias', sub: 'Del folklore' },
-      { id: 'back-musica', icon: '↩️', label: 'Volver', sub: 'Más opciones' },
+      { id: 'explorar-folklore', icon: 'book', label: 'Explorar historias', sub: 'Del folklore' },
+      { id: 'back-musica', icon: 'arrow-left', label: 'Volver', sub: 'Más opciones' },
     ],
   },
 };
@@ -689,7 +690,7 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
                   '--option-color': option.color || 'var(--river)',
                 }}
               >
-                <span className="text-[32px] mb-1 max768:text-[26px]">{option.icon}</span>
+                <Icon name={option.icon} className="mb-1.5 size-7 text-ink max768:size-6" />
                 <span className="text-[16px] font-bold text-ink leading-[1.2] max768:text-[14px]">{option.label}</span>
                 <span className="text-[12px] font-medium text-[var(--muted,#66746f)] leading-[1.3]">{option.sub}</span>
               </button>
@@ -758,8 +759,8 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
 
       {/* Boton de regreso (no en greeting) */}
       {scene !== 'greeting' && (
-        <button className="absolute bottom-6 left-6 z-10 bg-[rgba(255,255,255,0.8)] backdrop-blur-[8px] border border-[rgba(23,58,49,0.12)] rounded-[999px] text-ink cursor-pointer text-[14px] font-semibold py-2.5 px-5 transition-all duration-300 ease-[ease] hover:bg-white hover:[box-shadow:0_4px_16px_rgba(23,58,49,0.1)] max480:bottom-3 max480:left-3 max480:py-2 max480:px-4 max480:text-[13px]" type="button" onClick={goBack} aria-label="Volver">
-          ← Volver
+        <button className="absolute bottom-6 left-6 z-10 inline-flex items-center gap-1.5 bg-[rgba(255,255,255,0.8)] backdrop-blur-[8px] border border-[rgba(23,58,49,0.12)] rounded-[999px] text-ink cursor-pointer text-[14px] font-semibold py-2.5 px-5 transition-all duration-300 ease-[ease] hover:bg-white hover:[box-shadow:0_4px_16px_rgba(23,58,49,0.1)] max480:bottom-3 max480:left-3 max480:py-2 max480:px-4 max480:text-[13px]" type="button" onClick={goBack} aria-label="Volver">
+          <Icon name="arrow-left" className="size-4" /> Volver
         </button>
       )}
     </section>

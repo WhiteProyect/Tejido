@@ -14,6 +14,10 @@
 
 .footer-threshold-line { animation: snakeFlow 12s ease-in-out infinite; fill: none; opacity: .75; stroke: url(#footer-threshold-gradient); stroke-dasharray: 20 14; stroke-linecap: round; stroke-width: 3; }
 @keyframes hilo-float { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-7px) rotate(1deg); } }
+/* Login: ondas que respiran alrededor del formulario y puntos que flotan sobre ellas.
+   Solo animan transform/opacity; el centrado usa la propiedad `translate` de Tailwind. */
+@keyframes loginBreath { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.03); opacity: .6; } }
+@keyframes loginFloat { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(6px, -12px); } }
 @media (max-width: 600px) { .footer-threshold-line { rx: 20px; ry: 20px; } }
 
 
@@ -560,6 +564,11 @@
   from { opacity: 0; transform: translate(-50%, -92%) scale(0.92); }
   to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
 }
+/* Misma entrada cuando la tarjeta no cabe arriba del punto y se abre debajo (HomeMapSection). */
+@keyframes geoHoverInBelow {
+  from { opacity: 0; transform: translate(-50%, -8%) scale(0.92); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
 
 
 
@@ -820,17 +829,17 @@ html:has(.moneystack-section) {
   50% { box-shadow: 0 0 40px rgba(212, 168, 67, 0.3); }
 }
 
-/* Animación de entrada */
-@keyframes timelineItemIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* Rio de la cronologia del inicio (TimelineSection.jsx). Queda en CSS propio por la misma
+   razon que el rio del perfil de artista (artist.css): stroke con url(#gradiente),
+   stroke-dasharray, vector-effect y un @keyframes de dashoffset no tienen utilidad razonable.
+   - .tl-river-bed: el lecho, ancho y tenue, siempre quieto.
+   - .tl-river-flow: el caudal segmentado (trazo largo, hueco, punto, hueco). Avanza de forma
+     lineal y continua: el offset recorre 2 periodos exactos del patron (39 * 2), asi el bucle
+     no salta. Con reduced-motion se detiene y la linea queda completa. */
+.tl-river-bed { fill: none; stroke: url(#tl-river-gradient); stroke-width: 7; stroke-linecap: round; opacity: .09; vector-effect: non-scaling-stroke; }
+.tl-river-flow { fill: none; stroke: url(#tl-river-gradient); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 18 9 3 9; opacity: .9; vector-effect: non-scaling-stroke; animation: tlRiverFlow 7s linear infinite; }
+@keyframes tlRiverFlow { to { stroke-dashoffset: -78; } }
+@media (prefers-reduced-motion: reduce) { .tl-river-flow { animation: none; } }
 
 /* Dashboard Money Stack (antes en moneystack.css): animate-[msSpin_...], animate-[msPulse_...] */
 @keyframes msSpin {

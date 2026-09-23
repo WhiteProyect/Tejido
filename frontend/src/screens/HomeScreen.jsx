@@ -22,9 +22,8 @@ export default function HomeScreen({ onExplore, publications = [] }) {
         <PassportSection />
       </section>
 
-      <section className={SECTION}>
-        <TimelineSection publications={publications} />
-      </section>
+      {/* Bloque oscuro propio: si no hay publicaciones con fecha, no deja una caja vacia. */}
+      <TimelineSection publications={publications} />
 
       <section className="bg-[linear-gradient(135deg,var(--sunset)_0%,var(--gold)_100%)] mt-[60px] mx-[4vw] mb-0 py-[100px] px-[8vw] rounded-[40px] text-center">
         <div className="max-w-[600px] my-0 mx-auto">

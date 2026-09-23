@@ -393,3 +393,96 @@ borrar `main.css` y los `!` que sobran).
 - Pendiente (menor, sin prisa segun el dueno): comentarios del JSX que aun citan
   `main.css`, y quitar los `!` que ya sobran en Artista/Media Kit/dashboard.
 - Pendiente de decision del dueno: `preflight` (ver README).
+
+## 2026-09-22 (4) — Rediseño del Login
+
+- `LoginScreen.jsx`: pantalla centrada y editorial (logo sin enlace, antetitulo, "Tu
+  territorio / *te espera.*", formulario con subrayado, boton en pildora tinta, cuentas
+  demo en 3 columnas / 1 en movil). Arte: tres ondas concentricas que respiran y los tres
+  puntos de la marca (disco menta, aro tinta, punto morado) flotando sobre ellas; en movil
+  se oculta el aro tinta. Animaciones con `motion-safe:` (`loginBreath`, `loginFloat` en
+  `art.css`). Enlace "← Volver al inicio" arriba a la izquierda (`#inicio`).
+- `App.jsx`: en la ruta `login` no se renderizan `SiteHeader`, `Footer` ni `HiloAssistant`
+  (`isLoginRoute`). El login del dashboard (ruta de artista) ya iba sin ellos.
+- Logica intacta (fetch, errores, carga, token, return-to). Solo se sumo `autoComplete`.
+- Verificado a 1300/390: normal, foco por teclado, error, cargando, volver al inicio,
+  login con return-to (colaborador -> login -> colaborador), rutas con header/footer/Hilo.
+- Ojo al probar: el backend bloquea 5 min tras 5 intentos fallidos por IP.
+
+## 2026-09-22 (5) — Cronología horizontal e iconos del landing
+
+- `TimelineSection.jsx`: bloque oscuro propio (`bg-ink-deep`, radio 40 px como el artista
+  destacado), pista horizontal también en móvil (snap, flechas anterior/siguiente cuando
+  hay desborde, región enfocable con teclado). Río SVG segmentado dorado -> menta -> río
+  que fluye (`.tl-river-flow`, dashoffset lineal de 7 s en `art.css`; quieto con
+  reduced-motion). Nodos con halo fijo e icono estático; año en Playfair. Se quitó la
+  entrada fade/slide por tarjeta (`timelineItemIn` borrado de `art.css`).
+  `HomeScreen` ya no lo envuelve en `SECTION` (así no queda una caja vacía sin hitos).
+- `components/Icon.jsx` (nuevo): sistema de iconos de trazo. Reemplaza los emojis del hero,
+  el pasaporte y la cronología, y los SVG sueltos del artista destacado y del mapa.
+  Se quitó el giro de la X del modal y el deslizamiento de la flecha de la lista del mapa.
+  `KIND_ICONS` (emojis) se borró de `constants.js` (ya no tenía usos).
+- Sin tocar: Hilo, logos, arte del hero, SVG del mapa, rutas fuera del landing.
+- Quedan animaciones de contenedor (no de icono): entrada `heroOptionIn`/`geoCardIn`
+  (con rebote), `stampAppear` y `badgeGlow` (las dos del manual). Decisión pendiente del
+  dueño si se suavizan.
+
+## 2026-09-22 (6) — Acceso del header con icono
+
+- `SiteHeader.jsx`: el CTA textual "Ingresar" (sin sesion) pasa a un boton de icono
+  (`LoginIcon`, SVG propio: usuario en --orange + flecha de entrada, trazo en el color de
+  texto del header: tinta o #f7f7f5 en Moneystack). `aria-label="Iniciar sesión"`,
+  tooltip visual en hover/foco, 51x51 px (misma altura que el CTA viejo: el header sigue
+  en 88 px). Mismo `onLogin` (return-to intacto). Avatar/menu con sesion sin cambios.
+- Rediseño del icono (pedido del dueño): silueta sólida --orange sin contorno (brillo --paper),
+  flecha ondulada en --river que entra en un umbral en currentColor. Tooltip invertido en
+  Moneystack (fondo #f7f7f5). Comportamiento, tamaño (51 px) y alto del header sin cambios.
+
+## 2026-09-22 (7) — Mapa del inicio: más grande y tarjeta de hover sin recorte
+
+- `HomeMapSection.jsx`: el marco del mapa (`relative overflow-hidden rounded-[28px]`) contenía
+  el SVG y la tarjeta de hover, y la recortaba al subir por encima del punto. Ahora hay un
+  contenedor exterior `relative z-1` sin recorte (capa de interacción, `ref={mapRef}`, donde
+  vive la tarjeta) y dentro el marco con `overflow-hidden` solo para el arte. La tarjeta se
+  mide antes de pintar (`useLayoutEffect`): arriba del punto si cabe bajo el header, si no
+  debajo (`geoHoverInBelow` nuevo en `art.css`), y acotada al viewport en horizontal.
+- Ancho máximo del mapa 900 -> 1020 px (+13 %, SVG proporcional). Móvil sin cambios.
+- Pendiente (ya pasaba antes): no existe `frontend/public/assets/municipios/`; las 6 imágenes
+  `/assets/municipios/<id>.jpg` de `MUNICIPALITIES_DATA` faltan (tarjeta y modal muestran el
+  fondo crema).
+
+## 2026-09-22 (8) — Tarjetas de Explorar
+
+- `PublicationCard.jsx` (único consumidor: `ExploreSection`): tarjeta redondeada (24 px) sin
+  `overflow-hidden`; solo el marco de la imagen recorta (inset de 8 px, radio 18), así el menú
+  de compartir nunca se corta. Señal de categoría = punto con `KIND_COLORS` + nombre en
+  mayúsculas discretas. Título a 2 líneas y resumen a 3 con altura mínima: tarjetas parejas.
+  Pie: ubicación (icono `pin`) a la izquierda y Compartir (icono `share` nuevo en `Icon.jsx`)
+  a la derecha; el menú se abre hacia arriba alineado a la derecha. Hover/foco: -2 px, borde
+  con el tono de la categoría, imagen a 1.04 (todo con `motion-safe:`).
+- `ExploreSection.jsx`: reacomodo al filtrar/buscar con Framer Motion (`layout` + fundido y
+  escala 0.97 al entrar/salir, `AnimatePresence popLayout`, sin animación inicial, apagado con
+  `useReducedMotion`). Lógica de filtros, búsqueda, orden y estados sin cambios.
+- Encontrado: el título/antetítulo de Explorar ya venía cambiado en el working tree por otra
+  mano ("Voces desde capital" / "Descubre el tejido de la cultura"); se respetó.
+- Existente, sin tocar: `ExploreSection` no pasa `user` a la tarjeta, así que "+10 pts" nunca
+  se muestra; en móvil el Hilo flotante puede tapar el Compartir de una tarjeta.
+
+## 2026-09-22 (9) — Nosotros y perfil por rol (Colaborar retirado del frontend)
+
+- Eliminado `screens/CollaboratorScreen.jsx` (autorizado). Backend, tablas y endpoints de
+  colaboradores intactos. `#colaborador` redirige a `#nosotros` en `getRoute()` (replaceState).
+- Nuevo `screens/NosotrosScreen.jsx` (`#nosotros`): Qué es TEJIDO, Propósito, Equipo
+  (`TEAM_MEMBERS`, FICTICIO y temporal, iniciales sin fotos), Contacto (POST
+  `/api/suggestions`; nombre/contacto opcionales van como encabezado del `message`) y
+  Colabora (el CTA lleva al formulario con texto sugerido). Única animación: el equipo.
+- Nuevo `screens/ProfileScreen.jsx` (`#perfil`): cabecera común + módulo por `user.role`.
+  ADMIN: `/api/admin/stats` + `/api/admin/suggestions`. GESTOR: `/api/publications?mine=1` +
+  artista con `user_id` propio (enlaces a su perfil y a `#artista/<slug>/dashboard`).
+  CIUDADANO: `/api/publications` con sesión (`favorite`) + pasaporte local; sin puntos.
+- `App.jsx`: estado `authReady` (evita mandar a login mientras `/api/me` responde); `#perfil`
+  sin sesión -> `#login` con `tejido_return_to=perfil`.
+- Header: "Colaborar" -> "Nosotros"; menú de usuario "Mi Dashboard" -> "Mi perfil".
+  Footer: "Acerca de TEJIDO" (#inicio) -> "Nosotros" (#nosotros).
+- Pendiente/honesto: no hay UI para guardar favoritos (el endpoint existe), así que los
+  guardados reales hoy están vacíos. El bundle pasó 500 kB (aviso de Vite, no error).

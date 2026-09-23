@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import PublicationCard from './PublicationCard.jsx';
 import { EYEBROW, H1, SECTION, STATUS, STATUS_ERROR } from './uiStyles.js';
 import { getMunicipalityFromLocation, stampMunicipality } from '../utils/passportUtils.js';
@@ -12,7 +13,18 @@ const kinds = [
   ['INICIATIVA', 'Iniciativas'],
 ];
 
+// Reacomodo al filtrar/buscar: las tarjetas que se quedan se deslizan a su nuevo lugar
+// (layout) y las que entran/salen solo se funden con una escala minima. Sin animacion en la
+// carga inicial (initial={false}) ni con prefers-reduced-motion.
+const CARD_MOTION = {
+  initial: { opacity: 0, scale: 0.97 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.97 },
+  transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1], layout: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
+};
+
 export default function ExploreSection({ publications, activeKind, onKindChange, search, onSearchChange, loading, error }) {
+  const reduceMotion = useReducedMotion();
   const filtered = publications.filter((publication) => {
     const matchesKind = activeKind === 'TODOS' || publication.kind === activeKind;
     const term = search.trim().toLowerCase();
@@ -38,7 +50,7 @@ export default function ExploreSection({ publications, activeKind, onKindChange,
   return (
     <section className={SECTION} id="explorar">
       <div className="flex [align-items:end] gap-[50px] justify-between mb-[45px] max800:items-start max800:flex-col max800:gap-6">
-        <div><p className={EYEBROW}>Voces del territorio</p><h2 className={H1}>Descubre lo que se está tejiendo</h2></div>
+        <div><p className={EYEBROW}>Voces desde capital</p><h2 className={H1}>Descubre el tejido de la cultura</h2></div>
         <p className="leading-[1.6] max-w-[340px]">Contenido local para encontrarnos, aprender y celebrar lo nuestro.</p>
       </div>
       <div className="flex items-center gap-5 justify-between mb-[30px] max800:items-start max800:flex-col max800:gap-6">
@@ -51,7 +63,17 @@ export default function ExploreSection({ publications, activeKind, onKindChange,
       </div>
       {loading && <p className={STATUS}>Cargando publicaciones...</p>}
       {error && <p className={STATUS_ERROR}>{error}. Verifica que el backend Python esté activo en el puerto 8765.</p>}
-      {!loading && !error && <div className="grid gap-[22px] grid-cols-[repeat(3,1fr)] max800:grid-cols-[1fr]">{filtered.map((publication) => <PublicationCard key={publication.id} publication={publication} />)}</div>}
+      {!loading && !error && (
+        <div className="grid gap-[22px] grid-cols-[repeat(3,1fr)] max800:grid-cols-[1fr]">
+          <AnimatePresence initial={false} mode="popLayout">
+            {filtered.map((publication) => (
+              <motion.div key={publication.id} layout={!reduceMotion} {...(reduceMotion ? {} : CARD_MOTION)}>
+                <PublicationCard publication={publication} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
       {!loading && !error && filtered.length === 0 && <p className={STATUS}>No encontramos coincidencias.</p>}
     </section>
   );

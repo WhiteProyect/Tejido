@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import Icon from '../components/Icon.jsx';
 import { BADGE_LIGHT } from '../components/uiStyles.js';
 
 // Tarjeta oscura del artista destacado. Clases repetidas del reproductor y los iconos sociales.
 const PLAY_BTN = 'w-12 h-12 bg-gold border-none rounded-[50%] cursor-pointer flex items-center justify-center transition-all duration-300 ease-[ease] shrink-0 hover:[transform:scale(1.1)] hover:[box-shadow:0_8px_24px_rgba(212,168,67,0.4)]';
-const PLAY_ICON = 'w-5 h-5 text-white ml-[3px]';
+const PLAY_ICON = 'w-5 h-5 text-white ml-0.5';
 const SOCIAL_LINK = 'w-11 h-11 bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.15)] rounded-[12px] flex items-center justify-center transition-all duration-300 ease-[ease] hover:bg-gold hover:border-gold hover:[transform:translateY(-3px)]';
 const SOCIAL_ICON = 'w-5 h-5 text-white';
 const TAG = 'bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.2)] rounded-[999px] text-white text-[12px] font-semibold tracking-[0.05em] py-2 px-4 uppercase';
@@ -25,7 +26,7 @@ export default function HomeFeaturedArtist() {
   const { artist, featured_track } = artistData;
 
   return (
-    <section className="bg-[#0a0a0a] text-white grid grid-cols-[1fr_1fr] gap-20 my-0 mx-[4vw] py-[100px] px-[8vw] rounded-[40px] relative overflow-hidden max1024:grid-cols-[1fr] max1024:gap-12 max1024:py-20 max1024:px-[6vw]">
+    <section className="bg-[#0a0a0a] text-white grid grid-cols-[1fr_1fr] gap-20 mt-[clamp(24px,3vw,40px)] mb-0 mx-[4vw] py-[100px] px-[8vw] rounded-[40px] relative overflow-hidden max1024:grid-cols-[1fr] max1024:gap-12 max1024:py-20 max1024:px-[6vw]">
       <div className="relative z-2">
         <span className={BADGE_LIGHT}>Artista Destacado</span>
         <h2 className="font-sans leading-[.98] text-[length:clamp(48px,5.5vw,76px)] font-extrabold tracking-[-0.05em] mt-0 mx-0 mb-6">{artist.stage_name}</h2>
@@ -41,21 +42,15 @@ export default function HomeFeaturedArtist() {
             <div className="flex items-center gap-4 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-[16px] p-4">
               {featured_track.spotify_url ? (
                 <a href={featured_track.spotify_url} target="_blank" rel="noopener noreferrer" className={PLAY_BTN} aria-label="Escuchar en Spotify">
-                  <svg className={PLAY_ICON} viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="5 3 19 12 5 21 5 3"/>
-                  </svg>
+                  <Icon name="play" className={PLAY_ICON} strokeWidth={1.75} />
                 </a>
               ) : featured_track.youtube_url ? (
                 <a href={featured_track.youtube_url} target="_blank" rel="noopener noreferrer" className={PLAY_BTN} aria-label="Ver en YouTube">
-                  <svg className={PLAY_ICON} viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="5 3 19 12 5 21 5 3"/>
-                  </svg>
+                  <Icon name="play" className={PLAY_ICON} strokeWidth={1.75} />
                 </a>
               ) : (
                 <button className={PLAY_BTN} type="button" disabled>
-                  <svg className={PLAY_ICON} viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="5 3 19 12 5 21 5 3"/>
-                  </svg>
+                  <Icon name="play" className={PLAY_ICON} strokeWidth={1.75} />
                 </button>
               )}
               <div className="flex-1">
@@ -72,29 +67,17 @@ export default function HomeFeaturedArtist() {
         <div className="flex gap-3 mb-6">
           {artist.instagram_url && (
             <a href={artist.instagram_url} target="_blank" rel="noopener noreferrer" className={SOCIAL_LINK} aria-label="Instagram">
-              <svg className={SOCIAL_ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
-              </svg>
+              <Icon name="instagram" className={SOCIAL_ICON} />
             </a>
           )}
           {artist.youtube_url && (
             <a href={artist.youtube_url} target="_blank" rel="noopener noreferrer" className={SOCIAL_LINK} aria-label="YouTube">
-              <svg className={SOCIAL_ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/>
-                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
-              </svg>
+              <Icon name="youtube" className={SOCIAL_ICON} />
             </a>
           )}
           {artist.spotify_url && (
             <a href={artist.spotify_url} target="_blank" rel="noopener noreferrer" className={SOCIAL_LINK} aria-label="Spotify">
-              <svg className={SOCIAL_ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M8 15s4-1 6-2"/>
-                <path d="M7 12s5-1.5 7.5-2.5"/>
-                <path d="M6.5 9S12 7 17 9"/>
-              </svg>
+              <Icon name="spotify" className={SOCIAL_ICON} />
             </a>
           )}
         </div>

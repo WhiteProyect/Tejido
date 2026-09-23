@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Logo from '../components/Logo.jsx';
 import { EYEBROW } from '../components/uiStyles.js';
 
 const demoAccounts = {
@@ -35,39 +36,66 @@ export default function LoginScreen({ onSuccess }) {
   }
 
   return (
-    <section className="grid grid-cols-[1fr_1fr] min-h-[calc(100vh-76px)] max600:grid-cols-[1fr]">
-      {/* Arte: circulo de fondo (::before) y tres aros. */}
-      <div className="flex items-center justify-center bg-mint min-h-[620px] overflow-hidden relative before:content-[''] before:absolute before:border-2 before:border-solid before:border-[rgba(23,63,54,.28)] before:rounded-[50%] before:h-[70%] before:w-[70%] before:-right-[14%] before:top-[12%] max600:min-h-[300px]" aria-hidden="true">
-        <span className="text-ink text-[length:clamp(46px,6vw,84px)] font-bold tracking-[-.055em] leading-[.94] relative z-1">Vuelve a<br /><em className="text-purple font-display">conectar.</em></span>
-        <i className={`${LOGIN_RING} left-[12%] top-[15%]`} /><i className={`${LOGIN_RING} bottom-[13%] left-[24%]`} /><i className={`${LOGIN_RING} bottom-[20%] right-[12%]`} />
+    <section className="relative flex min-h-svh items-center justify-center overflow-hidden bg-paper px-6 pt-[112px] pb-[88px] max600:pt-[92px] max600:pb-16">
+      <a className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-[999px] py-2.5 px-4 text-[14px] font-semibold text-ink transition-colors duration-200 hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink max600:left-3 max600:top-4" href="#inicio">
+        <span aria-hidden="true">←</span> Volver al inicio
+      </a>
+
+      {/* Arte: tres ondas concentricas alrededor del formulario (el rio que se abre) y los tres
+          puntos de la marca -- la confluencia -- flotando sobre ellas (en movil, dos). Decorativo, sin eventos. */}
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <span className={`${WAVE} size-[640px] border-[rgba(23,63,54,.16)] max600:size-[420px]`} />
+        <span className={`${WAVE} size-[920px] border-[rgba(23,63,54,.10)] [animation-delay:-3s] max600:size-[580px]`} />
+        <span className={`${WAVE} size-[1200px] border-[rgba(23,63,54,.06)] [animation-delay:-6s] max600:size-[760px]`} />
+        <span className={`${ORBIT} size-[920px] rotate-[58deg] max600:size-[760px] max600:rotate-[25deg]`}>
+          <i className={`${DOT} size-[150px] bg-mint opacity-60 max600:size-[84px]`} />
+        </span>
+        <span className={`${ORBIT} size-[640px] rotate-[-104deg] max600:hidden`}>
+          <i className={`${DOT} size-[96px] border-[3px] border-ink opacity-80 [animation-delay:-4s]`} />
+        </span>
+        <span className={`${ORBIT} size-[1200px] rotate-[-62deg] max600:size-[760px] max600:rotate-[-24deg]`}>
+          <i className={`${DOT} size-[18px] bg-purple [animation-delay:-7s] max600:size-[14px]`} />
+        </span>
       </div>
-      <div className="self-center max-w-[480px] py-[70px] px-[8vw] w-full max600:py-[55px] max600:px-6">
-        <p className={EYEBROW}>Bienvenido a TEJIDO</p>
-        <h1 className="font-sans tracking-[-.055em] text-[length:clamp(42px,5vw,72px)] leading-[.98] my-[18px] mx-0">Tu territorio<br />te espera.</h1>
-        <p className="text-muted mb-[30px]">Ingresa para guardar, publicar y participar.</p>
-        <form className="grid gap-[18px]" onSubmit={handleSubmit}>
-          <label className={LOGIN_LABEL}>Correo<input className={LOGIN_INPUT} type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
-          <label className={LOGIN_LABEL}>Contraseña<input className={LOGIN_INPUT} type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-          {error && <p className="text-[#b3442b] text-[13px] m-0" role="alert">{error}</p>}
-          {/* Sin estilo de boton propio: `btn btn-primary` nunca tuvieron reglas CSS, asi que se ve como boton nativo. */}
-          <button className="border-0 mt-2.5 w-full disabled:cursor-wait disabled:opacity-65" type="submit" disabled={loading}>{loading ? 'Ingresando...' : 'Ingresar'}</button>
+
+      <div className="relative z-10 flex w-full max-w-[420px] flex-col items-center text-center">
+        <Logo href={null} />
+        <p className={`${EYEBROW} mt-[34px]`}>Bienvenido a TEJIDO</p>
+        <h1 className="m-0 font-sans text-[length:clamp(44px,6vw,72px)] font-bold leading-[.98] tracking-[-.055em]">
+          Tu territorio<br /><em className="font-display italic font-bold text-purple">te espera.</em>
+        </h1>
+        <p className="mt-5 mb-10 text-[16px] leading-[1.5] text-muted">Ingresa para guardar, publicar y participar.</p>
+
+        <form className="grid w-full gap-6" onSubmit={handleSubmit}>
+          <label className={LOGIN_LABEL}>Correo<input className={LOGIN_INPUT} type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+          <label className={LOGIN_LABEL}>Contraseña<input className={LOGIN_INPUT} type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+          {error && <p className="m-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{error}</p>}
+          <button className="mt-2 w-full cursor-pointer rounded-[999px] border-0 bg-ink py-4 px-6 text-[16px] font-bold text-white transition-colors duration-200 hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink disabled:cursor-wait disabled:opacity-65" type="submit" disabled={loading}>{loading ? 'Ingresando...' : 'Ingresar'}</button>
         </form>
-        <div className="border-t border-t-line grid gap-[9px] mt-[35px] pt-[22px]">
-          <b className="text-[12px]">Cuentas de demostración</b>
-          <small className="text-muted text-[11px]">Selecciona una cuenta para probar cada rol.</small>
-          {Object.entries(demoAccounts).map(([role, account]) => (
-            <button key={role} className="bg-cream border-0 rounded-[12px] cursor-pointer grid gap-0.5 py-[11px] px-3.5 text-left hover:bg-[#ead7ac]" type="button" onClick={() => { setEmail(account.email); setPassword(account.password); }}>
-              <strong className="text-[12px]">{role === 'admin' ? 'Administrador' : role === 'gestor' ? 'Gestor' : 'Ciudadano'}</strong>
-              <span className="text-muted text-[10px]">{account.email}</span>
-            </button>
-          ))}
+
+        <div className="mt-12 w-full border-t border-t-line pt-7">
+          <p className="m-0 text-[13px] font-bold">Cuentas de demostración</p>
+          <p className="mt-1.5 mb-4 text-[12px] text-muted">Selecciona una cuenta para probar cada rol.</p>
+          <div className="grid grid-cols-[1fr_1fr_1fr] gap-2 max600:grid-cols-[1fr]">
+            {Object.entries(demoAccounts).map(([role, account]) => (
+              <button key={role} className="grid cursor-pointer gap-0.5 rounded-[14px] border border-line bg-transparent py-2.5 px-2 text-center transition-colors duration-200 hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink" type="button" onClick={() => { setEmail(account.email); setPassword(account.password); }}>
+                <strong className="text-[12px]">{role === 'admin' ? 'Administrador' : role === 'gestor' ? 'Gestor' : 'Ciudadano'}</strong>
+                <span className="truncate text-[10px] text-muted">{account.email}</span>
+              </button>
+            ))}
+          </div>
         </div>
-        <a className="text-muted inline-block text-[12px] mt-7 underline" href="#inicio">Volver al inicio</a>
       </div>
     </section>
   );
 }
 
-const LOGIN_RING = 'border-[3px] border-solid border-ink rounded-[50%] h-[100px] w-[100px] absolute max600:h-[60px] max600:w-[60px]';
-const LOGIN_LABEL = 'grid text-[12px] font-bold gap-[7px]';
-const LOGIN_INPUT = 'bg-transparent border-0 border-b border-b-line outline-0 py-3 px-0 focus:border-orange';
+// Onda: circulo centrado en la pantalla que respira despacio (keyframes en art.css).
+const WAVE = 'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border motion-safe:animate-[loginBreath_9s_ease-in-out_infinite]';
+// Orbita: caja del tamano de una onda, girada para ubicar su punto en un angulo fijo del borde.
+const ORBIT = 'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2';
+// Punto sobre el borde superior de su orbita, con una flotacion leve.
+const DOT = 'absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full motion-safe:animate-[loginFloat_10s_ease-in-out_infinite]';
+const LOGIN_LABEL = 'grid gap-2 text-[11px] font-extrabold uppercase tracking-[.18em] text-muted';
+// text-[17px]: 16 px o mas evita el zoom automatico de iOS al enfocar.
+const LOGIN_INPUT = 'rounded-t-[10px] border-0 border-b-2 border-b-[rgba(23,63,54,.22)] bg-transparent py-3 px-3 text-center text-[17px] font-medium normal-case tracking-normal text-ink outline-none transition-colors duration-200 hover:border-b-[rgba(23,63,54,.4)] focus:border-b-orange focus:bg-[rgba(117,183,155,.14)]';

@@ -23,15 +23,6 @@ export const KIND_LABELS = {
   INICIATIVA: 'Iniciativa',
 };
 
-// ─── Íconos por tipo de publicación ────────────────────────
-export const KIND_ICONS = {
-  EVENTO: '\uD83C\uDFB6',
-  HISTORIA: '\uD83D\uDCD6',
-  TALENTO: '\uD83C\uDFA4',
-  OPORTUNIDAD: '\uD83C\uDF1F',
-  INICIATIVA: '\uD83D\uDCD1',
-};
-
 // ─── Municipios del Bajo Cauca ─────────────────────────────
 export const MUNICIPALITIES = [
   { id: 'caucasia', name: 'Caucasia', emoji: '\uD83C\uDFF0', color: '#d4a843', theme: 'Capital' },

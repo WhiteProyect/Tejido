@@ -7,14 +7,15 @@ import AgendaScreen from './screens/AgendaScreen.jsx';
 import ArtistScreen from './screens/ArtistScreen.jsx';
 import ArtistDashboard from './screens/ArtistDashboard.jsx';
 import ArtistMediaKit from './screens/ArtistMediaKit.jsx';
-import CollaboratorScreen from './screens/CollaboratorScreen.jsx';
 import ExploreScreen from './screens/ExploreScreen.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import MapScreen from './screens/MapScreen.jsx';
 import MoneystackScreen from './screens/MoneystackScreen.jsx';
 import LoginScreen from './screens/LoginScreen.jsx';
+import NosotrosScreen from './screens/NosotrosScreen.jsx';
 import NotFoundScreen from './screens/NotFoundScreen.jsx';
 import OpportunitiesScreen from './screens/OpportunitiesScreen.jsx';
+import ProfileScreen from './screens/ProfileScreen.jsx';
 import SavedScreen from './screens/SavedScreen.jsx';
 import TalentScreen from './screens/TalentScreen.jsx';
 
@@ -43,6 +44,12 @@ function getRoute() {
     return { screen: 'artist', slug };
   }
 
+  // La pantalla publica Colaborar se retiro (2026-09-22): los enlaces viejos van a Nosotros.
+  if (hash === 'colaborador') {
+    window.history.replaceState(null, '', '#nosotros');
+    return { screen: 'nosotros', slug: null };
+  }
+
   return { screen: hash || 'inicio', slug: null };
 }
 
@@ -54,6 +61,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [user, setUser] = useState(null);
+  // true cuando ya se sabe si hay sesion (sin token, de inmediato; con token, tras /api/me).
+  // Evita mandar a login desde #perfil mientras la sesion todavia se esta validando.
+  const [authReady, setAuthReady] = useState(() => !localStorage.getItem('tejido_token'));
 
   useEffect(() => {
     const handleChange = () => {
@@ -70,7 +80,8 @@ export default function App() {
         .then(data => {
           if (data.user) setUser(data.user);
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setAuthReady(true));
     }
 
     getJson('/api/publications')
@@ -92,6 +103,16 @@ export default function App() {
     }
   }
 
+  // #perfil sin sesion: a Login, volviendo al perfil despues de entrar. Se mira tambien el hash
+  // real: al cerrar sesion desde el perfil, handleLogout ya lo cambio a #inicio antes de que
+  // llegue el hashchange, y no hay que mandar a login.
+  useEffect(() => {
+    if (route.screen === 'perfil' && window.location.hash === '#perfil' && authReady && !user) {
+      sessionStorage.setItem('tejido_return_to', 'perfil');
+      window.location.replace('#login');
+    }
+  }, [route.screen, authReady, user]);
+
   function handleLogout() {
     localStorage.removeItem('tejido_token');
     setUser(null);
@@ -99,6 +120,8 @@ export default function App() {
   }
 
   const isArtistRoute = route.screen === 'artist' || route.screen === 'media-kit' || route.screen === 'dashboard';
+  // Login es una pantalla enfocada: sin header, footer ni Hilo (trae su propio "Volver al inicio").
+  const isLoginRoute = route.screen === 'login';
 
   const events = publications.filter((publication) => publication.kind === 'EVENTO');
   const opportunities = publications.filter((publication) => publication.kind === 'OPORTUNIDAD');
@@ -133,8 +156,12 @@ export default function App() {
     case 'guardadas':
       content = <SavedScreen />;
       break;
-    case 'colaborador':
-      content = <CollaboratorScreen user={user} />;
+    case 'nosotros':
+      content = <NosotrosScreen />;
+      break;
+    case 'perfil':
+      // Mientras se valida la sesion (o se redirige a login) se reserva el espacio.
+      content = user ? <ProfileScreen user={user} onLogout={handleLogout} /> : <section className="min-h-[62vh]" aria-busy="true" />;
       break;
     case 'moneystack':
       content = <MoneystackScreen />;
@@ -152,7 +179,7 @@ export default function App() {
     <>
       {!isArtistRoute && (
         <>
-          <SiteHeader user={user} isMoneystack={route.screen === 'moneystack'} onLogin={() => { sessionStorage.setItem('tejido_return_to', getRoute().screen); window.location.hash = 'login'; }} onLogout={handleLogout} />
+          {!isLoginRoute && <SiteHeader user={user} isMoneystack={route.screen === 'moneystack'} onLogin={() => { sessionStorage.setItem('tejido_return_to', getRoute().screen); window.location.hash = 'login'; }} onLogout={handleLogout} />}
           <main>
             <AnimatePresence mode="wait">
               <motion.div
@@ -166,9 +193,9 @@ export default function App() {
               </motion.div>
             </AnimatePresence>
           </main>
-          <Footer />
-          {/* En inicio, HeroInteractive es la guía principal de Hilo; el asistente flotante acompaña las demás vistas. */}
-          {route.screen !== 'inicio' && <HiloAssistant publications={publications} />}
+          {!isLoginRoute && <Footer />}
+          {/* En inicio, HeroInteractive es la guía principal de Hilo; el asistente flotante acompaña las demás vistas (menos login). */}
+          {route.screen !== 'inicio' && !isLoginRoute && <HiloAssistant publications={publications} />}
         </>
       )}
       {isArtistRoute && content}

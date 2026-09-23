@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   MUNICIPALITIES_DATA,
   MUNICIPALITY_LOCATION_MAP,
   MUNICIPALITY_SVG_POSITIONS,
   normalizeText
 } from '../utils/constants.js';
+import Icon from '../components/Icon.jsx';
 import { BADGE, SECTION_TITLE } from '../components/uiStyles.js';
 
 // La parte HTML usa utilidades. El arte SVG del mapa (region, rutas, rio, particulas,
@@ -35,7 +36,11 @@ export default function HomeMapSection({ publications = [] }) {
   const mapRef = useRef(null);
   const [selectedMunicipality, setSelectedMunicipality] = useState(null);
   const [hoveredMunicipality, setHoveredMunicipality] = useState(null);
-  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+  // Ancla del punto (relativa al contenedor exterior y al viewport) y colocacion final de la
+  // tarjeta, que se calcula midiendo la tarjeta real (ver useLayoutEffect).
+  const [hoverAnchor, setHoverAnchor] = useState(null);
+  const [hoverPlacement, setHoverPlacement] = useState({ left: 0, top: 0, below: false });
+  const cardRef = useRef(null);
 
   const pubsByMunicipality = groupPubsByMunicipality(publications);
 
@@ -49,9 +54,12 @@ export default function HomeMapSection({ publications = [] }) {
         setHoveredMunicipality(MUNICIPALITIES_DATA[name]);
         const rect = muni.getBoundingClientRect();
         const containerRect = mapRef.current.getBoundingClientRect();
-        setHoverPos({
+        setHoverAnchor({
           x: rect.left - containerRect.left + rect.width / 2,
-          y: rect.top - containerRect.top - 10
+          top: rect.top - containerRect.top - 10,
+          bottom: rect.bottom - containerRect.top + 10,
+          viewportTop: rect.top,
+          containerLeft: containerRect.left,
         });
       });
 
@@ -68,6 +76,24 @@ export default function HomeMapSection({ publications = [] }) {
     });
   }, []);
 
+  // Coloca la tarjeta antes del primer pintado: arriba del punto (como siempre) si cabe bajo
+  // el header fijo; si no, debajo. En horizontal se acota al viewport para no salirse por
+  // los lados en los puntos de borde ni en movil.
+  useLayoutEffect(() => {
+    if (!hoveredMunicipality || !hoverAnchor || !cardRef.current) return;
+    const { offsetWidth: width, offsetHeight: height } = cardRef.current;
+    const header = document.querySelector('header');
+    const topLimit = Math.max(0, header ? header.getBoundingClientRect().bottom : 0) + 8;
+    const below = hoverAnchor.viewportTop - 10 - height < topLimit;
+    const minLeft = width / 2 + 8 - hoverAnchor.containerLeft;
+    const maxLeft = window.innerWidth - width / 2 - 8 - hoverAnchor.containerLeft;
+    setHoverPlacement({
+      left: Math.min(Math.max(hoverAnchor.x, minLeft), maxLeft),
+      top: below ? hoverAnchor.bottom : hoverAnchor.top,
+      below,
+    });
+  }, [hoveredMunicipality, hoverAnchor]);
+
   return (
     <section className="py-20 px-[7vw] bg-[radial-gradient(ellipse_60%_40%_at_30%_60%,rgba(29,143,163,0.04)_0%,transparent_100%),radial-gradient(ellipse_50%_50%_at_70%_30%,rgba(212,168,67,0.03)_0%,transparent_100%),linear-gradient(180deg,transparent_0%,rgba(29,143,163,0.02)_50%,transparent_100%)] max768:py-[50px] max768:px-[5vw]">
       <div className="text-center mb-12 max480:mb-8">
@@ -76,7 +102,11 @@ export default function HomeMapSection({ publications = [] }) {
         <p className="text-[15px] text-muted mt-3 mx-0 mb-0 font-medium">Un recorrido por el Bajo Cauca Antioqueño</p>
       </div>
 
-      <div className="relative overflow-hidden max-w-[900px] my-0 mx-auto pt-10 px-12 pb-8 bg-[linear-gradient(160deg,#fefefe_0%,#f8f5ee_40%,#f0efe8_100%)] rounded-[28px] [box-shadow:0_24px_80px_rgba(18,60,52,0.07),0_0_0_1px_rgba(18,60,52,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_40%_50%,rgba(29,143,163,0.03)_0%,transparent_70%)] before:pointer-events-none max768:pt-6 max768:px-5 max768:pb-5 max768:rounded-[22px]" ref={mapRef}>
+      {/* Dos capas: el contenedor exterior (sin recorte, z-1 para quedar sobre la lista de
+          municipios y bajo el header z-5) es la capa de interaccion donde vive la tarjeta; el
+          marco interior conserva overflow-hidden y las esquinas del arte. */}
+      <div className="relative z-1 max-w-[1020px] my-0 mx-auto" ref={mapRef}>
+      <div className="relative overflow-hidden pt-10 px-12 pb-8 bg-[linear-gradient(160deg,#fefefe_0%,#f8f5ee_40%,#f0efe8_100%)] rounded-[28px] [box-shadow:0_24px_80px_rgba(18,60,52,0.07),0_0_0_1px_rgba(18,60,52,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] before:content-[''] before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_at_40%_50%,rgba(29,143,163,0.03)_0%,transparent_70%)] before:pointer-events-none max768:pt-6 max768:px-5 max768:pb-5 max768:rounded-[22px]">
         <svg className="w-full h-auto block" viewBox="0 0 800 560" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <radialGradient id="geoGlow" cx="50%" cy="50%" r="50%">
@@ -222,9 +252,10 @@ export default function HomeMapSection({ publications = [] }) {
 
           <text x="400" y="530" className="geo-map-title">BAJO CAUCA ANTIOQUEÑO</text>
         </svg>
+      </div>
 
         {hoveredMunicipality && (
-          <div className="absolute [transform:translate(-50%,-100%)] bg-white rounded-[18px] overflow-hidden [box-shadow:0_16px_48px_rgba(18,60,52,0.14),0_0_0_1px_rgba(18,60,52,0.06)] w-[260px] z-20 pointer-events-none animate-[geoHoverIn_0.25s_cubic-bezier(.34,1.56,.64,1)] max768:w-[220px]" style={{ left: hoverPos.x, top: hoverPos.y }}>
+          <div ref={cardRef} className={`absolute bg-white rounded-[18px] overflow-hidden [box-shadow:0_16px_48px_rgba(18,60,52,0.14),0_0_0_1px_rgba(18,60,52,0.06)] w-[260px] z-20 pointer-events-none max768:w-[220px] ${hoverPlacement.below ? '[transform:translate(-50%,0)] animate-[geoHoverInBelow_0.25s_cubic-bezier(.34,1.56,.64,1)]' : '[transform:translate(-50%,-100%)] animate-[geoHoverIn_0.25s_cubic-bezier(.34,1.56,.64,1)]'}`} style={{ left: hoverPlacement.left, top: hoverPlacement.top }}>
             <div className="relative h-[110px] bg-cover bg-center bg-cream after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-10 after:bg-[linear-gradient(transparent,white)]" style={{backgroundImage: `url(${hoveredMunicipality.image})`}}></div>
             <div className="pt-4 px-[18px] pb-[18px]">
               <span className={`${PILL} text-[9px] tracking-[0.12em] text-[#1d8fa3] bg-[rgba(29,143,163,0.08)] py-1 px-2.5 mb-2`}>Municipio</span>
@@ -263,9 +294,7 @@ export default function HomeMapSection({ publications = [] }) {
               <h4 className="text-[14px] font-bold m-0 text-ink">{muni.name}</h4>
               <p className="text-[11px] text-muted mt-0.5 mx-0 mb-0 font-medium">{muni.title}</p>
             </div>
-            <svg className="w-[18px] h-[18px] text-muted shrink-0 opacity-0 [transform:translateX(-4px)] transition-all duration-300 ease-[ease] group-hover:opacity-100 group-hover:[transform:translateX(0)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
+            <Icon name="arrow-right" className="size-[18px] text-ink opacity-0 transition-opacity duration-300 ease-[ease] group-hover:opacity-100 group-focus-visible:opacity-100" />
           </button>
         ))}
       </div>
@@ -273,11 +302,8 @@ export default function HomeMapSection({ publications = [] }) {
       {selectedMunicipality && (
         <div className="fixed top-0 left-0 right-0 bottom-0 bg-[rgba(0,0,0,0.7)] backdrop-blur-[8px] flex items-center justify-center z-1000 p-5 animate-[fadeIn_0.3s_ease]" onClick={() => setSelectedMunicipality(null)}>
           <div className="bg-white rounded-[24px] max-w-[500px] w-full overflow-hidden [box-shadow:0_32px_80px_rgba(0,0,0,0.3)] animate-[slideUp_0.4s_cubic-bezier(0.175,0.885,0.32,1.275)] relative" onClick={(e) => e.stopPropagation()}>
-            <button className="absolute top-4 right-4 w-9 h-9 bg-[rgba(255,255,255,0.9)] border-none rounded-[50%] cursor-pointer flex items-center justify-center z-10 transition-all duration-300 ease-[ease] hover:bg-white hover:[transform:rotate(90deg)]" onClick={() => setSelectedMunicipality(null)}>
-              <svg className="w-5 h-5 text-ink" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
+            <button className="absolute top-4 right-4 w-9 h-9 bg-[rgba(255,255,255,0.9)] border-none rounded-[50%] cursor-pointer flex items-center justify-center z-10 transition-all duration-300 ease-[ease] hover:bg-white" onClick={() => setSelectedMunicipality(null)} aria-label="Cerrar">
+              <Icon name="close" className="size-5 text-ink" />
             </button>
             <div className="h-[200px] bg-cover bg-center bg-cream" style={{backgroundImage: `url(${selectedMunicipality.image})`}}></div>
             <div className="p-7">
