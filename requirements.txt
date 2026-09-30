@@ -7,6 +7,8 @@ pydantic==2.13.5
 pydantic-settings==2.15.0
 psycopg[binary]==3.3.5
 slowapi==0.1.10
+# Correo transaccional (invitaciones de gestores/admins): backend/service/services/email.py
+resend==2.48.0
 
 # Dev / tests
 pytest==9.1.1

@@ -85,6 +85,24 @@ class Organization(Base):
     description: Mapped[str | None] = mapped_column(Text)
     contact: Mapped[str | None] = mapped_column(String)
     active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    # Rama cultural del gestor (valores en backend/service/schemas/organizations.py::ALLOWED_BRANCHES).
+    # Nullable: la organizacion sembrada "Colectivo Rio Vivo" no tiene el dato y no se inventa.
+    branch: Mapped[str | None] = mapped_column(String)
+
+
+class InviteToken(Base):
+    """Invitacion para que un usuario creado por un admin defina su propia contrasena.
+
+    Un usuario puede tener varios tokens historicos; al crear uno nuevo se borran los
+    anteriores no usados (ver services/invites.py::create_invite)."""
+    __tablename__ = "invite_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class Publication(Base):

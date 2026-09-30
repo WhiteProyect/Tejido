@@ -38,5 +38,13 @@ class Settings(BaseSettings):
     # query colgado o un problema de red con Neon bloqueando un worker).
     request_timeout_seconds: float = 30.0
 
+    # Correo (Resend) para las invitaciones de cuentas. Con defaults para que el
+    # backend arranque sin ellos: si falta la API key, el envio falla, se loguea y el
+    # endpoint devuelve igual el invite_link para compartirlo a mano.
+    resend_api_key: str = ""
+    email_from: str = "TEJIDO <notificaciones@tejido.co>"
+    # Base del link de invitacion: {frontend_base_url}/#invitacion/{token}
+    frontend_base_url: str = "http://localhost:5173"
+
 
 settings = Settings()

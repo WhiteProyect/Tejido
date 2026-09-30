@@ -31,6 +31,7 @@
    ORDEN: de la mas ancha a la mas angosta. Tailwind emite las variantes en el orden en
    que se registran, asi la mas angosta gana cuando dos aplican a la misma propiedad
    (igual que en el legado, donde el @media mas especifico iba despues). */
+@custom-variant max1200 (@media (max-width: 1200px)); /* grid de 2 columnas de Explorar */
 @custom-variant max1024 (@media (max-width: 1024px)); /* artista destacado del inicio */
 @custom-variant max900 (@media (max-width: 900px));   /* pantalla de mapa */
 @custom-variant max800 (@media (max-width: 800px));   /* nav del header y secciones */

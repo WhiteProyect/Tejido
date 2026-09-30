@@ -9,12 +9,18 @@ from backend.service.core.rate_limit import is_login_locked, register_login_fail
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
 from backend.service.services.auth import login_user, logout_user
+from backend.service.services.invites import accept_invite
 
 router = APIRouter()
 
 
 class LoginInput(BaseModel):
     email: Optional[str] = None
+    password: str = ""
+
+
+class AcceptInviteInput(BaseModel):
+    token: str = ""
     password: str = ""
 
 
@@ -31,6 +37,14 @@ def login(payload: LoginInput, request: Request, db: Session = Depends(get_db)):
         register_login_failure(client_ip, email)
         raise AppError(401, "INVALID_CREDENTIALS", "Correo o contrasena incorrectos")
     token, user = result
+    return {"token": token, "user": user}
+
+
+@router.post("/api/auth/accept-invite")
+def accept_invite_route(payload: AcceptInviteInput, db: Session = Depends(get_db)):
+    """Publico: define la contrasena desde el link de invitacion y deja la sesion abierta
+    (mismo shape de respuesta que /api/auth/login)."""
+    token, user = accept_invite(db, payload.token, payload.password)
     return {"token": token, "user": user}
 
 

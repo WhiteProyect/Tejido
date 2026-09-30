@@ -8,7 +8,7 @@ Seed idempotente para un Postgres nuevo (dev/CI/tests).
 """
 from datetime import date, datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ from backend.service.models.tables import (
     ArtistTimeline,
     Category,
     Event,
+    InviteToken,
     Opportunity,
     Organization,
     Publication,
@@ -65,10 +66,43 @@ def seed_database(db: Session):
         for uid, name, email, password in demo_users
     ], ["id"])
 
+    # Admins reales (ids 4-6, a continuacion de los demo 1-3, que no se tocan). Se crean
+    # inactivos, con una contrasena aleatoria que nadie conoce, y cada uno con una
+    # invitacion de 30 dias para definir la suya (/#invitacion/<token>).
+    # El seed NUNCA manda correos: corre en cada pytest. Los links se leen con
+    # scripts/links_invitacion_admins.py y se envian a mano la primera vez.
+    from backend.service.services.invites import create_invite, unusable_password_hash
+
+    real_admins = [
+        (4, "Camilo", "bryan.giraldo.0906@gmail.com"),
+        (5, "Santi", "moneystack999@gmail.com"),
+        (6, "Daniel", "danielopg1008@gmail.com"),
+    ]
+    _upsert_ignore(db, User, [
+        {
+            "id": uid, "role_id": 1, "name": name, "email": email,
+            "password_hash": unusable_password_hash(), "active": False, "created_at": now_utc(),
+        }
+        for uid, name, email in real_admins
+    ], ["id"])
+    db.flush()
+    for uid, _, email in real_admins:
+        user = db.get(User, uid)
+        # Solo si la fila es la de este admin, sigue sin activar y no tiene ya una invitacion
+        # vigente: re-ejecutar el seed no invalida links que ya se hayan enviado.
+        if user is None or user.email != email or user.active:
+            continue
+        has_open_invite = db.execute(
+            select(InviteToken.id).where(InviteToken.user_id == uid, InviteToken.used_at.is_(None),
+                                         InviteToken.expires_at > now_utc())
+        ).first()
+        if not has_open_invite:
+            create_invite(db, uid, days=30)
+
     categories = [
         ("Historias", "HISTORIA", "#805AD5"), ("Eventos", "EVENTO", "#F59E0B"),
         ("Oportunidades", "OPORTUNIDAD", "#16A085"), ("Talento", "TALENTO", "#EC4899"),
-        ("Iniciativas", "INICIATIVA", "#3B82F6"),
+        ("Iniciativas", "INICIATIVA", "#3B82F6"), ("Lugares", "LUGAR", "#1D8FA3"),
     ]
     _upsert_ignore(db, Category, [
         {"name": n, "type": t, "color": c} for n, t, c in categories
@@ -301,6 +335,16 @@ def seed_database(db: Session):
             image="/assets/artistas/dj-apolo/perfil.jpg", hero_image="/assets/artistas/dj-apolo/perfil.jpg",
             genre="DJ / Electronica", city="Caucasia", region="Bajo Cauca, Antioquia",
             featured=False, created_at=ts, updated_at=ts,
+        ))
+
+    # Los inserts con id explicito (users 1-6, organizations 1) no avanzan la secuencia
+    # de Postgres: sin esto, el primer alta desde la app (p. ej. POST /api/admin/gestores)
+    # tomaria id 1 y chocaria con una fila existente.
+    db.flush()
+    for table in ("users", "organizations"):
+        db.execute(text(
+            f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), "
+            f"GREATEST((SELECT COALESCE(MAX(id), 1) FROM {table}), 1))"
         ))
 
     db.commit()

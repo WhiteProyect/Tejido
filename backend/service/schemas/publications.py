@@ -13,7 +13,7 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
-ALLOWED_KINDS = {"HISTORIA", "EVENTO", "OPORTUNIDAD", "TALENTO", "INICIATIVA"}
+ALLOWED_KINDS = {"HISTORIA", "EVENTO", "OPORTUNIDAD", "TALENTO", "INICIATIVA", "LUGAR"}
 
 
 class PublicationInput(BaseModel):

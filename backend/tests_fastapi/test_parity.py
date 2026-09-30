@@ -105,8 +105,8 @@ def test_categories(client):
     resp = hit(client, "publications", "categories", "GET", "/api/categories")
     assert resp.status_code == 200
     data = resp.json()
-    assert len(data) == 5
-    assert {c["type"] for c in data} == {"HISTORIA", "EVENTO", "OPORTUNIDAD", "TALENTO", "INICIATIVA"}
+    assert len(data) == 6
+    assert {c["type"] for c in data} == {"HISTORIA", "EVENTO", "OPORTUNIDAD", "TALENTO", "INICIATIVA", "LUGAR"}
 
 
 def test_publications_public_list_and_detail(client):

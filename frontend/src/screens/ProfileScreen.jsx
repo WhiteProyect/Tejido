@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import Icon from '../components/Icon.jsx';
+import GestoresPanel from '../components/admin/GestoresPanel.jsx';
 import { EYEBROW, SECTION } from '../components/uiStyles.js';
 import { formatDateShort } from '../utils/dateUtils.js';
 import { KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
@@ -9,7 +10,8 @@ import { getPassportProgress } from '../utils/passportUtils.js';
 
 // Perfil privado: UNA pantalla con cabecera comun y un modulo por rol (user.role).
 // Cada modulo solo usa endpoints existentes; no hay datos simulados:
-// - ADMIN: GET /api/admin/stats y GET /api/admin/suggestions (mensajes de Nosotros).
+// - ADMIN: GET /api/admin/stats, GET /api/admin/suggestions (mensajes de Nosotros) y la
+//   administracion de gestores (components/admin/GestoresPanel.jsx, /api/admin/gestores).
 // - GESTOR: GET /api/publications?mine=1 y GET /api/artists (artista asociado por user_id).
 // - CIUDADANO: GET /api/publications con sesion (campo `favorite`) y el pasaporte local.
 
@@ -112,6 +114,7 @@ function AdminModule() {
           </dl>
         </StateNote>
       </section>
+      <GestoresPanel />
       <section className={PANEL} aria-labelledby="admin-mensajes">
         <h2 id="admin-mensajes" className={`${H2} flex items-center gap-3`}><Icon name="inbox" className="size-6 text-river" /> Mensajes recientes</h2>
         <p className="mt-2 mb-0 text-[14px] text-muted">Lo que llega desde el formulario de Nosotros.</p>

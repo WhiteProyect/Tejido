@@ -6,6 +6,7 @@ import { getMunicipalityFromLocation, stampMunicipality } from '../utils/passpor
 
 const kinds = [
   ['TODOS', 'Todo'],
+  ['LUGAR', 'Lugares'],
   ['HISTORIA', 'Historias'],
   ['EVENTO', 'Eventos'],
   ['OPORTUNIDAD', 'Oportunidades'],
@@ -23,7 +24,7 @@ const CARD_MOTION = {
   transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1], layout: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
 };
 
-export default function ExploreSection({ publications, activeKind, onKindChange, search, onSearchChange, loading, error }) {
+export default function ExploreSection({ publications, activeKind, onKindChange, search, onSearchChange, loading, error, user }) {
   const reduceMotion = useReducedMotion();
   const filtered = publications.filter((publication) => {
     const matchesKind = activeKind === 'TODOS' || publication.kind === activeKind;
@@ -64,11 +65,13 @@ export default function ExploreSection({ publications, activeKind, onKindChange,
       {loading && <p className={STATUS}>Cargando publicaciones...</p>}
       {error && <p className={STATUS_ERROR}>{error}. Verifica que el backend Python esté activo en el puerto 8765.</p>}
       {!loading && !error && (
-        <div className="grid gap-[22px] grid-cols-[repeat(3,1fr)] max800:grid-cols-[1fr]">
+        // 2 columnas desde 1201 px. Por debajo, 1: con la tarjeta horizontal (imagen + texto),
+        // en 2 columnas el texto necesita ~270 px, y a 1025 px ya no cabia el pie de la tarjeta.
+        <div className="grid grid-cols-2 gap-5 max1200:grid-cols-1">
           <AnimatePresence initial={false} mode="popLayout">
             {filtered.map((publication) => (
               <motion.div key={publication.id} layout={!reduceMotion} {...(reduceMotion ? {} : CARD_MOTION)}>
-                <PublicationCard publication={publication} />
+                <PublicationCard publication={publication} user={user} />
               </motion.div>
             ))}
           </AnimatePresence>

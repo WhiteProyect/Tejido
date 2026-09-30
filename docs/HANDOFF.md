@@ -486,3 +486,26 @@ borrar `main.css` y los `!` que sobran).
   Footer: "Acerca de TEJIDO" (#inicio) -> "Nosotros" (#nosotros).
 - Pendiente/honesto: no hay UI para guardar favoritos (el endpoint existe), así que los
   guardados reales hoy están vacíos. El bundle pasó 500 kB (aviso de Vite, no error).
+
+## 2026-09-29 — Registro por invitación: gestores y admins reales
+
+- **Migración** `e3e56e002800` (aplicada en Neon): tabla `invite_tokens` y columna
+  nullable `organizations.branch`. El autogenerate detectó solo esos dos cambios.
+- **Backend:** `schemas/organizations.py` (`ALLOWED_BRANCHES`), `services/email.py`
+  (`send_invite_email`, Resend), `services/invites.py` (`create_invite`, `accept_invite`,
+  contraseña mínima de 8), `POST /api/auth/accept-invite` y, solo ADMIN, CRUD de
+  `/api/admin/gestores` más su reenvío de invitación. Si el correo falla, el alta no
+  falla: devuelve `invite_link` y `email_sent: false`.
+- **Config nueva** (`.env`): `RESEND_API_KEY`, `EMAIL_FROM`, `FRONTEND_BASE_URL`.
+- **Seed:** admins reales 4 Camilo, 5 Santi, 6 Daniel (ADMIN, inactivos, invitación de
+  30 días). No envía correos. Al final ajusta las secuencias de `users` y
+  `organizations` (antes el primer alta desde la app habría chocado con el id 1).
+- **Frontend:** `AcceptInviteScreen` (`#invitacion/<token>`, sin header/footer),
+  `components/admin/GestoresPanel.jsx` dentro de `AdminModule`, `BRANCH_LABELS` y
+  `CULTURAL_BRANCHES` en `utils/constants.js`.
+- **Tests:** `backend/tests_fastapi/test_gestores_invites.py` (12). Suite: 48 pasan.
+- **Integración verificada** con un backend aislado en un schema temporal (borrado):
+  crear, link, reenviar, activar, perfil de gestor, desactivar/reactivar, y activación
+  de un admin real. `public` en Neon no recibió datos de prueba.
+- **Pendiente del dueño:** correr el seed contra Neon, leer los links con
+  `py scripts/links_invitacion_admins.py` y poner `RESEND_API_KEY` en `.env`.

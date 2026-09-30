@@ -122,7 +122,7 @@ def _sync_publication_detail(db: Session, publication_id: int, item: Publication
 
 def create_publication(db: Session, user: dict, item: PublicationInput) -> int:
     validate_category(db, item.category_id, item.kind)
-    image = item.image or "linear-gradient(135deg,#2F6B59,#F6C453)"
+    image = item.image
     status = "PUBLISHED" if user["role"] == "ADMIN" and item.publish else "DRAFT"
     ts = now_utc()
     publication = Publication(

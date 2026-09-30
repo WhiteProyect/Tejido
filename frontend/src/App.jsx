@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Footer from './components/Footer.jsx';
 import HiloAssistant from './components/HiloAssistant.jsx';
 import SiteHeader from './components/SiteHeader.jsx';
+import AcceptInviteScreen from './screens/AcceptInviteScreen.jsx';
 import AgendaScreen from './screens/AgendaScreen.jsx';
 import ArtistScreen from './screens/ArtistScreen.jsx';
 import ArtistDashboard from './screens/ArtistDashboard.jsx';
@@ -42,6 +43,11 @@ function getRoute() {
     if (hash.includes('/media-kit')) return { screen: 'media-kit', slug };
     if (hash.includes('/dashboard')) return { screen: 'dashboard', slug };
     return { screen: 'artist', slug };
+  }
+
+  // Link de invitacion de cuenta: #invitacion/<token> (el token viaja en `slug`).
+  if (hash.startsWith('invitacion/')) {
+    return { screen: 'invitacion', slug: hash.slice('invitacion/'.length) };
   }
 
   // La pantalla publica Colaborar se retiro (2026-09-22): los enlaces viejos van a Nosotros.
@@ -120,8 +126,9 @@ export default function App() {
   }
 
   const isArtistRoute = route.screen === 'artist' || route.screen === 'media-kit' || route.screen === 'dashboard';
-  // Login es una pantalla enfocada: sin header, footer ni Hilo (trae su propio "Volver al inicio").
-  const isLoginRoute = route.screen === 'login';
+  // Login (y la activacion por invitacion) son pantallas enfocadas: sin header, footer ni Hilo
+  // (traen su propio "Volver al inicio").
+  const isLoginRoute = route.screen === 'login' || route.screen === 'invitacion';
 
   const events = publications.filter((publication) => publication.kind === 'EVENTO');
   const opportunities = publications.filter((publication) => publication.kind === 'OPORTUNIDAD');
@@ -168,6 +175,9 @@ export default function App() {
       break;
     case 'login':
       content = <LoginScreen onSuccess={handleLogin} />;
+      break;
+    case 'invitacion':
+      content = <AcceptInviteScreen token={route.slug} onSuccess={handleLogin} />;
       break;
     case 'inicio':
     default:

@@ -1,22 +1,26 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
-import { KIND_COLORS } from '../utils/constants.js';
+import { KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
 
 // Tarjeta de publicacion de Explorar (unico consumidor: ExploreSection).
 //
-// Capas: la tarjeta NO recorta (sin overflow-hidden), para que el menu de compartir, que se
-// abre hacia arriba, nunca quede cortado. Solo el marco de la imagen tiene su propio
-// overflow-hidden y radio, y dentro la imagen se acerca un poco en hover.
-// El color de la categoria (--kind, de KIND_COLORS) es solo un acento: el punto de la
-// senal y el tono del borde en hover/foco.
+// Formato horizontal (imagen a la izquierda, contenido a la derecha) definido por el dueño
+// del proyecto el 2026-09-27 para el pivote de portal cultural/turistico. Reemplaza el
+// formato vertical anterior. Sin gradientes: cuando no hay foto real (o la publicacion trae
+// el gradiente placeholder heredado de datos viejos), se muestra un fondo solido de marca
+// con la ilustracion de Hilo en vez de un color decorativo.
 const SHARE_ITEM = 'block w-full py-2.5 px-4 border-none bg-transparent text-left text-[13px] cursor-pointer transition-[background] duration-200 ease-[ease] hover:bg-cream';
 const EASE = 'ease-[cubic-bezier(.22,1,.36,1)]';
+const ICON_BUTTON = 'inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-white text-ink transition-colors duration-200 ease-[ease] hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 
 export default function PublicationCard({ publication, user }) {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareStatus, setShareStatus] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+  const [favorite, setFavorite] = useState(!!publication.favorite);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
   const image = publication.image || '';
-  const isGradient = image.startsWith('linear-gradient(');
+  const hasRealImage = Boolean(image) && !image.startsWith('linear-gradient(');
 
   const shareUrl = `${window.location.origin}/#publicacion/${publication.id}`;
 
@@ -56,47 +60,97 @@ export default function PublicationCard({ publication, user }) {
     }
   }
 
+  async function handleToggleFavorite() {
+    if (favoriteBusy) return;
+    if (!user) {
+      sessionStorage.setItem('tejido_return_to', 'explorar');
+      window.location.hash = 'login';
+      return;
+    }
+    const next = !favorite;
+    setFavorite(next);
+    setFavoriteBusy(true);
+    try {
+      const token = localStorage.getItem('tejido_token');
+      const response = await fetch(`/api/publications/${publication.id}/favorite`, {
+        method: next ? 'POST' : 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) throw new Error('favorite request failed');
+    } catch {
+      setFavorite(!next);
+    } finally {
+      setFavoriteBusy(false);
+    }
+  }
+
   return (
     <article
-      className={`group relative flex h-full flex-col rounded-[24px] border border-[#e2d9ca] bg-[#fffaf2] transition-[border-color,translate] duration-300 ${EASE} hover:border-[color-mix(in_srgb,var(--kind)_40%,#e2d9ca)] focus-within:border-[color-mix(in_srgb,var(--kind)_40%,#e2d9ca)] motion-safe:hover:-translate-y-0.5`}
+      className={`group relative flex flex-col overflow-hidden rounded-[24px] border border-[#e2d9ca] bg-[#fffaf2] transition-[border-color,translate] duration-300 ${EASE} hover:border-[color-mix(in_srgb,var(--kind)_40%,#e2d9ca)] focus-within:border-[color-mix(in_srgb,var(--kind)_40%,#e2d9ca)] motion-safe:hover:-translate-y-0.5 md:flex-row`}
       style={{ '--kind': KIND_COLORS[publication.kind] || 'var(--river)' }}
     >
-      {/* Capa visual: el unico elemento que recorta. */}
-      <div className="relative m-2 mb-0 h-[196px] overflow-hidden rounded-[18px] bg-[#3d8570]" role="img" aria-label={publication.title}>
-        <div
-          className={`absolute inset-0 bg-cover bg-center transition-[scale] duration-500 ${EASE} motion-safe:group-hover:scale-[1.04]`}
-          style={{ backgroundImage: isGradient ? image : `url("${image}")` }}
-        />
+      {/* Etiqueta de tipo en la esquina superior derecha de toda la tarjeta. En horizontal cae
+          sobre la columna de texto, que por eso arranca con md:pt-12 (el titulo queda debajo). */}
+      <span
+        className="absolute right-3 top-3 z-10 inline-flex items-center rounded-[999px] px-3 py-1 text-[11px] font-bold uppercase tracking-[.1em] text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.15)]"
+        style={{ backgroundColor: 'var(--kind)' }}
+      >
+        {KIND_LABELS[publication.kind] || publication.kind}
+      </span>
+
+      {/* Imagen: unico elemento que recorta. Sin gradientes: si no hay foto real, ilustracion de Hilo.
+          En horizontal, minimo 280 px y se estira con la fila (si el texto es mas alto no queda hueco).
+          min-w 200: solo actua con tarjetas < ~620 px (2 columnas); en 1 columna manda el 42%. */}
+      <div className="relative h-[220px] shrink-0 overflow-hidden bg-[#f3ece0] md:h-auto md:min-h-[280px] md:w-[42%] md:min-w-[200px]" role="img" aria-label={publication.title}>
+        {hasRealImage ? (
+          <div
+            className={`absolute inset-0 bg-cover bg-center transition-[scale] duration-500 ${EASE} motion-safe:group-hover:scale-[1.04]`}
+            style={{ backgroundImage: `url("${image}")` }}
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-[color-mix(in_srgb,var(--kind)_12%,#f3ece0)]">
+            <img src="/images/hilo/hilo-descubre.png" alt="" aria-hidden="true" className="h-24 w-24 object-contain opacity-90" />
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-1 flex-col px-5 pt-4 pb-4">
-        {/* Senal de categoria: punto de color + nombre, discreta. */}
-        <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-muted">
-          <span className="size-2 shrink-0 rounded-full bg-[var(--kind)]" aria-hidden="true" />
-          {publication.kind}
-        </span>
-        {/* Alturas minimas de 2 y 3 lineas: las tarjetas quedan parejas aunque cambie el largo. */}
-        <h3 className="mt-2.5 mb-2 line-clamp-2 min-h-[2.4em] font-sans text-[21px] font-bold leading-[1.2] tracking-[-.03em] text-ink">{publication.title}</h3>
-        <p className="mt-0 mb-5 line-clamp-3 min-h-[4.5em] text-[14px] leading-[1.5] text-[#53645c]">{publication.summary}</p>
+      <div className="flex flex-1 flex-col px-6 py-5 md:pt-12">
+        <h3 className="mt-0 mb-2 font-sans text-[22px] font-bold leading-[1.2] tracking-[-.03em] text-ink">{publication.title}</h3>
+        <p className="font-display m-0 mb-3 italic font-bold leading-[1.4] text-[17px] text-[#2d5a3d]">{publication.summary}</p>
+        {expanded && publication.content && (
+          <p className="m-0 mb-3 text-[14px] leading-[1.6] text-[#53645c]">{publication.content}</p>
+        )}
+        <p className="m-0 mb-4 text-[13px] font-semibold uppercase tracking-[.06em] text-[#6c756f]">{publication.location || 'Caucasia'}</p>
 
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-t-line pt-3.5">
-          <p className="m-0 inline-flex min-w-0 items-center gap-1.5 text-[12px] text-[#6c756f]">
-            <Icon name="pin" className="size-3.5" />
-            <span className="truncate">{publication.location || 'Caucasia'}</span>
-          </p>
-          <div className="flex shrink-0 items-center gap-2.5">
+          <button
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border-none bg-[#173b32] py-2.5 px-4 text-[13px] font-bold text-[#f7f0e5] transition-colors duration-200 ease-[ease] hover:bg-[#0f2a23] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? 'Ver menos' : 'Ver detalles'}
+            <Icon name={expanded ? 'arrow-left' : 'arrow-right'} className="size-4" />
+          </button>
+          <div className="flex shrink-0 items-center gap-2">
             {shareStatus === 'points' && (
               <span className="text-[13px] font-bold text-gold animate-[fadeToast_2s_ease_forwards]">+10 pts</span>
             )}
+            <button
+              className={ICON_BUTTON}
+              onClick={handleToggleFavorite}
+              title={favorite ? 'Quitar de guardados' : 'Guardar'}
+              aria-pressed={favorite}
+            >
+              <Icon name="bookmark" className={`size-4 ${favorite ? 'fill-current text-[var(--kind)]' : ''}`} />
+            </button>
             <div className="relative">
               <button
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border-none bg-cream py-1.5 px-3 text-[13px] font-semibold text-ink transition-colors duration-200 ease-[ease] hover:bg-river hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                className={ICON_BUTTON}
                 onClick={() => setShowShareMenu(!showShareMenu)}
                 title="Compartir"
                 aria-expanded={showShareMenu}
               >
                 <Icon name="share" className="size-4" />
-                Compartir
               </button>
               {showShareMenu && (
                 <div className="absolute bottom-full right-0 mb-2 bg-white border border-line rounded-[10px] [box-shadow:0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden z-10 min-w-[140px]">

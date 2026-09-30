@@ -12,6 +12,7 @@ export const KIND_COLORS = {
   TALENTO: '#173f36',
   OPORTUNIDAD: '#8a4f7d',
   INICIATIVA: '#3b82f6',
+  LUGAR: '#1d8fa3',
 };
 
 // ─── Etiquetas legibles por tipo ───────────────────────────
@@ -21,7 +22,24 @@ export const KIND_LABELS = {
   TALENTO: 'Talento',
   OPORTUNIDAD: 'Oportunidad',
   INICIATIVA: 'Iniciativa',
+  LUGAR: 'Lugar',
 };
+
+// ─── Ramas culturales de los gestores ──────────────────────
+// Mismos valores que backend/service/schemas/organizations.py::ALLOWED_BRANCHES.
+export const BRANCH_LABELS = {
+  MUSICA: 'Música',
+  CINE_AUDIOVISUAL: 'Cine y audiovisual',
+  DANZA: 'Danza',
+  TEATRO: 'Teatro',
+  ARTES_VISUALES: 'Artes visuales',
+  LITERATURA: 'Literatura',
+  ARTESANIAS: 'Artesanías',
+  PATRIMONIO_MEMORIA: 'Patrimonio y memoria',
+  GASTRONOMIA_CULTURAL: 'Gastronomía cultural',
+};
+// Orden de presentacion (selects y filtros).
+export const CULTURAL_BRANCHES = Object.keys(BRANCH_LABELS);
 
 // ─── Municipios del Bajo Cauca ─────────────────────────────
 export const MUNICIPALITIES = [
