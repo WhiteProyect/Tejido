@@ -509,3 +509,18 @@ borrar `main.css` y los `!` que sobran).
   de un admin real. `public` en Neon no recibió datos de prueba.
 - **Pendiente del dueño:** correr el seed contra Neon, leer los links con
   `py scripts/links_invitacion_admins.py` y poner `RESEND_API_KEY` en `.env`.
+
+## 2026-10-01 — Registro público de ciudadanos y fin de las cuentas demo en el login
+
+- **Backend:** `POST /api/auth/signup` (`SignupInput` en `routes/auth.py`, lógica en
+  `services/signup.py`): crea un CIUDADANO activo y devuelve `{token, user}` como el login.
+  Errores: `EMAIL_TAKEN` (409), `WEAK_PASSWORD` (400, mínimo 8, misma regla de
+  `invites.py`), `VALIDATION` (400, nombre vacío o correo inválido).
+- **Rate limit** (`core/rate_limit.py`): 5 registros por IP cada 5 minutos, contando todos
+  los intentos (no solo los fallidos, porque lo que se frena es el alta masiva). Mismo
+  almacenamiento en memoria que el del login; no se tocó el login.
+- **Frontend:** `LoginScreen` con pestañas "Iniciar sesión" / "Crear cuenta"; se quitó el
+  bloque de cuentas de demostración y los campos ya no vienen autocompletados. Las cuentas
+  demo siguen en el seed porque los tests las usan.
+- **Tests:** `backend/tests_fastapi/test_signup.py` (5). Suite: 53 pasan.
+- Sin cambios de esquema (no hizo falta migración).

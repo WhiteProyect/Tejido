@@ -1,15 +1,18 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from backend.service.api.deps import get_current_user
-from backend.service.core.rate_limit import is_login_locked, register_login_failure
+from backend.service.core.rate_limit import (
+    is_login_locked, is_signup_locked, register_login_failure, register_signup_attempt,
+)
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
 from backend.service.services.auth import login_user, logout_user
 from backend.service.services.invites import accept_invite
+from backend.service.services.signup import signup_user
 
 router = APIRouter()
 
@@ -17,6 +20,29 @@ router = APIRouter()
 class LoginInput(BaseModel):
     email: Optional[str] = None
     password: str = ""
+
+
+class SignupInput(BaseModel):
+    name: str
+    email: str
+    password: str = ""
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _name(cls, v):
+        v = str(v or "").strip()
+        if not v:
+            raise ValueError("El nombre es obligatorio")
+        return v
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _email(cls, v):
+        v = str(v or "").strip().lower()
+        local, _, domain = v.partition("@")
+        if not local or "." not in domain or " " in v:
+            raise ValueError("Escribe un correo valido")
+        return v
 
 
 class AcceptInviteInput(BaseModel):
@@ -37,6 +63,19 @@ def login(payload: LoginInput, request: Request, db: Session = Depends(get_db)):
         register_login_failure(client_ip, email)
         raise AppError(401, "INVALID_CREDENTIALS", "Correo o contrasena incorrectos")
     token, user = result
+    return {"token": token, "user": user}
+
+
+@router.post("/api/auth/signup")
+def signup(payload: SignupInput, request: Request, db: Session = Depends(get_db)):
+    """Publico: crea una cuenta CIUDADANO activa y deja la sesion abierta
+    (mismo shape de respuesta que /api/auth/login)."""
+    client_ip = request.client.host if request.client else "unknown"
+    if is_signup_locked(client_ip):
+        raise AppError(429, "TOO_MANY_ATTEMPTS", "Demasiados intentos de registro. Intenta de nuevo en unos minutos.")
+    register_signup_attempt(client_ip)
+
+    token, user = signup_user(db, payload.name, payload.email, payload.password)
     return {"token": token, "user": user}
 
 

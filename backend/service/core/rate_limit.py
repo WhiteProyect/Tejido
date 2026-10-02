@@ -47,3 +47,24 @@ def register_login_failure(ip: str, email: str) -> None:
 def reset_login_rate_limit() -> None:
     """Solo para tests: limpia todo el estado en memoria del limiter."""
     _storage.reset()
+
+
+# ---------------------------------------------------------------------------
+# Registro publico (/api/auth/signup): mismo motor y misma ventana, pero aca
+# cuenta TODOS los intentos por IP (exitosos incluidos), porque lo que se
+# frena es crear cuentas en masa, no adivinar contrasenas.
+# ---------------------------------------------------------------------------
+
+SIGNUP_LIMIT = RateLimitItemPerMinute(5, 5)
+
+
+def _signup_key(ip: str) -> str:
+    return f"signup:ip:{ip}"
+
+
+def is_signup_locked(ip: str) -> bool:
+    return not _limiter.test(SIGNUP_LIMIT, _signup_key(ip))
+
+
+def register_signup_attempt(ip: str) -> None:
+    _limiter.hit(SIGNUP_LIMIT, _signup_key(ip))
