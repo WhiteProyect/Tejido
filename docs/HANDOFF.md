@@ -524,3 +524,72 @@ borrar `main.css` y los `!` que sobran).
   demo siguen en el seed porque los tests las usan.
 - **Tests:** `backend/tests_fastapi/test_signup.py` (5). Suite: 53 pasan.
 - Sin cambios de esquema (no hizo falta migración).
+
+## 2026-10-01 (2) - Hero: Threads (React Bits) como unico fondo animado
+
+- **Nuevo componente:** `frontend/src/components/Threads.jsx` + `Threads.css`
+  (registro React Bits `Threads-JS-CSS`, copia manual en vez de `npx shadcn@add`
+  porque el proyecto no tiene `components.json`). Dependencia nueva: `ogl@^1.0.11`.
+  Config en el hero: `amplitude=3.7`, `distance=0.4`, sin interacción de ratón,
+  color `#1d8fa3` (token `--river`), capa `opacity-35`, dentro de
+  `.hero-interactive-bg` (hereda parallax y recorte del hero).
+- **Se quitó el arte estático del hero** (decisión explícita en sesión): SVG del
+  río-serpiente (sol, agua, escamas, barequero, pescador, canoa, peces, cabeza),
+  SVG de la montaña y las 12 partículas doradas DOM. `HeroInteractive.jsx`
+  778 -> 407 lineas; `art.css` 851 -> 572 (keyframes y reglas huérfanas
+  eliminados; se conservan `.hero-interactive-bg`, `snakeFlow` (la usa el footer),
+  `heroHiloFloat`, `heroOptionIn`). El degradado por escena (`HERO_BG`) se mantiene.
+- **PEGA CON EL MANUAL:** `docs/MANUAL_ESENCIA_TEJIDO.md` §3 dice que el río,
+  el sol y la montaña son exclusivos del hero y deben aparecer animados ahi.
+  El hero hoy ya no los muestra (solo Threads). Pendiente de revision del dueno:
+  actualizar el manual o restaurar el arte. **Recuperable con git** (el arte no
+  esta borrado de la historia; nada se commiteo todavia de este cambio).
+- **Verificacion:** `npm run build` OK; capturas antes/después a 1300px y 390px
+  (`C:\Users\HP\AppData\Local\Temp\opencode\tejido-hero\`). El río sigue vivo en
+  el mapa del inicio (`HomeMapSection`) y en la cronología (`TimelineSection`).
+- **Reversión completa si no gusta:** quitar import + wrapper de `Threads` en
+  `HeroInteractive.jsx`, borrar `Threads.jsx`/`Threads.css`, `npm uninstall ogl`,
+  y restaurar el arte desde git.
+- **Observación aparte:** a 390px hay overflow horizontal preexistente (tarjetas
+  y stats cortados a la derecha) — igual antes del cambio, no lo introdujo esta tarea.
+
+## 2026-10-02 - Hero: obra tejida (sol + arbol) y Hilo sin circulo
+
+- **Obra tejida agregada al hero** (source: `C:\Users\HP\Pictures\fondohero.jpg`,
+  2844x1504). Copia optimizada para web en `frontend/public/images/hero/arbol-tejido.jpg`
+  (1600px, calidad 82, 206 KB).
+- **Cómo quedó** (en `HeroInteractive.jsx`, antes del capa de hilos): wrapper
+  absoluto centrado `w-[min(700px,64vw)]` con `mix-blend-multiply` + `opacity-90`
+  (el blanco se disuelve en el crema) y `mask-image` que desvanece los 4 bordes
+  (lados 9%, base 86%→100%). Los hilos animados pasan por encima y Hilo se para
+  sobre las raíces. Si se mueve el tamaño: solo tocar `w-[min(...)]`.
+- **Hilo sin circulo:** se quitó el contenedor redondo (fondo, anillo y
+  `object-cover`); ahora es un `<img>` suelto `h-[220px]`/`160px` móvil con
+  `drop-shadow` a la silueta y el mismo `heroHiloFloat`.
+- Verificado con build + capturas 1300px y 390px. El overflow horizontal móvil
+  preexistente sigue (no es de esta tarea).
+
+## 2026-10-02 (2) - Hero: obra a todo el ancho (full-bleed) + legibilidad
+
+- **Obra tejida a todo el ancho** (peticion del dueno: "mas grande con los
+  bordes de la pagina"): wrapper en `HeroInteractive.jsx` paso de
+  `w-[min(700px,64vw)]` con mascara lateral a `left-0 right-0` sin ancho
+  fijo (ocupa el 100% de la seccion). Se quito la mascara lateral; la
+  mascara inferior (`86%→100%`) se conserva. En 390px ya casi no cambia
+  (antes era 96vw).
+- **Legibilidad sobre las raices** (en pantallas anchas ~1880px las raices
+  caen detras del mensaje y de las stats):
+  - Halo crema (`text-shadow` triple capa, color `#fff9ec`) en el mensaje
+    de Hilo y en `STAT_NUMBER`/`STAT_LABEL`.
+  - Velo frosted en el contenedor de stats: `bg-[rgba(255,249,236,0.62)]
+    backdrop-blur-[8px] rounded-[20px]` — invisible sobre el fondo crema
+    liso, recupera contraste cuando hay raices detras.
+- **Spacing vertical de stats**: el contenedor del boton paso de `mt-7` a
+  `mt-12` (linea ~402) para que las stats queden exactamente a la mitad
+  entre las tarjetas de opciones y "Explorar el Territorio" (48px arriba,
+  48px abajo). Peticion del dueno.
+- **Verificacion:** `npm run build` OK; capturas 1300/1880/390 en
+  `...\Temp\opencode\tejido-hero\` (`spacing-1300.png`, `spacing-390.png`).
+- El overflow horizontal móvil preexistente sigue pendiente (aparte).
+- **Nota:** `docs/MANUAL_ESENCIA_TEJIDO.md` §3 sigue en conflicto con el
+  hero actual (río/sol/montaña fuera) — pendiente de decision del dueno.
