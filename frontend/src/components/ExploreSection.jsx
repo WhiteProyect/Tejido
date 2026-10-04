@@ -1,83 +1,16 @@
-import { useEffect } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import PublicationCard from './PublicationCard.jsx';
-import { EYEBROW, H1, SECTION, STATUS, STATUS_ERROR } from './uiStyles.js';
-import { getMunicipalityFromLocation, stampMunicipality } from '../utils/passportUtils.js';
+import CategoryCoversGrid from './CategoryCoversGrid.jsx';
+import { EYEBROW, H1, SECTION } from './uiStyles.js';
 
-const kinds = [
-  ['TODOS', 'Todo'],
-  ['LUGAR', 'Lugares'],
-  ['HISTORIA', 'Historias'],
-  ['EVENTO', 'Eventos'],
-  ['OPORTUNIDAD', 'Oportunidades'],
-  ['TALENTO', 'Talento'],
-  ['INICIATIVA', 'Iniciativas'],
-];
-
-// Reacomodo al filtrar/buscar: las tarjetas que se quedan se deslizan a su nuevo lugar
-// (layout) y las que entran/salen solo se funden con una escala minima. Sin animacion en la
-// carga inicial (initial={false}) ni con prefers-reduced-motion.
-const CARD_MOTION = {
-  initial: { opacity: 0, scale: 0.97 },
-  animate: { opacity: 1, scale: 1 },
-  exit: { opacity: 0, scale: 0.97 },
-  transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1], layout: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
-};
-
-export default function ExploreSection({ publications, activeKind, onKindChange, search, onSearchChange, loading, error, user }) {
-  const reduceMotion = useReducedMotion();
-  const filtered = publications.filter((publication) => {
-    const matchesKind = activeKind === 'TODOS' || publication.kind === activeKind;
-    const term = search.trim().toLowerCase();
-    const matchesSearch = !term || [publication.title, publication.summary, publication.location]
-      .filter(Boolean)
-      .some((value) => value.toLowerCase().includes(term));
-    return matchesKind && matchesSearch;
-  });
-
-  /**
-   * Al mostrar publicaciones, sella automáticamente los municipios
-   * que tienen contenido visible. Esto construye el pasaporte del usuario.
-   */
-  useEffect(() => {
-    filtered.forEach((pub) => {
-      if (pub.location) {
-        const muni = getMunicipalityFromLocation(pub.location);
-        stampMunicipality(muni);
-      }
-    });
-  }, [filtered]);
-
+// Explorar: encabezado y portadas de las categorias culturales. Las publicaciones (y su
+// buscador) viven en cada categoria (screens/CategoryScreen.jsx).
+export default function ExploreSection() {
   return (
     <section className={SECTION} id="explorar">
       <div className="flex [align-items:end] gap-[50px] justify-between mb-[45px] max800:items-start max800:flex-col max800:gap-6">
         <div><p className={EYEBROW}>Voces desde capital</p><h2 className={H1}>Descubre el tejido de la cultura</h2></div>
         <p className="leading-[1.6] max-w-[340px]">Contenido local para encontrarnos, aprender y celebrar lo nuestro.</p>
       </div>
-      <div className="flex items-center gap-5 justify-between mb-[30px] max800:items-start max800:flex-col max800:gap-6">
-        <div className="flex flex-wrap gap-2" aria-label="Filtrar publicaciones">
-          {kinds.map(([value, label]) => (
-            <button key={value} className={`border rounded-[99px] cursor-pointer py-[9px] px-3.5 ${activeKind === value ? 'bg-[#173b32] border-[#173b32] text-[#f7f0e5]' : 'bg-transparent border-[#b8b2a5] text-[#173b32]'}`} type="button" onClick={() => onKindChange(value)}>{label}</button>
-          ))}
-        </div>
-        <label className="flex items-center border-b border-b-[#173b32] gap-2 py-2 px-0 max800:w-full"><span aria-hidden="true">⌕</span><input className="bg-transparent border-0 outline-0 w-[210px] max800:w-full" value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Buscar en Caucasia..." /></label>
-      </div>
-      {loading && <p className={STATUS}>Cargando publicaciones...</p>}
-      {error && <p className={STATUS_ERROR}>{error}. Verifica que el backend Python esté activo en el puerto 8765.</p>}
-      {!loading && !error && (
-        // 2 columnas desde 1201 px. Por debajo, 1: con la tarjeta horizontal (imagen + texto),
-        // en 2 columnas el texto necesita ~270 px, y a 1025 px ya no cabia el pie de la tarjeta.
-        <div className="grid grid-cols-2 gap-5 max1200:grid-cols-1">
-          <AnimatePresence initial={false} mode="popLayout">
-            {filtered.map((publication) => (
-              <motion.div key={publication.id} layout={!reduceMotion} {...(reduceMotion ? {} : CARD_MOTION)}>
-                <PublicationCard publication={publication} user={user} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      )}
-      {!loading && !error && filtered.length === 0 && <p className={STATUS}>No encontramos coincidencias.</p>}
+      <CategoryCoversGrid />
     </section>
   );
 }

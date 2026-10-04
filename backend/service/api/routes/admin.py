@@ -31,9 +31,14 @@ def stats(user: Optional[dict] = Depends(get_current_user), db: Session = Depend
         select(func.count()).select_from(Publication).where(Publication.status == "REVIEW", Publication.deleted.is_(False))
     ).scalar_one()
     users = db.execute(select(func.count()).select_from(User).where(User.active.is_(True))).scalar_one()
+    gestores_activos = db.execute(
+        select(func.count()).select_from(User).join(Role, Role.id == User.role_id)
+        .where(Role.name == "GESTOR", User.active.is_(True))
+    ).scalar_one()
     reports = db.execute(select(func.count()).select_from(Report).where(Report.status == "OPEN")).scalar_one()
     suggestions = db.execute(select(func.count()).select_from(Suggestion).where(Suggestion.status == "NEW")).scalar_one()
-    return {"published": published, "pending": pending, "users": users, "reports": reports, "suggestions": suggestions}
+    return {"published": published, "pending": pending, "users": users, "gestores_activos": gestores_activos,
+            "reports": reports, "suggestions": suggestions}
 
 
 @router.get("/suggestions")
@@ -115,7 +120,7 @@ def list_gestores(user: Optional[dict] = Depends(get_current_user), db: Session 
     rows = db.execute(
         select(User.id, User.name, User.email, User.active, User.created_at,
                Organization.id.label("organization_id"), Organization.name.label("organization_name"),
-               Organization.branch, Organization.contact)
+               Organization.branch, Organization.contact, Organization.photo_url)
         .join(Role, Role.id == User.role_id)
         .join(Organization, Organization.user_id == User.id, isouter=True)
         .where(Role.name == "GESTOR")
@@ -136,7 +141,7 @@ def update_gestor(gestor_id: int, payload: GestorUpdateInput, user: Optional[dic
 
     if "active" in sent and payload.active is not None:
         gestor.active = payload.active
-    org_fields = {f: getattr(payload, f) for f in ("organization_name", "branch", "contact") if f in sent}
+    org_fields = {f: getattr(payload, f) for f in ("organization_name", "branch", "contact", "photo_url") if f in sent}
     if org_fields:
         organization = db.execute(select(Organization).where(Organization.user_id == gestor.id)).scalars().first()
         if organization is None:
@@ -150,6 +155,8 @@ def update_gestor(gestor_id: int, payload: GestorUpdateInput, user: Optional[dic
             organization.branch = org_fields["branch"]
         if "contact" in org_fields:
             organization.contact = org_fields["contact"] or None
+        if "photo_url" in org_fields:
+            organization.photo_url = org_fields["photo_url"] or None
     db.flush()
     return {"ok": True, "id": gestor.id, "active": gestor.active, "status": _status(gestor.active)}
 

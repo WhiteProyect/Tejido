@@ -32,7 +32,7 @@ def login_user(db: Session, email: str, password: str):
     expires_at = datetime.now(timezone.utc) + timedelta(hours=8)
     db.add(SessionRow(token=token, user_id=user.id, expires_at=expires_at))
     db.flush()
-    return token, {"id": user.id, "name": user.name, "email": user.email, "role": role}
+    return token, {"id": user.id, "name": user.name, "email": user.email, "role": role, "avatar_url": user.avatar_url}
 
 
 def logout_user(db: Session, token: str):

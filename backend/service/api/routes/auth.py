@@ -4,14 +4,17 @@ from fastapi import APIRouter, Depends, Header, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
-from backend.service.api.deps import get_current_user
+from backend.service.api.deps import get_current_user, require_login, require_roles
 from backend.service.core.rate_limit import (
     is_login_locked, is_signup_locked, register_login_failure, register_signup_attempt,
 )
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
+from backend.service.models.tables import User
+from backend.service.schemas.users import OrganizationSelfUpdateInput, UserSelfUpdateInput
 from backend.service.services.auth import login_user, logout_user
 from backend.service.services.invites import accept_invite
+from backend.service.services.organizations import get_my_organization, update_my_organization
 from backend.service.services.signup import signup_user
 
 router = APIRouter()
@@ -97,3 +100,39 @@ def logout(authorization: Optional[str] = Header(default=None), db: Session = De
 @router.get("/api/me")
 def me(user: Optional[dict] = Depends(get_current_user)):
     return {"user": user}
+
+
+@router.patch("/api/me")
+def update_me(payload: UserSelfUpdateInput, user: Optional[dict] = Depends(get_current_user),
+              db: Session = Depends(get_db)):
+    """El usuario autenticado edita su nombre y su foto. Siempre sobre su propia fila
+    (user["id"] de la sesion); el body no puede elegir otro usuario ni tocar email o rol.
+    Devuelve el mismo shape que GET /api/me."""
+    require_login(user)
+    row = db.get(User, user["id"])
+    sent = payload.model_fields_set
+    if "name" in sent and payload.name is not None:
+        row.name = payload.name
+    if "avatar_url" in sent:
+        row.avatar_url = payload.avatar_url
+    db.flush()
+    return {"user": {**user, "name": row.name, "avatar_url": row.avatar_url}}
+
+
+GESTOR_ONLY = "Solo un gestor tiene una organización propia"
+
+
+@router.get("/api/me/organization")
+def my_organization(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """La organizacion (biografia publica) del gestor autenticado."""
+    require_roles(user, ("GESTOR",), GESTOR_ONLY)
+    return get_my_organization(db, user["id"])
+
+
+@router.patch("/api/me/organization")
+def update_organization(payload: OrganizationSelfUpdateInput, user: Optional[dict] = Depends(get_current_user),
+                        db: Session = Depends(get_db)):
+    """El gestor edita nombre, biografia, foto y contacto de su organizacion. Rama y estado
+    son del admin y se ignoran si llegan en el body."""
+    require_roles(user, ("GESTOR",), GESTOR_ONLY)
+    return update_my_organization(db, user["id"], payload)

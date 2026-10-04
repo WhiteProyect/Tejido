@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import Icon from '../components/Icon.jsx';
 import { EYEBROW, SECTION } from '../components/uiStyles.js';
 import { getInitials } from '../utils/initials.js';
+import { useToast } from '../context/ToastContext.jsx';
 
 // ─── EQUIPO (TEMPORAL) ───────────────────────────────────────────────────────
 // Perfiles FICTICIOS autorizados mientras se presenta al equipo real. Para reemplazarlos
@@ -58,6 +59,7 @@ function TeamMember({ member }) {
 }
 
 export default function NosotrosScreen() {
+  const { showToast } = useToast();
   const reduceMotion = useReducedMotion();
   const contactRef = useRef(null);
   const messageRef = useRef(null);
@@ -94,6 +96,7 @@ export default function NosotrosScreen() {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || 'No pudimos enviar tu mensaje.');
       setStatus({ type: 'success', ticket: result.ticket });
+      showToast({ tone: 'menta', eyebrow: 'Hilo recibido', title: '¡Gracias por escribirnos!', text: 'Revisaremos tu mensaje con cariño.' });
       setName('');
       setContact('');
       setMessage('');

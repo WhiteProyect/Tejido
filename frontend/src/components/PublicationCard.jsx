@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 import { KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
 
 // Tarjeta de publicacion de Explorar (unico consumidor: ExploreSection).
@@ -17,6 +18,7 @@ export default function PublicationCard({ publication, user }) {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareStatus, setShareStatus] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const { showToast } = useToast();
   const [favorite, setFavorite] = useState(!!publication.favorite);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const image = publication.image || '';
@@ -77,6 +79,9 @@ export default function PublicationCard({ publication, user }) {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!response.ok) throw new Error('favorite request failed');
+      showToast(next
+        ? { tone: 'menta', eyebrow: 'Hilo guardado', title: 'Sumaste este hilo a tu ruta', text: 'Ya puedes verlo en tus guardados.' }
+        : { tone: 'menta', title: 'Hilo quitado de tu ruta' });
     } catch {
       setFavorite(!next);
     } finally {
@@ -98,7 +103,7 @@ export default function PublicationCard({ publication, user }) {
         {KIND_LABELS[publication.kind] || publication.kind}
       </span>
 
-      {/* Imagen: unico elemento que recorta. Sin gradientes: si no hay foto real, ilustracion de Hilo.
+      {/* Imagen: unico elemento que recorta. Sin gradientes: si no hay foto real, fondo tintado del tipo.
           En horizontal, minimo 280 px y se estira con la fila (si el texto es mas alto no queda hueco).
           min-w 200: solo actua con tarjetas < ~620 px (2 columnas); en 1 columna manda el 42%. */}
       <div className="relative h-[220px] shrink-0 overflow-hidden bg-[#f3ece0] md:h-auto md:min-h-[280px] md:w-[42%] md:min-w-[200px]" role="img" aria-label={publication.title}>
@@ -108,9 +113,7 @@ export default function PublicationCard({ publication, user }) {
             style={{ backgroundImage: `url("${image}")` }}
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-[color-mix(in_srgb,var(--kind)_12%,#f3ece0)]">
-            <img src="/images/hilo/hilo-descubre.png" alt="" aria-hidden="true" className="h-24 w-24 object-contain opacity-90" />
-          </div>
+          <div className="absolute inset-0 bg-[color-mix(in_srgb,var(--kind)_12%,#f3ece0)]" />
         )}
       </div>
 

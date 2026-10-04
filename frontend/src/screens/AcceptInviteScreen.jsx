@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import Logo from '../components/Logo.jsx';
 import { EYEBROW } from '../components/uiStyles.js';
+import { useToast } from '../context/ToastContext.jsx';
 
 // Activacion de cuenta desde el link de invitacion (#invitacion/<token>): la persona define
 // su contrasena y queda con la sesion abierta, igual que al entrar por LoginScreen.
 const MIN_PASSWORD = 8; // misma regla que backend/service/services/invites.py
 
 export default function AcceptInviteScreen({ token, onSuccess }) {
+  const { showToast } = useToast();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
@@ -34,6 +36,7 @@ export default function AcceptInviteScreen({ token, onSuccess }) {
       if (!response.ok) throw new Error(result.message || 'No fue posible activar tu cuenta');
       localStorage.setItem('tejido_token', result.token);
       onSuccess(result.user);
+      showToast({ tone: 'dorado', eyebrow: 'Sello activado', title: '¡Tu cuenta está lista!', text: 'Ya puedes entrar a TEJIDO con tu rol.' });
       window.location.hash = 'perfil';
     } catch (acceptError) {
       setError(acceptError.message);

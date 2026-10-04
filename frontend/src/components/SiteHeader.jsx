@@ -3,6 +3,9 @@ import Logo from './Logo.jsx';
 
 export default function SiteHeader({ user, onLogin, onLogout, isMoneystack = false }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  // La foto viene de PATCH /api/me (una URL): si no carga, vuelve la inicial.
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  useEffect(() => { setAvatarFailed(false); }, [user?.avatar_url]);
   const [isHidden, setIsHidden] = useState(false);
   const menuRef = useRef(null);
   const lastScrollY = useRef(0);
@@ -67,8 +70,10 @@ export default function SiteHeader({ user, onLogin, onLogout, isMoneystack = fal
       </nav>
       {user ? (
         <div className="relative" ref={menuRef}>
-          <button className="w-9 h-9 rounded-[50%] bg-ink text-white border-none text-[14px] font-bold cursor-pointer" onClick={() => setShowUserMenu(!showUserMenu)}>
-            {user.name?.charAt(0) || '?'}
+          <button className="w-9 h-9 overflow-hidden rounded-[50%] bg-ink text-white border-none p-0 text-[14px] font-bold cursor-pointer" aria-label={`Menú de ${user.name}`} onClick={() => setShowUserMenu(!showUserMenu)}>
+            {user.avatar_url && !avatarFailed
+              ? <img src={user.avatar_url} alt="" className="size-full object-cover" onError={() => setAvatarFailed(true)} />
+              : user.name?.charAt(0) || '?'}
           </button>
           {showUserMenu && (
             <div className="absolute top-full right-0 mt-2 bg-white border border-line rounded-[12px] [box-shadow:0_8px_24px_rgba(0,0,0,0.12)] min-w-[180px] overflow-hidden z-20">

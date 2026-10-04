@@ -29,4 +29,5 @@ def signup_user(db: Session, name: str, email: str, password: str):
     session_token = secrets.token_urlsafe(32)
     db.add(SessionRow(token=session_token, user_id=user.id, expires_at=now + timedelta(hours=SESSION_HOURS)))
     db.flush()
-    return session_token, {"id": user.id, "name": user.name, "email": user.email, "role": "CIUDADANO"}
+    return session_token, {"id": user.id, "name": user.name, "email": user.email, "role": "CIUDADANO",
+                           "avatar_url": user.avatar_url}

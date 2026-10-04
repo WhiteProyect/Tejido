@@ -13,6 +13,8 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
+from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES
+
 ALLOWED_KINDS = {"HISTORIA", "EVENTO", "OPORTUNIDAD", "TALENTO", "INICIATIVA", "LUGAR"}
 
 
@@ -29,6 +31,7 @@ class PublicationInput(BaseModel):
     link: Optional[str] = None
     featured: bool = False
     publish: bool = False
+    cultural_category: Optional[str] = None
 
     @field_validator("kind", mode="before")
     @classmethod
@@ -36,6 +39,16 @@ class PublicationInput(BaseModel):
         v = str(v or "HISTORIA").strip().upper()
         if v not in ALLOWED_KINDS:
             raise ValueError("Selecciona un tipo de publicación válido")
+        return v
+
+    @field_validator("cultural_category", mode="before")
+    @classmethod
+    def _normalize_cultural_category(cls, v):
+        v = str(v or "").strip().upper()
+        if not v:
+            return None
+        if v not in CULTURAL_CATEGORIES:
+            raise ValueError("Selecciona una categoría cultural válida")
         return v
 
     @field_validator("category_id", mode="before")

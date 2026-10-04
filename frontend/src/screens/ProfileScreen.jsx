@@ -1,39 +1,32 @@
 import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
-import GestoresPanel from '../components/admin/GestoresPanel.jsx';
-import { EYEBROW, SECTION } from '../components/uiStyles.js';
+import ImageUrlField from '../components/ImageUrlField.jsx';
+import ProfileHeader from '../components/ProfileHeader.jsx';
+import { EYEBROW, FORM_INPUT, FORM_LABEL, LINK_BTN, LINK_BTN_SOLID, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
+import { useToast } from '../context/ToastContext.jsx';
+import { apiRequest } from '../utils/api.js';
 import { formatDateShort } from '../utils/dateUtils.js';
 import { KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
-import { getInitials } from '../utils/initials.js';
-import { getPassportProgress } from '../utils/passportUtils.js';
+import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
 // Perfil privado: UNA pantalla con cabecera comun y un modulo por rol (user.role).
 // Cada modulo solo usa endpoints existentes; no hay datos simulados:
-// - ADMIN: GET /api/admin/stats, GET /api/admin/suggestions (mensajes de Nosotros) y la
-//   administracion de gestores (components/admin/GestoresPanel.jsx, /api/admin/gestores).
-// - GESTOR: GET /api/publications?mine=1 y GET /api/artists (artista asociado por user_id).
-// - CIUDADANO: GET /api/publications con sesion (campo `favorite`) y el pasaporte local.
+// - ADMIN: GET /api/admin/suggestions (mensajes de Nosotros) y el acceso a #admin-dashboard
+//   (pulso, gestores y moderacion de publicaciones).
+// - GESTOR: GET /api/publications?mine=1, GET /api/artists (artista asociado por user_id), su
+//   biografia publica (GET/PATCH /api/me/organization) y el acceso a #gestor-dashboard.
+// - CIUDADANO: GET /api/publications con sesion (campo `favorite`): sus guardados.
+// La cabecera (nombre y foto editables, PATCH /api/me) es components/ProfileHeader.jsx.
 
 const ROLES = {
-  ADMIN: { label: 'Administración', mark: 'bg-ink text-paper', intro: 'El pulso de la plataforma y lo que la comunidad le está diciendo al equipo.' },
+  ADMIN: { label: 'Administración', mark: 'bg-ink text-paper', intro: 'Tu acceso al centro de la red y lo que la comunidad le está diciendo al equipo.' },
   GESTOR: { label: 'Gestor cultural', mark: 'bg-river text-white', intro: 'Tus publicaciones y las herramientas de tu espacio en TEJIDO.' },
-  CIUDADANO: { label: 'Ciudadanía', mark: 'bg-orange text-white', intro: 'Lo que guardas, lo que has recorrido y cómo participar.' },
+  CIUDADANO: { label: 'Ciudadanía', mark: 'bg-orange text-white', intro: 'Lo que guardas para volver a ello cuando quieras.' },
 };
 
-const STATUS_LABELS = {
-  PUBLISHED: ['Publicada', 'bg-[rgba(29,143,163,0.1)] text-[#146f80]'],
-  REVIEW: ['En revisión', 'bg-[rgba(212,168,67,0.18)] text-[#7a5c12]'],
-  DRAFT: ['Borrador', 'bg-[rgba(102,116,111,0.12)] text-[#4d5a55]'],
-  REJECTED: ['Rechazada', 'bg-[rgba(216,91,54,0.12)] text-[#a8431f]'],
-};
-
-const H2 = 'm-0 font-sans text-[26px] font-extrabold tracking-[-0.03em] text-ink';
-const PANEL = 'min-w-0 rounded-[28px] border border-[#e2d9ca] bg-[#fffaf2] p-8 max600:p-6';
-// Botones-enlace: base sin fondo ni color de texto; cada variante pone los suyos (README, patron 15).
-const LINK_BTN_BASE = 'inline-flex items-center gap-2 rounded-full border border-ink py-2.5 px-5 text-[14px] font-bold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
-const LINK_BTN = `${LINK_BTN_BASE} bg-transparent text-ink hover:bg-ink hover:text-paper`;
-const LINK_BTN_SOLID = `${LINK_BTN_BASE} bg-ink text-paper hover:bg-ink-deep`;
+const H2 = PANEL_TITLE;
 
 async function getJson(url) {
   const token = localStorage.getItem('tejido_token');
@@ -62,17 +55,6 @@ function StateNote({ state, children }) {
   return children;
 }
 
-function EmptyNote({ icon, title, text, action }) {
-  return (
-    <div className="rounded-[20px] border border-dashed border-[#d9cfbe] py-10 px-6 text-center">
-      <Icon name={icon} className="mx-auto size-8 text-[#8a948f]" />
-      <p className="mt-3 mb-1 text-[17px] font-bold text-ink">{title}</p>
-      <p className="mx-auto mt-0 mb-0 max-w-[420px] text-[14px] leading-[1.55] text-muted">{text}</p>
-      {action && <div className="mt-5">{action}</div>}
-    </div>
-  );
-}
-
 function PublicationRow({ publication, showStatus }) {
   const [statusLabel, statusTone] = STATUS_LABELS[publication.status] || [publication.status, STATUS_LABELS.DRAFT[1]];
   const date = formatDateShort(publication.start_date || publication.created_at);
@@ -89,32 +71,20 @@ function PublicationRow({ publication, showStatus }) {
 }
 
 // ── ADMIN ────────────────────────────────────────────────────────────────────
-function AdminModule() {
-  const state = useProfileData(() => Promise.all([getJson('/api/admin/stats'), getJson('/api/admin/suggestions')]));
-  const [stats, messages] = state.data || [{}, []];
-  const tiles = [
-    ['Publicadas', stats.published],
-    ['En revisión', stats.pending],
-    ['Usuarios activos', stats.users],
-    ['Reportes abiertos', stats.reports],
-    ['Mensajes nuevos', stats.suggestions],
-  ];
+// El pulso, los gestores y la moderacion viven en #admin-dashboard (screens/AdminDashboard.jsx);
+// aqui quedan la tarjeta de acceso y los mensajes de Nosotros.
+function AdminModule({ user }) {
+  const state = useProfileData(() => getJson('/api/admin/suggestions'));
+  const messages = state.data || [];
   return (
     <>
-      <section className={PANEL} aria-labelledby="admin-pulso">
-        <h2 id="admin-pulso" className={H2}>Pulso de la plataforma</h2>
-        <StateNote state={state}>
-          <dl className="mt-6 mb-0 grid grid-cols-[repeat(5,1fr)] gap-4 max1024:grid-cols-[repeat(3,1fr)] max600:grid-cols-[repeat(2,1fr)]">
-            {tiles.map(([label, value]) => (
-              <div key={label} className="flex flex-col-reverse border-l-2 border-l-[rgba(29,143,163,0.35)] pl-4">
-                <dt className="mt-2 text-[12px] font-bold uppercase tracking-[.1em] text-muted">{label}</dt>
-                <dd className="m-0 text-[40px] font-extrabold leading-none tracking-[-0.04em] text-ink">{value ?? '–'}</dd>
-              </div>
-            ))}
-          </dl>
-        </StateNote>
-      </section>
-      <GestoresPanel />
+      <DashboardCard
+        href="#admin-dashboard"
+        eyebrow="Centro de la red"
+        title={`${user.name}, el pulso de TEJIDO está en tus manos`}
+        text="Modera publicaciones, acompaña a los gestores y revisa cómo va la plataforma."
+        cta="Abrir Dashboard de Admin"
+      />
       <section className={PANEL} aria-labelledby="admin-mensajes">
         <h2 id="admin-mensajes" className={`${H2} flex items-center gap-3`}><Icon name="inbox" className="size-6 text-river" /> Mensajes recientes</h2>
         <p className="mt-2 mb-0 text-[14px] text-muted">Lo que llega desde el formulario de Nosotros.</p>
@@ -143,6 +113,87 @@ function AdminModule() {
 }
 
 // ── GESTOR ───────────────────────────────────────────────────────────────────
+const BIO_FIELDS = ['name', 'description', 'photo_url', 'contact'];
+
+// Biografia publica de la organizacion del gestor. La rama cultural no aparece: la decide el admin.
+function GestorBio() {
+  const { showToast } = useToast();
+  const [state, setState] = useState({ loading: true, error: '' });
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    apiRequest('/api/me/organization')
+      .then((org) => {
+        if (!alive) return;
+        setForm(Object.fromEntries(BIO_FIELDS.map((key) => [key, org[key] || ''])));
+        setState({ loading: false, error: '' });
+      })
+      .catch((error) => alive && setState({ loading: false, error: error.message }));
+    return () => { alive = false; };
+  }, []);
+
+  const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setSaveError('');
+    try {
+      const org = await apiRequest('/api/me/organization', { method: 'PATCH', body: form });
+      setForm(Object.fromEntries(BIO_FIELDS.map((key) => [key, org[key] || ''])));
+      showToast({ tone: 'menta', eyebrow: 'Hilo actualizado', title: 'Biografía guardada', text: 'Así te verán en tu categoría.' });
+    } catch (error) {
+      setSaveError(error.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className={PANEL} aria-labelledby="gestor-bio">
+      <h2 id="gestor-bio" className={`${H2} flex items-center gap-3`}><Icon name="people" className="size-6 text-river" /> Biografía pública</h2>
+      <p className="mt-3 mb-0 max-w-[620px] text-[15px] leading-[1.55] text-[#53645c]">Lo que la gente ve de tu organización en TEJIDO. Tu rama cultural la asigna el equipo.</p>
+      <StateNote state={state}>
+        {form && (
+          <form className="mt-6 grid max-w-[720px] gap-5" onSubmit={handleSubmit}>
+            <label className={FORM_LABEL}>Nombre de la organización
+              <input className={FORM_INPUT} value={form.name} onChange={(event) => set('name')(event.target.value)} maxLength={120} required disabled={saving} />
+            </label>
+            <label className={FORM_LABEL}>Biografía
+              <textarea className={`${FORM_INPUT} min-h-[140px] resize-y leading-[1.55]`} value={form.description} onChange={(event) => set('description')(event.target.value)} maxLength={2000} placeholder="Qué hacen, desde cuándo, dónde los encuentran..." disabled={saving} />
+            </label>
+            <ImageUrlField label="Foto (enlace)" value={form.photo_url} onChange={set('photo_url')} disabled={saving} round hint="Pega el enlace de una imagen; aparece en la página de tu categoría." />
+            <label className={FORM_LABEL}>Contacto (opcional)
+              <input className={FORM_INPUT} value={form.contact} onChange={(event) => set('contact')(event.target.value)} maxLength={200} placeholder="Correo, teléfono o red social" disabled={saving} />
+            </label>
+            {saveError && <p className="m-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{saveError}</p>}
+            <div><button type="submit" className={LINK_BTN_SOLID} disabled={saving}>{saving ? 'Guardando...' : 'Guardar cambios de biografía'}</button></div>
+          </form>
+        )}
+      </StateNote>
+    </section>
+  );
+}
+
+// Tarjeta oscura de acceso a un dashboard (gestor y admin).
+function DashboardCard({ href, eyebrow, title, text, cta }) {
+  return (
+    <a href={href} className="group flex flex-wrap items-center justify-between gap-6 rounded-[28px] bg-ink p-8 text-paper no-underline transition-colors duration-200 hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink max600:p-6">
+      <span className="min-w-0">
+        <span className="mb-2 block text-[11px] font-extrabold uppercase tracking-[.18em] text-mint">{eyebrow}</span>
+        <span className="block font-sans text-[26px] font-extrabold tracking-[-0.03em] [overflow-wrap:anywhere]">{title}</span>
+        {text && <span className="mt-2 block text-[15px] leading-[1.5] text-paper/80">{text}</span>}
+      </span>
+      <span className="inline-flex items-center gap-2 rounded-full bg-paper py-3 px-5 text-[15px] font-bold text-ink">
+        {cta} <Icon name="arrow-right" className="size-4 transition-transform duration-200 motion-safe:group-hover:translate-x-1" />
+      </span>
+    </a>
+  );
+}
+
 function GestorModule({ user }) {
   const state = useProfileData(() => Promise.all([getJson('/api/publications?mine=1'), getJson('/api/artists')]));
   const [publications, artists] = state.data || [[], []];
@@ -150,6 +201,7 @@ function GestorModule({ user }) {
   const counts = publications.reduce((acc, item) => ({ ...acc, [item.status]: (acc[item.status] || 0) + 1 }), {});
   return (
     <>
+      <DashboardCard href="#gestor-dashboard" eyebrow="Taller de Eventos y Cultura" title="Crea, corrige y envía tus publicaciones" cta="Ir al Dashboard de Gestor" />
       <section className={PANEL} aria-labelledby="gestor-publicaciones">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <h2 id="gestor-publicaciones" className={`${H2} flex items-center gap-3`}><Icon name="pen" className="size-6 text-river" /> Tus publicaciones</h2>
@@ -171,6 +223,7 @@ function GestorModule({ user }) {
           )}
         </StateNote>
       </section>
+      <GestorBio />
       {!state.loading && !state.error && artist && (
         <section className={`${PANEL} flex flex-wrap items-center justify-between gap-6`} aria-labelledby="gestor-artista">
           <div>
@@ -191,7 +244,6 @@ function GestorModule({ user }) {
 function CitizenModule() {
   const state = useProfileData(() => getJson('/api/publications'));
   const saved = (state.data || []).filter((item) => item.favorite);
-  const passport = getPassportProgress();
   return (
     <>
       <section className={PANEL} aria-labelledby="ciudadano-guardados">
@@ -201,8 +253,8 @@ function CitizenModule() {
             <div className="mt-6">
               <EmptyNote
                 icon="bookmark"
-                title="Todavía no tienes publicaciones guardadas"
-                text="Las historias, eventos y oportunidades que guardes aparecerán aquí para volver a ellas."
+                title="Sin guardados aún"
+                text="Guarda sabores locales desde Explorar."
                 action={<a className={LINK_BTN} href="#explorar">Explorar publicaciones <Icon name="arrow-right" className="size-4" /></a>}
               />
             </div>
@@ -213,49 +265,18 @@ function CitizenModule() {
           )}
         </StateNote>
       </section>
-      <div className="grid grid-cols-[1fr_1fr] gap-6 max800:grid-cols-[1fr]">
-        <section className={PANEL} aria-labelledby="ciudadano-recorrido">
-          <h2 id="ciudadano-recorrido" className={`${H2} flex items-center gap-3`}><Icon name="compass" className="size-6 text-river" /> Tu recorrido</h2>
-          <p className="mt-3 mb-4 text-[15px] leading-[1.55] text-[#53645c]">Municipios que has descubierto explorando contenido en este dispositivo.</p>
-          <div className="h-2 overflow-hidden rounded-full bg-[rgba(23,63,54,0.08)]" role="progressbar" aria-valuemin={0} aria-valuemax={passport.total} aria-valuenow={passport.collected} aria-label="Municipios descubiertos">
-            <div className="h-full rounded-full bg-river" style={{ width: `${passport.percentage}%` }} />
-          </div>
-          <p className="mt-2 mb-5 text-[13px] font-bold text-ink">{passport.collected} de {passport.total} municipios</p>
-          <a className={LINK_BTN} href="#mapa">Ver el mapa vivo</a>
-        </section>
-        <section className={PANEL} aria-labelledby="ciudadano-participa">
-          <h2 id="ciudadano-participa" className={`${H2} flex items-center gap-3`}><Icon name="send" className="size-6 text-river" /> Participa</h2>
-          <p className="mt-3 mb-5 text-[15px] leading-[1.55] text-[#53645c]">¿Conoces una historia, un evento o una iniciativa que debería estar en TEJIDO? Cuéntanos.</p>
-          <a className={LINK_BTN} href="#nosotros">Escribir al equipo</a>
-        </section>
-      </div>
     </>
   );
 }
 
-export default function ProfileScreen({ user, onLogout }) {
+export default function ProfileScreen({ user, onLogout, onUserUpdate }) {
   const reduceMotion = useReducedMotion();
   const role = ROLES[user.role] || ROLES.CIUDADANO;
   const Module = user.role === 'ADMIN' ? AdminModule : user.role === 'GESTOR' ? GestorModule : CitizenModule;
 
   return (
     <section className={`${SECTION} min-h-[62vh]`}>
-      {/* Cabecera comun: identidad por iniciales (sin fotos) con el aro de la marca. */}
-      <header className="mb-12 flex flex-wrap items-center gap-7 max600:gap-5">
-        <div className="relative size-[92px] shrink-0 max600:size-[72px]" aria-hidden="true">
-          <span className="absolute -right-2.5 -bottom-2 size-full rounded-full border-2 border-ink/15" />
-          <span className={`relative flex size-full items-center justify-center rounded-full text-[30px] font-extrabold max600:text-[24px] ${role.mark}`}>{getInitials(user.name)}</span>
-        </div>
-        {/* En movil el nombre ocupa el ancho junto al avatar (72 + 20 de gap) y el boton baja. */}
-        <div className="min-w-0 flex-1 max600:basis-[calc(100%-92px)]">
-          <p className={`${EYEBROW} mb-2`}>Mi perfil · {role.label}</p>
-          <h1 className="m-0 font-sans text-[length:clamp(34px,4.4vw,58px)] font-extrabold leading-[1] tracking-[-0.045em] text-ink">{user.name}</h1>
-          <p className="mt-2 mb-0 text-[15px] text-muted">{user.email}</p>
-        </div>
-        <button type="button" onClick={onLogout} className="max600:ml-[92px] inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#d9cfbe] bg-transparent py-2.5 px-4 text-[14px] font-semibold text-ink transition-colors duration-200 hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">
-          <Icon name="logout" className="size-[18px]" /> Cerrar sesión
-        </button>
-      </header>
+      <ProfileHeader user={user} roleLabel={role.label} markClass={role.mark} onUserUpdate={onUserUpdate} onLogout={onLogout} />
 
       <p className="mt-0 mb-8 max-w-[640px] text-[18px] leading-[1.6] text-[#53645c]">{role.intro}</p>
 

@@ -1,9 +1,9 @@
 import HeroInteractive from '../components/HeroInteractive.jsx';
-import PassportSection from '../components/PassportSection.jsx';
 import TimelineSection from '../components/TimelineSection.jsx';
+import VideoText from '../components/VideoText.jsx';
 import HomeFeaturedArtist from './HomeFeaturedArtist.jsx';
 import HomeMapSection from './HomeMapSection.jsx';
-import { BTN_CULTURAL, BTN_CULTURAL_BASE, SECTION } from '../components/uiStyles.js';
+import { BTN_CULTURAL, BTN_CULTURAL_BASE } from '../components/uiStyles.js';
 
 // En la invitacion (fondo naranja) el boton cultural va en blanco; el de contorno es propio de aqui.
 const BTN_INVITE = `${BTN_CULTURAL_BASE} bg-white text-sunset hover:bg-ink-deep hover:text-white`;
@@ -18,9 +18,8 @@ export default function HomeScreen({ onExplore, publications = [] }) {
 
       <HomeMapSection publications={publications} />
 
-      <section className={SECTION}>
-        <PassportSection />
-      </section>
+      {/* Mismo aire que dejaba el padding del Pasaporte antes de la Cronologia. */}
+      <VideoText className="mb-[100px] max800:mb-[70px]" />
 
       {/* Bloque oscuro propio: si no hay publicaciones con fecha, no deja una caja vacia. */}
       <TimelineSection publications={publications} />

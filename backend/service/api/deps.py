@@ -24,7 +24,7 @@ def get_current_user(
         return None
     row = (
         db.execute(
-            select(User.id, User.name, User.email, Role.name.label("role"))
+            select(User.id, User.name, User.email, Role.name.label("role"), User.avatar_url)
             .join(Role, Role.id == User.role_id)
             .join(SessionRow, SessionRow.user_id == User.id)
             .where(

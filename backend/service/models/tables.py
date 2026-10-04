@@ -62,6 +62,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
     active: Mapped[bool] = mapped_column(default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Foto de perfil (URL o ruta del sitio), la edita el propio usuario (PATCH /api/me).
+    avatar_url: Mapped[str | None] = mapped_column(String)
 
     role: Mapped["Role"] = relationship()
 
@@ -85,9 +87,11 @@ class Organization(Base):
     description: Mapped[str | None] = mapped_column(Text)
     contact: Mapped[str | None] = mapped_column(String)
     active: Mapped[bool] = mapped_column(default=True, nullable=False)
-    # Rama cultural del gestor (valores en backend/service/schemas/organizations.py::ALLOWED_BRANCHES).
+    # Rama cultural del gestor (valores en backend/service/schemas/cultural_categories.py).
     # Nullable: la organizacion sembrada "Colectivo Rio Vivo" no tiene el dato y no se inventa.
     branch: Mapped[str | None] = mapped_column(String)
+    # Foto publica del gestor (URL o ruta del sitio). Nullable: hoy ningun gestor tiene.
+    photo_url: Mapped[str | None] = mapped_column(String)
 
 
 class InviteToken(Base):
@@ -131,6 +135,9 @@ class Publication(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     deleted: Mapped[bool] = mapped_column(default=False, nullable=False)
+    # Categoria cultural (schemas/cultural_categories.py). Va en la publicacion, no se hereda
+    # del autor. Nullable: no toda publicacion tiene una.
+    cultural_category: Mapped[str | None] = mapped_column(String)
 
     category: Mapped["Category"] = relationship()
     author: Mapped["User"] = relationship()

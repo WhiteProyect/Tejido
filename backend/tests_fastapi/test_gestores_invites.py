@@ -182,7 +182,7 @@ def test_accept_invite_activates_and_allows_login(client, tokens, sent_emails):
     # Mismo shape que /api/auth/login, y la sesion queda abierta.
     assert set(data) == {"token", "user"}
     assert data["user"] == {"id": body["user_id"], "name": payload["name"],
-                            "email": payload["email"], "role": "GESTOR"}
+                            "email": payload["email"], "role": "GESTOR", "avatar_url": None}
     me = client.get("/api/me", headers={"Authorization": f"Bearer {data['token']}"}).json()
     assert me["user"]["id"] == body["user_id"]
 
@@ -315,3 +315,23 @@ def test_seed_creates_real_admins_with_invites_and_no_emails(client, tokens, mon
     with schema_session() as db:
         assert [u.email for u in db.execute(select(User).where(User.id.in_((1, 2, 3))).order_by(User.id)).scalars()] == [
             "admin@tejido.co", "gestor@tejido.co", "ciudadano@tejido.co"]
+
+
+def test_stats_counts_active_gestores(client, tokens, sent_emails):
+    """gestores_activos en /api/admin/stats: solo GESTOR con cuenta activa."""
+    admin = auth_header(tokens, "admin")
+
+    def count():
+        resp = client.get("/api/admin/stats", headers=admin)
+        assert resp.status_code == 200
+        return resp.json()["gestores_activos"]
+
+    before = count()
+    assert before >= 1  # el gestor demo del seed
+    _, created = create_gestor(client, tokens)
+    assert count() == before  # pendiente: no cuenta
+    token = token_from_link(created["invite_link"])
+    assert client.post("/api/auth/accept-invite", json={"token": token, "password": GOOD_PASSWORD}).status_code == 200
+    assert count() == before + 1
+    client.patch(f"/api/admin/gestores/{created['user_id']}", json={"active": False}, headers=admin)
+    assert count() == before

@@ -25,21 +25,28 @@ export const KIND_LABELS = {
   LUGAR: 'Lugar',
 };
 
-// ─── Ramas culturales de los gestores ──────────────────────
-// Mismos valores que backend/service/schemas/organizations.py::ALLOWED_BRANCHES.
-export const BRANCH_LABELS = {
-  MUSICA: 'Música',
-  CINE_AUDIOVISUAL: 'Cine y audiovisual',
-  DANZA: 'Danza',
-  TEATRO: 'Teatro',
-  ARTES_VISUALES: 'Artes visuales',
-  LITERATURA: 'Literatura',
-  ARTESANIAS: 'Artesanías',
-  PATRIMONIO_MEMORIA: 'Patrimonio y memoria',
-  GASTRONOMIA_CULTURAL: 'Gastronomía cultural',
-};
+// ─── Categorias culturales ─────────────────────────────────
+// Una sola lista para la rama del gestor y la categoria de cada publicacion.
+// Mismas claves que backend/service/schemas/cultural_categories.py.
+// [clave, etiqueta, slug]: el slug es el nombre de la portada (/images/categorias/<slug>.jpg)
+// y el segmento de la URL (#categoria/<slug>).
+export const CULTURAL_CATEGORIES = [
+  ['MUSICA', 'Música', 'musica'],
+  ['CINE_AUDIOVISUAL', 'Cine y audiovisual', 'cine-audiovisual'],
+  ['DANZA', 'Danza', 'danza'],
+  ['TEATRO', 'Teatro', 'teatro'],
+  ['ARTES_VISUALES', 'Artes visuales', 'artes-visuales'],
+  ['LITERATURA', 'Literatura', 'literatura'],
+  ['ARTESANIAS', 'Artesanías', 'artesanias'],
+  ['PATRIMONIO_MEMORIA', 'Patrimonio y memoria', 'patrimonio-memoria'],
+  ['GASTRONOMIA_CULTURAL', 'Gastronomía cultural', 'gastronomia-cultural'],
+  ['EMPRENDIMIENTO_CULTURAL', 'Emprendimiento cultural', 'emprendimiento-cultural'],
+];
+
+// Ramas de los gestores: las mismas categorias, por clave (selects del panel de admin).
+export const BRANCH_LABELS = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
 // Orden de presentacion (selects y filtros).
-export const CULTURAL_BRANCHES = Object.keys(BRANCH_LABELS);
+export const CULTURAL_BRANCHES = CULTURAL_CATEGORIES.map(([key]) => key);
 
 // ─── Municipios del Bajo Cauca ─────────────────────────────
 export const MUNICIPALITIES = [
@@ -121,3 +128,13 @@ export const MUNICIPALITY_SVG_POSITIONS = {
 export function normalizeText(text = '') {
   return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 }
+
+// Tonos de los avisos (toasts) del "Modelo de Alertas TEJIDO". El color va solo en el icono y
+// los acentos, nunca de fondo. Iconos de components/Icon.jsx.
+export const TOAST_TONES = {
+  rio: { color: '#1d8fa3', icon: 'waves' },       // Guia de Hilo: orientacion neutra (login, logout)
+  menta: { color: '#276749', icon: 'sprout' },    // Tejido Exitoso: confirmaciones (guardar, mensajes)
+  dorado: { color: '#d4a843', icon: 'compass' },  // Sello Territorial: hitos (cuenta creada, cuenta activada)
+  naranja: { color: '#dd6b20', icon: 'flame' },   // Pulso Cultural: reservado para alertas de eventos; 'flame' aun no existe en Icon.jsx
+  morado: { color: 'var(--purple)' },             // Memoria Vacia: estados vacios (EmptyNote usa text-purple, la misma variable), no para toasts
+};

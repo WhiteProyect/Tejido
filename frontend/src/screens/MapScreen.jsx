@@ -12,6 +12,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import EmptyNote from '../components/EmptyNote.jsx';
 import ScreenIntro from '../components/ScreenIntro.jsx';
 import { SCREEN_SECTION } from '../components/uiStyles.js';
 import { KIND_COLORS, KIND_LABELS, normalizeText } from '../utils/constants.js';
@@ -185,9 +186,7 @@ export default function MapScreen({ publications = [] }) {
           {/* Lista scrolleable de publicaciones */}
           <div className="grid gap-2 overflow-y-auto [scrollbar-width:thin]">
             {filteredPubs.length === 0 && (
-              <div className="py-[30px] px-5 text-center text-muted">
-                <p>No hay publicaciones en esta categoría.</p>
-              </div>
+              <EmptyNote compact icon="pin" title="Filtro sin coincidencias" text="Prueba con otra categoría o explora el resto del mapa." />
             )}
 
             {filteredPubs.map((pub) => (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import EmptyNote from '../EmptyNote.jsx';
 import Icon from '../Icon.jsx';
 import { BRANCH_LABELS, CULTURAL_BRANCHES } from '../../utils/constants.js';
 
@@ -177,7 +178,7 @@ export default function GestoresPanel() {
       {state.loading && <p className="m-0 py-6 text-[14px] text-muted" aria-busy="true">Cargando...</p>}
       {state.error && <p className="mt-6 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{state.error}</p>}
       {!state.loading && !state.error && state.gestores.length === 0 && (
-        <p className="mt-6 mb-0 rounded-[20px] border border-dashed border-[#d9cfbe] py-8 px-6 text-center text-[14px] text-muted">Aún no hay gestores. Agrega el primero para enviarle su invitación.</p>
+        <div className="mt-6"><EmptyNote icon="people" title="Aún no hay gestores" text="Agrega el primero para enviarle su invitación." /></div>
       )}
       {!state.loading && !state.error && state.gestores.length > 0 && (
         // relative: sin el, el sr-only (absolute) de la cabecera se ubica fuera del scroll y

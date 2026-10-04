@@ -27,10 +27,12 @@ def list_publications(
     status: Optional[str] = Query(default=None),
     kind: Optional[str] = Query(default=None),
     search: Optional[str] = Query(default=None),
+    cultural_category: Optional[str] = Query(default=None),
     user: Optional[dict] = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return svc.list_publications(db, user, mine=mine, status=status, kind=kind, search=search)
+    return svc.list_publications(db, user, mine=mine, status=status, kind=kind, search=search,
+                                 cultural_category=cultural_category)
 
 
 @router.get("/api/publications/{publication_id}")

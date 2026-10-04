@@ -3,8 +3,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Footer from './components/Footer.jsx';
 import HiloAssistant from './components/HiloAssistant.jsx';
 import SiteHeader from './components/SiteHeader.jsx';
+import { CULTURAL_CATEGORIES } from './utils/constants.js';
+import { useToast } from './context/ToastContext.jsx';
 import AcceptInviteScreen from './screens/AcceptInviteScreen.jsx';
+import AdminDashboard from './screens/AdminDashboard.jsx';
 import AgendaScreen from './screens/AgendaScreen.jsx';
+import CategoryScreen from './screens/CategoryScreen.jsx';
+import GestorDashboard from './screens/GestorDashboard.jsx';
 import ArtistScreen from './screens/ArtistScreen.jsx';
 import ArtistDashboard from './screens/ArtistDashboard.jsx';
 import ArtistMediaKit from './screens/ArtistMediaKit.jsx';
@@ -45,6 +50,11 @@ function getRoute() {
     return { screen: 'artist', slug };
   }
 
+  // Categoria cultural: #categoria/<slug> (slugs en utils/constants.js::CULTURAL_CATEGORIES).
+  if (hash.startsWith('categoria/')) {
+    return { screen: 'categoria', slug: hash.slice('categoria/'.length) };
+  }
+
   // Link de invitacion de cuenta: #invitacion/<token> (el token viaja en `slug`).
   if (hash.startsWith('invitacion/')) {
     return { screen: 'invitacion', slug: hash.slice('invitacion/'.length) };
@@ -60,10 +70,9 @@ function getRoute() {
 }
 
 export default function App() {
+  const { showToast } = useToast();
   const [route, setRoute] = useState(getRoute);
   const [publications, setPublications] = useState([]);
-  const [activeKind, setActiveKind] = useState('TODOS');
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [user, setUser] = useState(null);
@@ -123,6 +132,7 @@ export default function App() {
     localStorage.removeItem('tejido_token');
     setUser(null);
     window.location.hash = 'inicio';
+    showToast({ tone: 'rio', eyebrow: 'Hasta pronto', title: 'Sesión cerrada', text: 'Vuelve cuando quieras seguir tejiendo tu recorrido.' });
   }
 
   const isArtistRoute = route.screen === 'artist' || route.screen === 'media-kit' || route.screen === 'dashboard';
@@ -146,7 +156,26 @@ export default function App() {
       content = user ? <ArtistDashboard /> : <LoginScreen onSuccess={handleLogin} />;
       break;
     case 'explorar':
-      content = <ExploreScreen publications={publications} activeKind={activeKind} onKindChange={setActiveKind} search={search} onSearchChange={setSearch} loading={loading} error={error} user={user} />;
+      content = <ExploreScreen />;
+      break;
+    case 'categoria': {
+      const category = CULTURAL_CATEGORIES.find(([, , slug]) => slug === route.slug);
+      content = category
+        ? <CategoryScreen categoryKey={category[0]} publications={publications} loading={loading} error={error} user={user} />
+        : <NotFoundScreen />;
+      break;
+    }
+    case 'admin-dashboard':
+      // Solo admins. Sin sesion: login (y vuelve aqui); con otro rol: no existe para el.
+      if (!authReady) content = <section className="min-h-[62vh]" aria-busy="true" />;
+      else if (!user) content = <LoginScreen onSuccess={handleLogin} />;
+      else content = user.role === 'ADMIN' ? <AdminDashboard user={user} /> : <NotFoundScreen />;
+      break;
+    case 'gestor-dashboard':
+      // Solo gestores. Sin sesion: login (y vuelve aqui); con otro rol: no existe para el.
+      if (!authReady) content = <section className="min-h-[62vh]" aria-busy="true" />;
+      else if (!user) content = <LoginScreen onSuccess={handleLogin} />;
+      else content = user.role === 'GESTOR' ? <GestorDashboard user={user} /> : <NotFoundScreen />;
       break;
     case 'mapa':
       content = <MapScreen publications={publications} />;
@@ -168,7 +197,7 @@ export default function App() {
       break;
     case 'perfil':
       // Mientras se valida la sesion (o se redirige a login) se reserva el espacio.
-      content = user ? <ProfileScreen user={user} onLogout={handleLogout} /> : <section className="min-h-[62vh]" aria-busy="true" />;
+      content = user ? <ProfileScreen user={user} onLogout={handleLogout} onUserUpdate={setUser} /> : <section className="min-h-[62vh]" aria-busy="true" />;
       break;
     case 'moneystack':
       content = <MoneystackScreen />;

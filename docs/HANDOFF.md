@@ -593,3 +593,104 @@ borrar `main.css` y los `!` que sobran).
 - El overflow horizontal móvil preexistente sigue pendiente (aparte).
 - **Nota:** `docs/MANUAL_ESENCIA_TEJIDO.md` §3 sigue en conflicto con el
   hero actual (río/sol/montaña fuera) — pendiente de decision del dueno.
+
+## 2026-10-02 — Login más ágil, video-texto en Inicio y avisos (toasts)
+
+- **Login:** el cursor entra en Correo y, al cambiar de pestaña, en el primer campo
+  (Nombre en "Crear cuenta").
+- **Inicio:** `PassportSection` salió del landing (el componente queda sin usar; la lógica de
+  sellos en `utils/passportUtils.js` sigue viva). En su lugar `components/VideoText.jsx`:
+  "TEJIDO" relleno con `public/videos/tejido-video.mp4`. Técnica: video al fondo y encima un
+  rect SVG forest con las letras como hueco (Safari no aplica `mask: url(#...)` a un `<video>`).
+  Movimiento reducido: video pausado en su primer cuadro.
+- **Avisos (Modelo de Alertas TEJIDO):** `context/ToastContext.jsx` (`ToastProvider` en
+  `main.jsx`, `useToast()` → `showToast({ tone, eyebrow, title, text })`) y
+  `components/Toast.jsx`. Uno a la vez (el nuevo reemplaza), 4 s, cerrar de 48 px. Tonos en
+  `utils/constants.js::TOAST_TONES` (rio, menta, dorado; naranja y morado reservados, `flame`
+  aún no existe en `Icon.jsx`). Escritorio: abajo a la derecha, a la izquierda de Hilo y su
+  burbuja; móvil: arriba bajo el header (abajo choca con Hilo). Disparos: login, registro,
+  logout, guardar/quitar favorito, mensaje en Nosotros, activar invitación.
+- **Estados vacíos:** `components/EmptyNote.jsx` (extraído de `ProfileScreen`, icono morado,
+  prop `compact`). Usado en Explorar, Mapa, Guardadas, perfil ciudadano (guardados y pasaporte
+  en 0), mensajes del admin, publicaciones del gestor y `GestoresPanel`.
+
+## 2026-10-03 — Categorías culturales
+
+- **Una sola lista:** `backend/service/schemas/cultural_categories.py` (`CULTURAL_CATEGORIES`,
+  `CULTURAL_CATEGORY_LABELS`, 10 con `EMPRENDIMIENTO_CULTURAL`). `organizations.py` la importa;
+  `ALLOWED_BRANCHES` se quitó (nadie más lo usaba). En el frontend,
+  `utils/constants.js::CULTURAL_CATEGORIES` ([clave, etiqueta, slug]) y de ahí salen
+  `BRANCH_LABELS`/`CULTURAL_BRANCHES` del panel de gestores.
+- **Migración** `8676ea0b7099` (aplicada en Neon): `publications.cultural_category` y
+  `organizations.photo_url`, ambas nullable.
+- **API:** `cultural_category` en `PublicationInput` (validada, opcional) y filtro
+  `?cultural_category=` en `GET /api/publications`. Nuevo `GET /api/gestores` público
+  (`routes/gestores.py`): `{id, name, branch, photo_url}`, `?branch=`; solo organizaciones
+  activas cuyo usuario también está activo (no salen gestores pendientes ni desactivados).
+  `PATCH /api/admin/gestores/{id}` acepta `photo_url` (URL http(s) o ruta `/...`; vacío la quita).
+- **Frontend:** Explorar ya no tiene chips de tipo ni buscador: solo encabezado y
+  `CategoryCoversGrid` (portadas en `/images/categorias/<slug>.jpg`, con tinte de respaldo, sin
+  flecha). `#categoria/<slug>` → `CategoryScreen`: gestores arriba; publicaciones abajo con un
+  buscador por título y dos vacíos distintos (categoría sin publicaciones / búsqueda sin
+  coincidencias). El sellado del pasaporte se movió de Explorar a esta pantalla. Las tarjetas ya no muestran a Hilo
+  como placeholder. Ojo: el CSS legado oculta `nav` en móvil; las portadas usan
+  `div role="navigation"`.
+- **Seed:** etiqueta las 6 publicaciones de ejemplo (idempotente, no pisa una categoría ya
+  puesta). En Neon falta correrlo para que esas 6 queden etiquetadas.
+- **Tests:** `test_cultural_categories.py` (4). Suite: 57 pasan.
+
+## 2026-10-04 — Perfiles por rol, fase 1: foto/nombre editables y ciudadano simplificado
+
+- **Migración** `7fcef51b97b2` (aplicada en Neon): `users.avatar_url`, nullable.
+- **API:** `PATCH /api/me` (cualquier sesión) con `schemas/users.py::UserSelfUpdateInput`
+  (`name`, `avatar_url`; solo lo enviado, siempre sobre `user["id"]`; id/role/email del body se
+  ignoran). `avatar_url` ahora viene en login, signup, accept-invite y `GET /api/me` (también
+  en `get_current_user`). `image_url()` en `schemas/users.py` valida avatar y `photo_url` de
+  organización (http(s) o ruta `/...`; vacío = quitar).
+- **Frontend:** `components/ProfileHeader.jsx` (cabecera común de `ProfileScreen`, pensada
+  para reusar en la fase de gestor): nombre editable en línea (Enter/blur guarda, Escape
+  cancela) y foto por URL (input `type="text"`: `type="url"` bloquearía rutas `/...`). Éxito →
+  toast menta "Perfil actualizado" y `App` actualiza `user` (`onUserUpdate={setUser}`), así
+  `SiteHeader` muestra la foto/nombre nuevos sin recargar.
+- **Ciudadano:** su perfil queda solo con "Tus guardados" (salieron Recorrido y Participa).
+- **Tests:** `test_me.py` (5). Suite: 62 pasan.
+- **Pendiente (fases 2 y 3):** perfil de Gestor y de Admin.
+
+## 2026-10-04 — Perfiles por rol, fase 2: biografía del gestor y Dashboard de Gestor
+
+- **API:** `GET/PATCH /api/me/organization` (solo GESTOR, en `routes/auth.py`), servicio
+  `services/organizations.py`, schema `schemas/users.py::OrganizationSelfUpdateInput` (name,
+  description, photo_url, contact; branch/active se ignoran: son del admin). 404 con mensaje
+  claro si el gestor no tiene organización. Sin migración.
+- **Perfil del gestor:** tarjeta oscura "Taller de Eventos y Cultura" → `#gestor-dashboard`
+  y sección "Biografía pública" (sin rama). `components/ImageUrlField.jsx`: imagen por enlace
+  con vista previa (mismo patrón que el avatar).
+- **`screens/GestorDashboard.jsx` (`#gestor-dashboard`, solo GESTOR):** CRUD real con
+  `/api/publications`. Acciones por estado: Borrador (Editar/Enviar/Borrar), En revisión
+  (ninguna), Por ajustar (motivo + Corregir/Reenviar), Publicada (Ver con PublicationCard /
+  Archivar). Borrar/Archivar piden confirmación en línea. `category_id` se resuelve en el
+  cliente (la categoría cuyo `type` es el `kind`). Ojo: guardar una corrección la deja en
+  Borrador (lo hace el backend con PUT); se reenvía con "Enviar".
+- **Compartido:** `utils/publicationStatus.js` (STATUS_LABELS; REJECTED = "Por ajustar"),
+  `utils/api.js` (`apiRequest`), y en `uiStyles.js` PANEL, PANEL_TITLE, LINK_BTN(_SOLID),
+  FORM_LABEL, FORM_INPUT (lleva `font-sans`: sin preflight los textarea no heredan la fuente).
+- **Tests:** `test_my_organization.py` (5). Suite: 67 pasan. Flujo de punta a punta probado
+  contra un backend aislado (schema temporal en Neon, borrado al terminar).
+- **Pendiente:** fase 3 (Admin: moderación desde la UI).
+
+## 2026-10-04 — Perfiles por rol, fase 3: Dashboard de Admin
+
+- **API:** `/api/admin/stats` suma `gestores_activos` (GESTOR con `active = true`). Test en
+  `test_gestores_invites.py`. Suite: 68 pasan.
+- **`components/PublicationForm.jsx`:** el formulario de publicaciones, extraído de
+  `GestorDashboard` y compartido. `allowPublish` (admin) agrega una casilla: al crear manda
+  `publish: true`; al editar, como el backend deja todo `PUT` en borrador, la vuelve a
+  publicar con submit + aprobar (marcada por defecto si ya estaba publicada).
+- **`screens/AdminDashboard.jsx` (`#admin-dashboard`, solo ADMIN):** pulso (stats), CRUD de
+  publicaciones de todos los autores (`?status=` por cada estado, en revisión primero:
+  Aprobar / Rechazar con motivo de 5+; Editar / Eliminar en cualquier estado; Nueva con
+  publicar directo) y `GestoresPanel` (sin cambios, solo movido aquí).
+- **Perfil del admin:** tarjeta oscura de acceso (misma `DashboardCard` que el gestor) y
+  "Mensajes recientes" sin cambios; ya no muestra stats ni gestores.
+- **Estilos compartidos nuevos en `uiStyles.js`:** `BTN_GHOST`, `BTN_DARK`, `BTN_DANGER`.
+- Flujo probado de punta a punta contra un backend aislado (schema temporal borrado).

@@ -21,6 +21,7 @@ def list_publications(
     status: Optional[str] = None,
     kind: Optional[str] = None,
     search: Optional[str] = None,
+    cultural_category: Optional[str] = None,
 ):
     conditions = [Publication.deleted.is_(False)]
     wants_mine = mine == "1" and user
@@ -35,6 +36,9 @@ def list_publications(
 
     if kind and kind != "TODOS":
         conditions.append(Publication.kind == kind)
+
+    if cultural_category:
+        conditions.append(Publication.cultural_category == cultural_category)
 
     if search:
         term = f"%{search}%"
@@ -137,6 +141,7 @@ def create_publication(db: Session, user: dict, item: PublicationInput) -> int:
         start_date=item.start_date,
         end_date=item.end_date,
         link=item.link,
+        cultural_category=item.cultural_category,
         featured=bool(item.featured) if user["role"] == "ADMIN" else False,
         status=status,
         created_at=ts,
@@ -161,6 +166,7 @@ def update_publication(db: Session, publication_id: int, item: PublicationInput)
             "start_date": item.start_date,
             "end_date": item.end_date,
             "link": item.link,
+            "cultural_category": item.cultural_category,
             "status": "DRAFT",
             "moderation_note": None,
             "updated_at": now_utc(),

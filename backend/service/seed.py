@@ -8,7 +8,7 @@ Seed idempotente para un Postgres nuevo (dev/CI/tests).
 """
 from datetime import date, datetime, timezone
 
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -114,6 +114,17 @@ def seed_database(db: Session):
     }], ["id"])
     db.flush()
 
+    # Categoria cultural de las publicaciones sembradas (schemas/cultural_categories.py), segun
+    # su contenido. Se usa al crearlas y, abajo, para etiquetar las que ya existian sin categoria.
+    seed_cultural_categories = {
+        "Festival Rio y Sabana 2026": "MUSICA",
+        "Las manos que tejen memoria": "ARTESANIAS",
+        "Convocatoria Semillas Creativas": "EMPRENDIMIENTO_CULTURAL",
+        "Samuel Torres: fotografia del territorio": "ARTES_VISUALES",
+        "Biblioteca al parque": "LITERATURA",
+        "Mercado Hecho en Caucasia": "EMPRENDIMIENTO_CULTURAL",
+    }
+
     if db.execute(select(Publication.id).limit(1)).first() is None:
         category_ids = {row.type: row.id for row in db.execute(select(Category)).scalars()}
         seed_publications = [
@@ -171,6 +182,7 @@ def seed_database(db: Session):
                 row["author_id"] = 1
             row["start_date"] = _iso_dt(row.get("start_date"))
             row["end_date"] = _iso_dt(row.get("end_date"))
+            row["cultural_category"] = seed_cultural_categories.get(row["title"])
 
         for row in seed_publications:
             venue = row.pop("venue", None)
@@ -183,6 +195,15 @@ def seed_database(db: Session):
                 db.add(Event(publication_id=publication.id, venue=venue, capacity=300))
             if row["kind"] == "OPORTUNIDAD":
                 db.add(Opportunity(publication_id=publication.id, organization_name=organization_name, deadline=deadline))
+
+    # Idempotente: etiqueta las publicaciones sembradas antes de existir cultural_category, sin
+    # pisar una categoria que alguien ya haya puesto.
+    for title, cultural_category in seed_cultural_categories.items():
+        db.execute(
+            update(Publication)
+            .where(Publication.title == title, Publication.cultural_category.is_(None))
+            .values(cultural_category=cultural_category)
+        )
 
     from backend.service.models.tables import ActivityType, Reward
 

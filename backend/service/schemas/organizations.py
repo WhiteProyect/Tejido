@@ -1,21 +1,19 @@
 """Entradas del alta y edicion de gestores (organizacion + rama cultural).
 
-La lista de ramas es fija, mismo patron que ALLOWED_KINDS en schemas/publications.py.
-Sus etiquetas legibles viven en el frontend (frontend/src/utils/constants.js::BRANCH_LABELS).
+Las ramas son las categorias culturales de schemas/cultural_categories.py, la misma lista
+que usan las publicaciones.
 """
 from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
-ALLOWED_BRANCHES = {
-    "MUSICA", "CINE_AUDIOVISUAL", "DANZA", "TEATRO", "ARTES_VISUALES",
-    "LITERATURA", "ARTESANIAS", "PATRIMONIO_MEMORIA", "GASTRONOMIA_CULTURAL",
-}
+from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES
+from backend.service.schemas.users import image_url
 
 
 def _branch(v):
     v = str(v or "").strip().upper()
-    if v not in ALLOWED_BRANCHES:
+    if v not in CULTURAL_CATEGORIES:
         raise ValueError("Selecciona una rama cultural valida")
     return v
 
@@ -71,6 +69,7 @@ class GestorUpdateInput(BaseModel):
     organization_name: Optional[str] = None
     branch: Optional[str] = None
     contact: Optional[str] = None
+    photo_url: Optional[str] = None
 
     @field_validator("organization_name", mode="before")
     @classmethod
@@ -86,3 +85,9 @@ class GestorUpdateInput(BaseModel):
     @classmethod
     def _contact(cls, v):
         return None if v is None else (str(v).strip() or "")
+
+    @field_validator("photo_url", mode="before")
+    @classmethod
+    def _photo_url(cls, v):
+        # Vacio = quitar la foto (None); mismas reglas que el avatar del usuario.
+        return image_url(v)

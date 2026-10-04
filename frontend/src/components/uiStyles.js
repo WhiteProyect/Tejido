@@ -55,3 +55,19 @@ export const SECTION_TITLE = 'font-sans text-[length:clamp(40px,5vw,64px)] font-
 export const BTN_CULTURAL_BASE = 'border-0 rounded-[999px] cursor-pointer font-bold py-4 px-8 transition-all duration-300 ease-[ease] no-underline hover:[transform:translateY(-3px)] hover:[box-shadow:0_12px_32px_rgba(45,90,61,0.3)]';
 // bg-transparent: el legado usaba el atajo `background:`, que tambien anula el gris nativo del boton.
 export const BTN_CULTURAL = `${BTN_CULTURAL_BASE} bg-transparent bg-[linear-gradient(135deg,var(--forest)_0%,var(--river)_100%)] text-white`;
+
+// Paneles de las pantallas privadas (perfil, dashboard del gestor): tarjeta crema y su titulo.
+export const PANEL = 'min-w-0 rounded-[28px] border border-[#e2d9ca] bg-[#fffaf2] p-8 max600:p-6';
+export const PANEL_TITLE = 'm-0 font-sans text-[26px] font-extrabold tracking-[-0.03em] text-ink';
+// Botones-enlace: base sin fondo ni color de texto; cada variante pone los suyos (README, patron 15).
+const LINK_BTN_BASE = 'inline-flex cursor-pointer items-center gap-2 rounded-full border border-ink py-2.5 px-5 text-[14px] font-bold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-50';
+export const LINK_BTN = `${LINK_BTN_BASE} bg-transparent text-ink hover:bg-ink hover:text-paper`;
+export const LINK_BTN_SOLID = `${LINK_BTN_BASE} bg-ink text-paper hover:bg-ink-deep`;
+// Campos de formulario de esas pantallas.
+export const FORM_LABEL = 'grid gap-1.5 text-[12px] font-bold uppercase tracking-[.12em] text-muted';
+export const FORM_INPUT = 'w-full rounded-[12px] font-sans border border-[#d9cfbe] bg-white py-2.5 px-3.5 text-[15px] font-medium normal-case tracking-normal text-ink outline-none focus:border-ink disabled:opacity-60';
+// Botones chicos de acciones por fila (dashboards de gestor y admin).
+const SMALL_BTN = 'inline-flex cursor-pointer items-center gap-1.5 rounded-full border py-2 px-3.5 text-[13px] font-bold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-50';
+export const BTN_GHOST = `${SMALL_BTN} border-[#d9cfbe] bg-transparent text-ink hover:border-ink`;
+export const BTN_DARK = `${SMALL_BTN} border-ink bg-ink text-paper hover:bg-ink-deep`;
+export const BTN_DANGER = `${SMALL_BTN} border-[rgba(216,91,54,.35)] bg-transparent text-[#a8431f] hover:border-[#a8431f]`;

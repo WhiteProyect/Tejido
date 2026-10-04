@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Logo from '../components/Logo.jsx';
 import { EYEBROW } from '../components/uiStyles.js';
+import { useToast } from '../context/ToastContext.jsx';
 
 // Iniciar sesion o crear una cuenta de ciudadano (POST /api/auth/signup). Las dos
 // terminan igual: token en localStorage y onSuccess(user).
 const MIN_PASSWORD = 8; // misma regla que backend/service/services/invites.py
 
 export default function LoginScreen({ onSuccess }) {
+  const { showToast } = useToast();
   const [mode, setMode] = useState('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -15,6 +17,13 @@ export default function LoginScreen({ onSuccess }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const isSignup = mode === 'signup';
+  const nameRef = useRef(null);
+  const emailRef = useRef(null);
+
+  // Al entrar y al cambiar de pestana, el cursor queda en el primer campo del formulario.
+  useEffect(() => {
+    (isSignup ? nameRef : emailRef).current?.focus();
+  }, [isSignup]);
 
   function switchMode(next) {
     setMode(next);
@@ -47,6 +56,9 @@ export default function LoginScreen({ onSuccess }) {
       if (!response.ok) throw new Error(result.message || (isSignup ? 'No fue posible crear tu cuenta' : 'No fue posible iniciar sesión'));
       localStorage.setItem('tejido_token', result.token);
       onSuccess(result.user);
+      showToast(isSignup
+        ? { tone: 'dorado', eyebrow: 'Nuevo hilo en la red', title: '¡Bienvenido a TEJIDO!', text: 'Tu cuenta quedó lista. Empieza a guardar y descubrir.' }
+        : { tone: 'rio', eyebrow: 'Hilo te reconoce', title: '¡Bienvenido de nuevo!', text: 'Tu territorio sigue aquí, listo para seguir explorando.' });
     } catch (loginError) {
       setError(loginError.message);
     } finally {
@@ -92,8 +104,8 @@ export default function LoginScreen({ onSuccess }) {
         </div>
 
         <form className="grid w-full gap-6" onSubmit={handleSubmit}>
-          {isSignup && <label className={LOGIN_LABEL}>Nombre<input className={LOGIN_INPUT} type="text" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} required /></label>}
-          <label className={LOGIN_LABEL}>Correo<input className={LOGIN_INPUT} type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+          {isSignup && <label className={LOGIN_LABEL}>Nombre<input className={LOGIN_INPUT} ref={nameRef} type="text" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} required /></label>}
+          <label className={LOGIN_LABEL}>Correo<input className={LOGIN_INPUT} ref={emailRef} type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
           <label className={LOGIN_LABEL}>Contraseña<input className={LOGIN_INPUT} type="password" autoComplete={isSignup ? 'new-password' : 'current-password'} minLength={isSignup ? MIN_PASSWORD : undefined} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
           {isSignup && (
             <>
