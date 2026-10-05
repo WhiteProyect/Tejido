@@ -13,6 +13,8 @@
 
 .footer-threshold-line { animation: snakeFlow 12s ease-in-out infinite; fill: none; opacity: .75; stroke: url(#footer-threshold-gradient); stroke-dasharray: 20 14; stroke-linecap: round; stroke-width: 3; }
 @keyframes hilo-float { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-7px) rotate(1deg); } }
+/* Susurro del lanzador de Hilo: entra desde el lado de Hilo. */
+@keyframes hilo-whisper { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 /* Login: ondas que respiran alrededor del formulario y puntos que flotan sobre ellas.
    Solo animan transform/opacity; el centrado usa la propiedad `translate` de Tailwind. */
 @keyframes loginBreath { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.03); opacity: .6; } }

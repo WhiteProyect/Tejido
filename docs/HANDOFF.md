@@ -694,3 +694,20 @@ borrar `main.css` y los `!` que sobran).
   "Mensajes recientes" sin cambios; ya no muestra stats ni gestores.
 - **Estilos compartidos nuevos en `uiStyles.js`:** `BTN_GHOST`, `BTN_DARK`, `BTN_DANGER`.
 - Flujo probado de punta a punta contra un backend aislado (schema temporal borrado).
+
+## 2026-10-04 — Rediseño de Hilo (HiloAssistant.jsx)
+
+- **Lanzador compacto:** Hilo pequeño + cápsula tinta "Habla con Hilo · Guía de Caucasia" con
+  punto río. Susurro a la izquierda (borde dorado, Playfair cursiva) que se esconde a los 5 s;
+  su texto depende de la pantalla (`screen={route.screen}` desde App, diccionario `WHISPERS`).
+- **Panel:** Hilo completo sin recorte; Brújula 2x2 (Recorrer Caucasia, Encontrar un plan,
+  Conocer gente y talento, Convocatorias) + píldoras "Mis guardados" y "Enviar sugerencia"
+  (ahora navega a #nosotros). Salieron ajustes, red y buscar (el buscar vive en el chat).
+- **Chat Turístico** (vista aparte con "← Volver a Brújula"): intenciones por palabras clave
+  (`INTENTS`: comer, evento, talento, hospedaje) sobre las publicaciones reales, sin IA; si no
+  hay intención, búsqueda libre como antes. Respuesta con mini-tarjeta (`HiloMiniCard`, lleva a
+  `#categoria/<slug>` o `#explorar`) y píldoras de seguimiento. Avatar chico de Hilo por mensaje.
+- **Sin cambios:** saludo por hora, inactividad (60 s), confeti, `REACTIVE_MESSAGES`.
+- **Ojo:** la Brújula usa `div role="navigation"`; un `<nav>` se oculta en ≤800 px por el CSS
+  legado. El panel es flex en columna (con grid, ocultar la cabecera en móvil estiraba el input).
+- **Toast:** en escritorio pasó a `bottom-[104px] right-6`, encima de la fila del lanzador.

@@ -8,9 +8,9 @@ import { TOAST_TONES } from '../utils/constants.js';
 // El antetitulo usa #b8860b (el dorado oscuro de URGENCY.warning en uiStyles.js) y no --gold:
 // es texto chico sobre fondo claro y --gold no da contraste suficiente.
 //
-// Posicion: en escritorio abajo a la derecha, corrida a la izquierda de Hilo (su boton
-// y su burbuja ocupan ~210 px desde el borde); en movil arriba, bajo el header, porque abajo Hilo
-// y su burbuja ocupan el lado derecho.
+// Posicion: en escritorio abajo a la derecha, por encima de la fila del lanzador de Hilo (su
+// capsula, Hilo y su susurro ocupan ~120 px de alto desde abajo); en movil arriba, bajo el header,
+// porque abajo el lanzador ocupa casi todo el ancho.
 export default function Toast({ toast, onDismiss, duration }) {
   const reduceMotion = useReducedMotion();
   // Entra desde el borde donde vive: desde abajo en escritorio, desde arriba en movil.
@@ -20,7 +20,7 @@ export default function Toast({ toast, onDismiss, duration }) {
 
   return (
     <div
-      className="pointer-events-none fixed bottom-6 right-[224px] z-90 w-[min(380px,calc(100vw-256px))] max600:inset-x-4 max600:top-[88px] max600:bottom-auto max600:w-auto"
+      className="pointer-events-none fixed bottom-[128px] right-6 z-90 w-[min(380px,calc(100vw-48px))] max600:inset-x-4 max600:top-[88px] max600:bottom-auto max600:w-auto"
       aria-live="polite"
     >
       <AnimatePresence mode="wait" initial={false}>

@@ -112,15 +112,16 @@ export default function App() {
   function handleLogin(userData) {
     setUser(userData);
     const returnTo = sessionStorage.getItem('tejido_return_to');
-    if (returnTo) {
-      sessionStorage.removeItem('tejido_return_to');
-      window.location.hash = returnTo;
-    }
+    sessionStorage.removeItem('tejido_return_to');
+    // Sin pantalla a la que volver (p. ej. tras cerrar sesion y entrar de nuevo), no se queda
+    // en el formulario: va al perfil, que existe para cualquier rol.
+    const next = returnTo || (window.location.hash === '#login' ? 'perfil' : '');
+    if (next) window.location.hash = next;
   }
 
   // #perfil sin sesion: a Login, volviendo al perfil despues de entrar. Se mira tambien el hash
-  // real: al cerrar sesion desde el perfil, handleLogout ya lo cambio a #inicio antes de que
-  // llegue el hashchange, y no hay que mandar a login.
+  // real: al cerrar sesion desde el perfil, handleLogout ya lo cambio a #login antes de que
+  // llegue el hashchange, y no hay que guardar #perfil como pantalla de regreso.
   useEffect(() => {
     if (route.screen === 'perfil' && window.location.hash === '#perfil' && authReady && !user) {
       sessionStorage.setItem('tejido_return_to', 'perfil');
@@ -131,7 +132,8 @@ export default function App() {
   function handleLogout() {
     localStorage.removeItem('tejido_token');
     setUser(null);
-    window.location.hash = 'inicio';
+    // Al login, por si quiere entrar de nuevo (o con otra cuenta).
+    window.location.hash = 'login';
     showToast({ tone: 'rio', eyebrow: 'Hasta pronto', title: 'Sesión cerrada', text: 'Vuelve cuando quieras seguir tejiendo tu recorrido.' });
   }
 
@@ -234,7 +236,7 @@ export default function App() {
           </main>
           {!isLoginRoute && <Footer />}
           {/* En inicio, HeroInteractive es la guía principal de Hilo; el asistente flotante acompaña las demás vistas (menos login). */}
-          {route.screen !== 'inicio' && !isLoginRoute && <HiloAssistant publications={publications} />}
+          {route.screen !== 'inicio' && !isLoginRoute && <HiloAssistant publications={publications} screen={route.screen} />}
         </>
       )}
       {isArtistRoute && content}

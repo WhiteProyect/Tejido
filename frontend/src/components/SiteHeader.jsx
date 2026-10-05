@@ -56,7 +56,9 @@ export default function SiteHeader({ user, onLogin, onLogout, isMoneystack = fal
   const navLink = `${tone.text} hover:text-orange`;
 
   return (
-    <header className={`flex items-center justify-between py-[18px] px-[5vw] border-b sticky top-0 z-5 transition-[transform] duration-[220ms] ease-[ease] motion-reduce:transition-none ${tone.header} ${isHidden ? '[transform:translateY(-100%)]' : '[transform:translateY(0)]'}`}>
+    // Con el menu de usuario abierto el header sube sobre los avisos (Toast, z-90), que en movil
+    // aparecen justo debajo y taparian "Cerrar Sesion".
+    <header className={`flex items-center justify-between py-[18px] px-[5vw] border-b sticky top-0 ${showUserMenu ? 'z-[95]' : 'z-5'} transition-[transform] duration-[220ms] ease-[ease] motion-reduce:transition-none ${tone.header} ${isHidden ? '[transform:translateY(-100%)]' : '[transform:translateY(0)]'}`}>
       <Logo className={tone.text} ringClassName={tone.ring} />
       <nav aria-label="Principal" className="flex gap-8 text-[14px] font-semibold max800:hidden">
         <a href="#inicio" className={navLink}>Inicio</a>
