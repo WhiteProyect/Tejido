@@ -1,2 +1,2 @@
 # Tejido
-App web  - casa de la cultura
+App - Caucasia (historia - cultura - turismo)
