@@ -10,10 +10,10 @@ import { useToast } from '../context/ToastContext.jsx';
 // basta con editar esta lista: las iniciales salen de `name` (getInitials) y `tone` da el color (sin fotos);
 // si mas adelante hay retratos, agregar `photo` y mostrarlo en <TeamMember>.
 const TEAM_MEMBERS = [
-  { name: 'Santiago Alvarez', role: 'Dirección y contenidos', bio: 'Escucha al territorio y decide qué historias merecen quedarse.', tone: 'bg-river text-white' },
-  { name: 'Camilo Giraldo', role: 'Desarrollo', bio: 'Construye la plataforma para que sea simple, rápida y de todos.', tone: 'bg-ink text-paper' },
-  { name: 'Daniel Lopez', role: 'Diseño e identidad', bio: 'Traduce el río, el oro y la sabana en formas y colores.', tone: 'bg-orange text-white' },
-  { name: 'Miguel Padilla', role: 'Comunidad y territorio', bio: 'Recorre los municipios y conecta a quienes hacen cultura.', tone: 'bg-mint text-ink' },
+  { name: 'Santiago Alvarez', role: 'Dirección, contenidos, Comunidad y territorio', bio: 'Escucha al territorio recorre las calles y conecta a quienes hacen cultura y decide qué historias merecen quedarse.', tone: 'bg-river text-white' },
+  { name: 'Bryan Giraldo', role: 'Desarrollo y produccion', bio: 'Lider de desarrollo, construcción y produccion de la plataforma dando forma a la experiencia del usuario.', tone: 'bg-ink text-paper' },
+  { name: 'Daniel Lopez', role: 'Diseño e identidad', bio: 'Traduce el río, el oro y la sabana en formas y colores dando vida a la identidad visual de la plataforma.', tone: 'bg-orange text-white' },
+  { name: 'Miguel Padilla', role: 'Desarrollo', bio: 'Elabora soluciones digitales, estrategias de contenido y produccion digital.', tone: 'bg-mint text-ink' },
 ];
 
 const PILLARS = [
@@ -144,7 +144,7 @@ export default function NosotrosScreen() {
       {/* 2. Nuestro proposito */}
       <section className="mx-[4vw] rounded-[40px] bg-cream py-[90px] px-[8vw] max800:py-[64px] max800:px-[6vw]">
         <p className={EYEBROW}>Nuestro propósito</p>
-        <h2 className={`${H2} max-w-[820px]`}>Que lo que pasa aquí se vea, se encuentre y <em className="font-display italic font-bold text-orange">se mueva</em>.</h2>
+        <h2 className={`${H2} max-w-[820px]`}>Que lo que pasa aquí sea visible, se encuentre y <em className="font-display italic font-bold text-orange">se mueva</em>.</h2>
         <ol className="mt-14 mb-0 grid list-none grid-cols-[repeat(3,1fr)] gap-10 p-0 max800:mt-10 max800:grid-cols-[1fr] max800:gap-8">
           {PURPOSE.map(([verb, text], index) => (
             <li key={verb} className="border-t border-t-[rgba(23,63,54,0.18)] pt-5">
@@ -161,9 +161,9 @@ export default function NosotrosScreen() {
         <div className="mb-12 flex [align-items:end] justify-between gap-8 max800:flex-col max800:items-start max800:gap-4">
           <div>
             <p className={EYEBROW}>El equipo detrás de TEJIDO</p>
-            <h2 className={`${H2} max-w-[640px]`}>Gente de aquí, tejiendo con lo de aquí.</h2>
+            <h2 className={`${H2} max-w-[640px]`}>Gente de aquí, tejiendo cultura, ideas y relaciones.</h2>
           </div>
-          <p className="m-0 max-w-[300px] text-[13px] leading-[1.5] text-[#6a7c75]">Perfiles de muestra mientras presentamos al equipo real.</p>
+          <p className="m-0 max-w-[300px] text-[13px] leading-[1.5] text-[#6a7c75]">White Project - Equipo de desarrollo</p>
         </div>
         <motion.div
           className="grid grid-cols-[repeat(4,1fr)] gap-10 max1024:grid-cols-[repeat(2,1fr)] max600:grid-cols-[1fr] max600:gap-9"
@@ -185,7 +185,7 @@ export default function NosotrosScreen() {
         <div>
           <p className={EYEBROW}>Comunícate con nosotros</p>
           <h2 id="contacto-titulo" className={H2}>Escríbenos.</h2>
-          <p className={LEAD}>Una idea, una corrección, una historia que no hemos contado o las ganas de sumarte. Tu mensaje llega directo al equipo de TEJIDO.</p>
+          <p className={LEAD}>Una idea, una sugerencia, una historia que no hemos contado o las ganas de sumarte. Tu mensaje llega directo al equipo de TEJIDO.</p>
           <p className="mt-6 mb-0 inline-flex items-center gap-2 text-[13px] text-[#6a7c75]">
             <Icon name="inbox" className="size-4" /> No publicamos tu nombre ni tus datos de contacto.
           </p>
@@ -207,11 +207,11 @@ export default function NosotrosScreen() {
             <div className="grid grid-cols-[1fr_1fr] gap-5 max600:grid-cols-[1fr]">
               <label className={LABEL}>
                 Tu nombre <span className="sr-only">(opcional)</span>
-                <input className={FIELD} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="Opcional" />
+                <input className={FIELD} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="Nombre completo" />
               </label>
               <label className={LABEL}>
-                Cómo contactarte <span className="sr-only">(opcional)</span>
-                <input className={FIELD} value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Correo o teléfono, opcional" />
+                Contacto <span className="sr-only">(opcional)</span>
+                <input className={FIELD} value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Correo o teléfono" />
               </label>
             </div>
             <label className={LABEL}>
@@ -219,7 +219,6 @@ export default function NosotrosScreen() {
               <textarea ref={messageRef} className={`${FIELD} min-h-[160px] resize-y leading-[1.55]`} value={message} onChange={(e) => setMessage(e.target.value)} required aria-describedby="contacto-ayuda" placeholder="Cuéntanos en qué estás pensando..." />
             </label>
             <div className="flex items-center justify-between gap-4 text-[12px] text-[#6a7c75]" id="contacto-ayuda">
-              <span>Mínimo 10 caracteres.</span>
               <span className={fullMessage.length > MAX_MESSAGE ? 'font-bold text-[#b3442b]' : ''}>{fullMessage.length} / {MAX_MESSAGE}</span>
             </div>
             {status.type === 'error' && <p className="m-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{status.text}</p>}

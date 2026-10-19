@@ -29,7 +29,14 @@ Write-Host "========================================" -ForegroundColor DarkGreen
 Write-Host ""
 
 if (-not (Test-Url $HealthUrl)) {
-    Start-Module $BackendDir "npm --prefix '$FrontendDir' run dev:backend"
+    # Si hay un entorno virtual en .venv, nodemon usa ese Python (donde estan
+    # las dependencias de requirements.txt) en vez del "py -3" de nodemon.json.
+    $VenvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
+    $BackendCommand = "npm --prefix '$FrontendDir' run dev:backend"
+    if (Test-Path -LiteralPath $VenvPython) {
+        $BackendCommand += " -- --exec '$VenvPython ../server.py'"
+    }
+    Start-Module $BackendDir $BackendCommand
 
     # El backend ahora se conecta a Neon (red real) al arrancar, no a SQLite
     # local -- tarda mas que el frontend en quedar listo. Sin esta espera, el
