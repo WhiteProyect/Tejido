@@ -4,7 +4,7 @@ import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import ImageUrlField from '../components/ImageUrlField.jsx';
 import ProfileHeader from '../components/ProfileHeader.jsx';
-import { EYEBROW, FORM_INPUT, FORM_LABEL, LINK_BTN, LINK_BTN_SOLID, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
+import { BTN_INK_MD, BTN_INK_OUTLINE_MD, EYEBROW, FORM_INPUT, FORM_LABEL, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
 import { formatDateShort } from '../utils/dateUtils.js';
@@ -170,7 +170,7 @@ function GestorBio() {
               <input className={FORM_INPUT} value={form.contact} onChange={(event) => set('contact')(event.target.value)} maxLength={200} placeholder="Correo, teléfono o red social" disabled={saving} />
             </label>
             {saveError && <p className="m-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{saveError}</p>}
-            <div><button type="submit" className={LINK_BTN_SOLID} disabled={saving}>{saving ? 'Guardando...' : 'Guardar cambios de biografía'}</button></div>
+            <div><button type="submit" className={BTN_INK_MD} disabled={saving}>{saving ? 'Guardando...' : 'Guardar cambios de biografía'}</button></div>
           </form>
         )}
       </StateNote>
@@ -231,8 +231,8 @@ function GestorModule({ user }) {
             <h2 id="gestor-artista" className={H2}>{artist.stage_name || artist.name}</h2>
           </div>
           <div className="flex flex-wrap gap-3">
-            <a className={LINK_BTN} href={`#artista/${artist.slug}`}>Ver perfil público</a>
-            <a className={LINK_BTN_SOLID} href={`#artista/${artist.slug}/dashboard`}>Abrir panel del artista <Icon name="arrow-right" className="size-4" /></a>
+            <a className={BTN_INK_OUTLINE_MD} href={`#artista/${artist.slug}`}>Ver perfil público</a>
+            <a className={BTN_INK_MD} href={`#artista/${artist.slug}/dashboard`}>Abrir panel del artista <Icon name="arrow-right" className="size-4" /></a>
           </div>
         </section>
       )}
@@ -255,7 +255,7 @@ function CitizenModule() {
                 icon="bookmark"
                 title="Sin guardados aún"
                 text="Guarda sabores locales desde Explorar."
-                action={<a className={LINK_BTN} href="#explorar">Explorar publicaciones <Icon name="arrow-right" className="size-4" /></a>}
+                action={<a className={BTN_INK_OUTLINE_MD} href="#explorar">Explorar publicaciones <Icon name="arrow-right" className="size-4" /></a>}
               />
             </div>
           ) : (

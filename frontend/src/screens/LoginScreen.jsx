@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Logo from '../components/Logo.jsx';
-import { EYEBROW } from '../components/uiStyles.js';
+import { BTN_INK_MD, EYEBROW } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 
 // Iniciar sesion o crear una cuenta de ciudadano (POST /api/auth/signup). Las dos
@@ -114,7 +114,7 @@ export default function LoginScreen({ onSuccess }) {
             </>
           )}
           {error && <p className="m-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{error}</p>}
-          <button className="mt-2 w-full cursor-pointer rounded-[999px] border-0 bg-ink py-4 px-6 text-[16px] font-bold text-white transition-colors duration-200 hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink disabled:cursor-wait disabled:opacity-65" type="submit" disabled={loading}>{loading ? (isSignup ? 'Creando cuenta...' : 'Ingresando...') : (isSignup ? 'Crear cuenta' : 'Ingresar')}</button>
+          <button className={`${BTN_INK_MD} mt-2 w-full disabled:cursor-wait!`} type="submit" disabled={loading}>{loading ? (isSignup ? 'Creando cuenta...' : 'Ingresando...') : (isSignup ? 'Crear cuenta' : 'Ingresar')}</button>
         </form>
       </div>
     </section>

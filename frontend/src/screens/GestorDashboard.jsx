@@ -3,7 +3,7 @@ import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import PublicationCard from '../components/PublicationCard.jsx';
 import PublicationForm from '../components/PublicationForm.jsx';
-import { BTN_DANGER, BTN_DARK, BTN_GHOST, EYEBROW, H1, LINK_BTN_SOLID, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
+import { BTN_DANGER, BTN_GHOST, BTN_INK_MD, BTN_INK_SM, EYEBROW, H1, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
 import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
@@ -40,7 +40,7 @@ function PublicationItem({ publication, user, busy, onEdit, onAction }) {
     actions = (
       <>
         <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => onEdit(publication)}><Icon name="pen" className="size-3.5" /> Editar</button>
-        <button type="button" className={BTN_DARK} disabled={busy} onClick={() => onAction(publication, 'submit')}><Icon name="send" className="size-3.5" /> Enviar</button>
+        <button type="button" className={BTN_INK_SM} disabled={busy} onClick={() => onAction(publication, 'submit')}><Icon name="send" className="size-3.5" /> Enviar</button>
         {removeButtons}
       </>
     );
@@ -48,7 +48,7 @@ function PublicationItem({ publication, user, busy, onEdit, onAction }) {
     actions = (
       <>
         <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => onEdit(publication)}><Icon name="pen" className="size-3.5" /> Corregir</button>
-        <button type="button" className={BTN_DARK} disabled={busy} onClick={() => onAction(publication, 'submit')}><Icon name="send" className="size-3.5" /> Reenviar</button>
+        <button type="button" className={BTN_INK_SM} disabled={busy} onClick={() => onAction(publication, 'submit')}><Icon name="send" className="size-3.5" /> Reenviar</button>
       </>
     );
   } else if (publication.status === 'PUBLISHED') {
@@ -143,7 +143,7 @@ export default function GestorDashboard({ user }) {
           <h1 className={H1}>Taller de Eventos y Cultura</h1>
           <p className="mt-4 mb-0 text-[18px] leading-[1.6] text-[#53645c]">Crea borradores, envíalos a revisión y corrige lo que el equipo te pida. Nada se publica sin aprobación.</p>
         </div>
-        {!editor && <button type="button" className={LINK_BTN_SOLID} onClick={() => openEditor()}><Icon name="pen" className="size-4" /> Nueva publicación</button>}
+        {!editor && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}><Icon name="pen" className="size-4" /> Nueva publicación</button>}
       </header>
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
@@ -175,7 +175,7 @@ export default function GestorDashboard({ user }) {
                 icon="pen"
                 title="Tu primer hilo está por tejerse"
                 text="Crea tu primera publicación: queda como borrador hasta que la envíes a revisión."
-                action={!editor && <button type="button" className={LINK_BTN_SOLID} onClick={() => openEditor()}>Crear mi primera publicación</button>}
+                action={!editor && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}>Crear mi primera publicación</button>}
               />
             </div>
           ))}

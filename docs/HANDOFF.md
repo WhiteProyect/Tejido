@@ -711,3 +711,51 @@ borrar `main.css` y los `!` que sobran).
 - **Ojo:** la Brújula usa `div role="navigation"`; un `<nav>` se oculta en ≤800 px por el CSS
   legado. El panel es flex en columna (con grid, ocultar la cabecera en móvil estiraba el input).
 - **Toast:** en escritorio pasó a `bottom-[104px] right-6`, encima de la fila del lanzador.
+
+## 2026-10-19 — Hero del inicio: propuesta v2 del diseñador (HeroInteractive.jsx)
+
+- **Saludo en tres niveles a la derecha** (solo `greeting`, >1024 px): `title` en dos líneas
+  (DM Sans bold), `subtitle` (Playfair cursiva) y `question` (semibold), `text-left`, centrado en
+  la franja libre entre Hilo y el borde. Lo controla una sola constante, `GREETING_POSITION`
+  (`left-[calc(50%+25vw+65px)] top-[125px] w-[min(380px,calc(50vw-250px))]`). En ≤1024 px vuelve
+  al flujo, centrado bajo Hilo. Las demás escenas siguen con `message`.
+- **Hilo** a 250 px (180 en ≤768). **Cápsula de estadísticas** bajo Hilo: `bg-paper` sólido,
+  borde `river`, conteo real (antes inventaba 247; con 0 se oculta ese ítem), etiquetas
+  `text-muted` (el dorado `#b8860b` daba ~3.1:1 a 11 px).
+- **Tarjetas glass** (`OPTION`, todas las escenas): `bg-paper/90 backdrop-blur-sm border-ink/10`,
+  icono en círculo tintado, subtítulo Playfair cursiva. El hover sube con `translate` (la
+  animación `heroOptionIn` fija `transform`). En `greeting`, 3 en fila (máx 760 px).
+- **CTA propio** (`HERO_CTA`): `bg-river` sólido, blanco 19 px bold, hover `ink-deep`, directo bajo
+  las tarjetas. `BTN_CULTURAL` de `uiStyles.js` no se tocó.
+- **Pendiente de decisión:** a 1300 px las tarjetas tapan el nudo central de raíces; a 1024 px el
+  saludo (en flujo) cae sobre el nudo. Ver alternativas en la conversación del 2026-10-19.
+
+## 2026-10-19 — Botones unificados (estilo del CTA del hero)
+
+- **`uiStyles.js`**: una familia de píldoras. `BTN_PILL` (forma, foco `outline-offset-4`,
+  deshabilitado 65%) + tallas: `BTN_INK_LG` (hero), `BTN_INK_MD` (formularios, acción principal),
+  `BTN_INK_SM` (tarjetas y filas), `BTN_INK_OUTLINE_MD` (secundario junto a un MD), y en SM
+  `BTN_GHOST`, `BTN_DANGER`, `BTN_QUIET_SM`. Las variantes con borde restan 1 px de padding para
+  medir igual que el sólido (MD 49 px, SM 37 px). En ≤480 px la MD recorta su padding horizontal.
+- **Migrados**: hero, Quiero Participar, Enviar mensaje, Ver detalles, dashboards de gestor y admin,
+  `PublicationForm`, perfiles (`ProfileScreen`, `ProfileHeader`), `GestoresPanel`, Login, Crear
+  cuenta, AcceptInvite y la acción de `EmptyNote` (`EMPTY_NOTE_ACTION` = contorno MD).
+- **Borrados**: `BTN_CULTURAL`, `LINK_BTN`, `LINK_BTN_SOLID`, `BTN_DARK`, `SMALL_BTN` (de
+  `uiStyles.js` y de `ProfileHeader`) y los locales de `GestoresPanel` (`FOCUS` se queda: lo usa la
+  X del aviso). `PRIMARY_BUTTON` sigue: lo usa `NotFoundScreen`.
+- **Pendientes**: fila de correo de "Quiero Participar" desborda a 390 px (input de 280 px fijo);
+  "Crear mi primera publicación" se parte en dos líneas a ≤390 px.
+
+## 2026-10-19 — Hero: fondo ilustrado claro definitivo + Hilo más grande
+
+- **Imagen**: `frontend/public/images/hero/arbol-tejido-claro.jpg` (2000x1058, JPG q0.78, 441 KB),
+  hecha desde el original del diseñador (2844x1504, 3.5 MB), cuya copia quedó fuera del repo en
+  `C:\Users\Bryan\Tejido\tejido-originales\`. `arbol-tejido.jpg` se borró (sin referencias).
+- **Fondo** (`HERO_ART` en `HeroInteractive.jsx`): en `greeting` la sección es crema sólido
+  `#f8f4ea`; la imagen cubre la sección (`object-cover`, anclada abajo y corrida al 30% para que
+  entre el sol), `opacity .34` + `mix-blend-multiply`, fundido corto al pie y un velo radial crema
+  al centro. En ≤768 px va a ancho completo arriba. `fetchPriority="high"` y `width`/`height` reales.
+- **Hilo**: `h-[300px]` (`max768:h-[210px]`).
+- **Pendiente del user**: con `GREETING_POSITION` actual el título "¡Bienvenido!" se sale por la
+  derecha a 1300 px (bloque de 333 px < ancho del título a 44 px).
+

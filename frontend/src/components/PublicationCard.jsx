@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
+import { BTN_INK_SM } from './uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
 
@@ -127,7 +128,7 @@ export default function PublicationCard({ publication, user }) {
 
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-t-line pt-3.5">
           <button
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border-none bg-[#173b32] py-2.5 px-4 text-[13px] font-bold text-[#f7f0e5] transition-colors duration-200 ease-[ease] hover:bg-[#0f2a23] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            className={BTN_INK_SM}
             type="button"
             onClick={() => setExpanded(!expanded)}
           >

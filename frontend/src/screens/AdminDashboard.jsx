@@ -3,7 +3,7 @@ import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import PublicationForm from '../components/PublicationForm.jsx';
 import GestoresPanel from '../components/admin/GestoresPanel.jsx';
-import { BTN_DANGER, BTN_DARK, BTN_GHOST, EYEBROW, FORM_INPUT, H1, LINK_BTN_SOLID, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
+import { BTN_DANGER, BTN_GHOST, BTN_INK_MD, BTN_INK_SM, EYEBROW, FORM_INPUT, H1, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
 import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
@@ -76,7 +76,7 @@ function AdminPublicationItem({ publication, busy, onEdit, onAction }) {
           <span className={`rounded-full py-1 px-3 text-[12px] font-bold ${statusTone}`}>{statusLabel}</span>
           {inReview && (
             <>
-              <button type="button" className={BTN_DARK} disabled={busy} onClick={() => onAction(publication, 'approve')}><Icon name="check" className="size-3.5" /> Aprobar</button>
+              <button type="button" className={BTN_INK_SM} disabled={busy} onClick={() => onAction(publication, 'approve')}><Icon name="check" className="size-3.5" /> Aprobar</button>
               <button type="button" className={BTN_GHOST} disabled={busy} aria-expanded={mode === 'reject'} onClick={() => { setMode(mode === 'reject' ? null : 'reject'); setNote(''); }}>Rechazar</button>
             </>
           )}
@@ -197,7 +197,7 @@ export default function AdminDashboard() {
               <h2 id="admin-publicaciones" className={`${PANEL_TITLE} flex items-center gap-3`}><Icon name="book" className="size-6 text-river" /> Publicaciones</h2>
               <p className="mt-2 mb-0 text-[14px] text-muted">De todos los gestores. {pending ? `${pending} esperando revisión, arriba.` : 'Nada esperando revisión.'}</p>
             </div>
-            {!editor && <button type="button" className={LINK_BTN_SOLID} onClick={() => openEditor()}><Icon name="pen" className="size-4" /> Nueva publicación</button>}
+            {!editor && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}><Icon name="pen" className="size-4" /> Nueva publicación</button>}
           </div>
           {actionError && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{actionError}</p>}
           {state.loading && <p className="m-0 py-6 text-[14px] text-muted" aria-busy="true">Cargando...</p>}

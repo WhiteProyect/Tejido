@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
 import ImageUrlField from './ImageUrlField.jsx';
-import { BTN_GHOST, FORM_INPUT, FORM_LABEL, LINK_BTN, LINK_BTN_SOLID, PANEL, PANEL_TITLE } from './uiStyles.js';
+import { BTN_GHOST, BTN_INK_MD, BTN_INK_OUTLINE_MD, FORM_INPUT, FORM_LABEL, PANEL, PANEL_TITLE } from './uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
 import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
@@ -165,8 +165,8 @@ export default function PublicationForm({ publication, categories, allowPublish 
         )}
         {error && <p className="m-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{error}</p>}
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className={LINK_BTN_SOLID} disabled={saving}>{saving ? 'Guardando...' : editing ? 'Guardar cambios' : allowPublish && publish ? 'Crear y publicar' : 'Crear borrador'}</button>
-          <button type="button" className={LINK_BTN} onClick={onCancel} disabled={saving}>Cancelar</button>
+          <button type="submit" className={BTN_INK_MD} disabled={saving}>{saving ? 'Guardando...' : editing ? 'Guardar cambios' : allowPublish && publish ? 'Crear y publicar' : 'Crear borrador'}</button>
+          <button type="button" className={BTN_INK_OUTLINE_MD} onClick={onCancel} disabled={saving}>Cancelar</button>
         </div>
       </form>
     </section>

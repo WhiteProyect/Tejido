@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import Icon from '../components/Icon.jsx';
-import { EYEBROW, SECTION } from '../components/uiStyles.js';
+import { BTN_INK_MD, EYEBROW, SECTION } from '../components/uiStyles.js';
 import { getInitials } from '../utils/initials.js';
 import { useToast } from '../context/ToastContext.jsx';
 
@@ -222,7 +222,7 @@ export default function NosotrosScreen() {
               <span className={fullMessage.length > MAX_MESSAGE ? 'font-bold text-[#b3442b]' : ''}>{fullMessage.length} / {MAX_MESSAGE}</span>
             </div>
             {status.type === 'error' && <p className="m-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{status.text}</p>}
-            <button type="submit" disabled={loading} className="inline-flex cursor-pointer items-center justify-center gap-2 justify-self-start rounded-full border-0 bg-ink py-4 px-7 text-[16px] font-bold text-white transition-colors duration-200 hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink disabled:cursor-wait disabled:opacity-65 max600:justify-self-stretch">
+            <button type="submit" disabled={loading} className={`${BTN_INK_MD} justify-self-start disabled:cursor-wait! max600:justify-self-stretch`}>
               <Icon name="send" className="size-[18px]" />
               {loading ? 'Enviando...' : 'Enviar mensaje'}
             </button>

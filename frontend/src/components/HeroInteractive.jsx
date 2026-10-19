@@ -14,9 +14,9 @@
  *   - El mensaje de Hilo
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { BTN_CULTURAL } from './uiStyles.js';
+import { Fragment, useState, useEffect, useCallback, useMemo } from 'react';
 import Icon from './Icon.jsx';
+import { BTN_INK_LG } from './uiStyles.js';
 import Threads from './Threads.jsx';
 
 /* --- ESCENAS -------------------------------------------------- */
@@ -24,12 +24,15 @@ import Threads from './Threads.jsx';
 const SCENES = {
   greeting: {
     pose: 'hilo-saluda.png',
-    message: '¡Bienvenido! Soy Hilo. Soy el hilo que une al Bajo Cauca. ¿Qué quieres descubrir?',
+    // Solo el saludo va en tres niveles (voz dual de la marca); las demás escenas usan `message`.
+    title: ['¡Bienvenido!', 'Soy Hilo.'], // dos lineas
+    subtitle: 'Soy el hilo que une al Bajo Cauca.',
+    question: '¿Qué quieres descubrir hoy?',
     background: 'default',
     options: [
-      { id: 'historias', icon: 'book', label: 'Historias del río', sub: 'Lo que el Bajo Cauca cuenta' },
-      { id: 'gente', icon: 'people', label: 'Conocer gente', sub: 'Quiénes mueven el territorio' },
-      { id: 'musica', icon: 'music', label: 'Música viva', sub: 'El sonido del territorio' },
+      { id: 'historias', icon: 'book', label: 'Historias del río', sub: 'Lo que el Cauca cuenta' },
+      { id: 'gente', icon: 'people', label: 'Conocer gente', sub: 'Talento del territorio' },
+      { id: 'musica', icon: 'music', label: 'Música viva', sub: 'El sonido local' },
     ],
   },
   historias: {
@@ -181,13 +184,32 @@ const HERO_BG = {
   'hero-bg-muni-zaragoza': 'bg-[linear-gradient(160deg,#faf3e6_0%,rgba(107,58,125,0.1)_50%,rgba(138,79,125,0.05)_100%)]',
 };
 
-// Opcion de la conversacion. La animacion de entrada (fill: forwards) fija el transform, asi
-// que el hover solo cambia borde y sombra, igual que en el legado.
-const OPTION = 'flex flex-col items-center gap-1.5 min-w-[170px] py-6 px-7 text-center cursor-pointer bg-[rgba(255,255,255,0.75)] backdrop-blur-[12px] border-2 border-solid border-transparent rounded-[22px] transition-all duration-[350ms] ease-[cubic-bezier(.34,1.56,.64,1)] opacity-0 [transform:translateY(20px)] animate-[heroOptionIn_0.5s_cubic-bezier(.34,1.56,.64,1)_forwards] hover:border-[var(--option-color,var(--river,#1d8fa3))] hover:[transform:translateY(-8px)_scale(1.03)] hover:[box-shadow:0_20px_50px_rgba(18,60,52,0.12),0_0_0_1px_var(--option-color,rgba(29,143,163,0.1))] active:[transform:translateY(-4px)_scale(1.01)] max768:min-w-[140px] max768:py-[18px] max768:px-5 max480:w-full max480:max-w-[280px]';
-const STAT = 'flex flex-col items-center';
-const STAT_NUMBER = 'text-ink text-[32px] font-extrabold max768:text-[26px] [text-shadow:0_0_16px_rgba(255,249,236,1),0_0_8px_rgba(255,249,236,1),0_0_3px_rgba(255,249,236,1)]';
-const STAT_LABEL = 'text-[var(--muted,#66746f)] text-[12px] font-semibold tracking-[0.05em] uppercase [text-shadow:0_0_12px_rgba(255,249,236,1),0_0_6px_rgba(255,249,236,1),0_0_2px_rgba(255,249,236,1)]';
-const STAT_DIVIDER = 'bg-[var(--line,#ddd5c7)] h-10 w-px';
+// Opcion de la conversacion, en vidrio claro (todas las escenas). La animacion de entrada
+// (heroOptionIn, fill: forwards) fija `transform`, asi que el leve ascenso del hover usa la
+// propiedad `translate`, que es independiente y se suma a la animacion.
+const OPTION = 'flex flex-col items-center gap-1.5 min-w-[170px] py-6 px-6 text-center cursor-pointer bg-paper/90 backdrop-blur-sm border border-solid border-ink/10 rounded-[22px] transition-[border-color,box-shadow,translate] duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] opacity-0 [transform:translateY(20px)] animate-[heroOptionIn_0.5s_cubic-bezier(.34,1.56,.64,1)_forwards] hover:border-[var(--option-color)] hover:-translate-y-1 hover:[box-shadow:0_6px_16px_rgba(18,60,52,0.08)] active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink max768:min-w-[140px] max768:py-[18px] max768:px-5 max480:w-full max480:max-w-[280px]';
+// Fondo ilustrado del hero (ver el JSX): cubre la seccion anclado abajo y corrido al 30% (cuando
+// object-cover recorta los lados, el corte cae sobre las hojas de la derecha y el sol entra), con un
+// fundido corto al pie. En movil, a ancho completo arriba.
+const HERO_ART = 'absolute inset-0 h-full w-full object-cover object-[30%_100%] opacity-[.34] mix-blend-multiply [mask-image:linear-gradient(to_bottom,#000_90%,transparent_100%)] max768:inset-auto max768:top-0 max768:left-0 max768:h-auto max768:object-top';
+// Halo crema para el texto que cae sobre el arte del arbol.
+const HALO = '[text-shadow:0_0_14px_rgba(255,249,236,1),0_0_6px_rgba(255,249,236,1),0_0_3px_rgba(255,249,236,1)]';
+// Pildora de estadisticas del saludo: fondo solido para que los numeros se lean sobre el arte.
+// Etiquetas en text-muted (~4.6:1 sobre paper); el dorado #b8860b daba ~3.1:1 a 11 px.
+// Saludo de la escena greeting en desktop (>1024 px): bloque a la derecha, CENTRADO en la franja
+// libre entre Hilo y el borde de la pantalla. Hilo (250 px, mano incluida) termina en ~50% + 130 px,
+// asi que la franja va de ahi al borde y su centro esta en 75vw + 65 px. El contenedor del
+// contenido tiene transform, por eso el bloque se ubica respecto a esa columna centrada:
+// left = 50% (su centro) + 25vw + 65 px; top = mitad del avatar (125 px). El ancho deja el mismo
+// hueco a Hilo y al borde. Para moverlo, ajusta solo `left`/`top`/`w` de esta constante.
+// En <=1024 px vuelve al flujo, centrado bajo Hilo.
+const GREETING_POSITION = 'absolute left-[calc(60%+26vw+69px)] top-[250px] w-[min(333px,calc(60vw-260px))] -translate-x-1/2 -translate-y-1/2 text-left max1024:static max1024:w-auto max1024:max-w-[600px] max1024:mx-auto max1024:translate-none max1024:text-center';
+// CTA del saludo.
+const HERO_CTA = BTN_INK_LG;  
+const STAT = 'flex min-w-0 flex-col items-center';
+const STAT_NUMBER = 'text-ink text-[26px] font-extrabold leading-none max480:text-[22px]';
+const STAT_LABEL = 'mt-1.5 text-center text-[11px] font-bold uppercase leading-[1.2] tracking-[0.14em] text-muted max480:text-[10px] max480:tracking-[0.06em]';
+const STAT_DIVIDER = 'h-8 w-px shrink-0 bg-line';
 
 /* --- UTILIDADES ----------------------------------------------- */
 
@@ -227,6 +249,13 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
   }, [scene, isMunicipality, publications]);
 
   const greeting = useMemo(() => getGreeting(), []);
+  const isGreeting = scene === 'greeting';
+  // Conteo real de publicaciones: si no hay ninguna, el item no se muestra (nada inventado).
+  const stats = [
+    [6, 'Municipios'],
+    ...(publications.length ? [[publications.length, 'Historias']] : []),
+    [1, 'Río conecta'],
+  ];
 
   const navigateTo = useCallback(
     (nextScene) => {
@@ -279,17 +308,23 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
   const bgClass = getSceneBackground(scene);
 
   return (
-    <section className={`relative overflow-hidden flex flex-col items-center justify-center text-center min-h-screen pt-[100px] px-[7vw] pb-[60px] text-ink transition-[background] duration-[1.2s] ease-[ease] max768:pt-20 max768:px-[5vw] max768:pb-10 max768:min-h-[auto] ${HERO_BG[bgClass] || HERO_BG['hero-bg-default']}`} id="inicio">
-      {/* Obra tejida (sol + arbol) — se funde con el fondo; los hilos pasan por encima */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none select-none absolute top-0 left-0 right-0 opacity-90 mix-blend-multiply"
-      >
+    <section className={`relative overflow-hidden flex flex-col items-center ${isGreeting ? 'justify-start pt-[72px]' : 'justify-center pt-[100px]'} text-center min-h-screen px-[7vw] pb-[60px] text-ink transition-[background] duration-[1.2s] ease-[ease] max768:pt-20 max768:px-[5vw] max768:pb-10 max768:min-h-[auto] ${isGreeting ? 'bg-[#f8f4ea]' : HERO_BG[bgClass] || HERO_BG['hero-bg-default']}`} id="inicio">
+      {/* Obra tejida (sol + arbol + raices) aclarada sobre el crema: cubre toda la seccion, anclada
+          abajo para que las raices queden al pie. El JPG es a todo color; el aclarado es CSS (opacidad
+          + multiply, que funde su blanco con el crema) y un velo radial crema deja respirar el centro
+          detras de Hilo y el texto. En movil la seccion es alta y angosta: ahi va a ancho completo
+          arriba, detras de Hilo, en vez del zoom fuerte de object-cover. */}
+      <div aria-hidden="true" className="pointer-events-none select-none absolute inset-0">
         <img
-          src="/images/hero/arbol-tejido.jpg"
+          src="/images/hero/arbol-tejido-claro.jpg"
           alt=""
-          className="block h-auto w-full [mask-image:linear-gradient(to_bottom,#000_86%,transparent_100%)]"
+          width="2000"
+          height="1058"
+          fetchPriority="high"
+          decoding="async"
+          className={HERO_ART}
         />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_50%_at_50%_42%,rgba(248,244,234,0.82)_0%,rgba(248,244,234,0.45)_55%,rgba(248,244,234,0)_100%)]" />
       </div>
       {/* Fondo animado con parallax */}
       <div
@@ -315,20 +350,50 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
         style={{ transform: `translateY(${-parallaxShift * 0.5}px)`, transition: 'opacity 0.6s ease, transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)' }}
       >
         {/* Avatar de Hilo — sin caja ni circulo: flota directo sobre los hilos */}
-        <div className="flex flex-col items-center mb-8">
+        <div className={`flex flex-col items-center ${isGreeting ? 'mb-6' : 'mb-8'}`}>
           <img
-            className="h-[220px] w-auto mb-5 object-contain animate-[heroHiloFloat_3.6s_ease-in-out_infinite] drop-shadow-[0_18px_28px_rgba(12,36,30,0.2)] max768:h-[160px]"
+            className="h-[300px] w-auto mb-5 object-contain animate-[heroHiloFloat_3.6s_ease-in-out_infinite] drop-shadow-[0_18px_28px_rgba(12,36,30,0.2)] max768:h-[210px]"
             src={`/images/hilo/${currentData.pose || 'hilo-saluda.png'}`}
-            alt="Hilo, guia de TEJIDO"
+            alt="Hilo, guía de TEJIDO"
           />
 
-          {/* Mensaje de Hilo */}
-          <p className="text-[length:clamp(20px,2.8vw,28px)] font-bold leading-[1.4] text-ink max-w-[600px] my-0 mx-auto max768:text-[20px] [text-shadow:0_0_14px_rgba(255,249,236,1),0_0_6px_rgba(255,249,236,1),0_0_3px_rgba(255,249,236,1)]">{currentData.message}</p>
+          {/* Mensaje de Hilo: en el saludo, tres niveles (DM Sans bold, Playfair cursiva, pregunta),
+              a la derecha en desktop (GREETING_POSITION) y bajo Hilo en pantallas medianas y chicas. */}
+          {isGreeting ? (
+            <div className={`${GREETING_POSITION} ${HALO}`}>
+              <p className="m-0 font-sans text-[length:clamp(65px,3.4vw,50px)] font-bold leading-[1.08] tracking-[-0.03em] text-ink">
+                {currentData.title[0]}<br />{currentData.title[1]}
+              </p>
+              <p className="mt-3 mb-0 font-display text-[length:clamp(20px,2vw,26px)] italic leading-[1.25] text-ink">{currentData.subtitle}</p>
+              <p className="mt-3 mb-0 text-[17px] font-semibold leading-[1.4] text-ink">{currentData.question}</p>
+            </div>
+          ) : (
+            <p className={`text-[length:clamp(20px,2.8vw,28px)] font-bold leading-[1.4] text-ink max-w-[600px] my-0 mx-auto max768:text-[20px] ${HALO}`}>{currentData.message}</p>
+          )}
         </div>
+
+        {/* Capsula de estadisticas (solo saludo), bajo Hilo */}
+        {isGreeting && (
+          <div data-hero-stats className="mx-auto flex w-full max-w-[520px] items-center justify-between gap-4 rounded-full border border-solid border-river bg-paper px-8 py-3 max480:gap-2 max480:px-4">
+            {stats.map(([value, label], index) => (
+              <Fragment key={label}>
+                {index > 0 && <span className={STAT_DIVIDER} aria-hidden="true" />}
+                <div className={STAT}>
+                  <span className={STAT_NUMBER}>{value}</span>
+                  <span className={STAT_LABEL}>{label}</span>
+                </div>
+              </Fragment>
+            ))}
+          </div>
+        )}
 
         {/* Opciones interactivas */}
         {currentData.options && (
-          <div className="flex gap-4 justify-center mt-9 flex-wrap max768:gap-3 max480:flex-col max480:items-center">
+          <div className={isGreeting
+            // Saludo: 3 tarjetas de igual ancho en una fila (desktop); se apilan como siempre en movil.
+            ? 'mx-auto mt-7 grid w-full max-w-[760px] grid-cols-3 gap-4 max768:flex max768:flex-wrap max768:justify-center max768:gap-3 max480:flex-col max480:items-center'
+            : 'flex gap-4 justify-center mt-9 flex-wrap max768:gap-3 max480:flex-col max480:items-center'}
+          >
             {currentData.options.map((option, index) => (
               <button
                 key={option.id}
@@ -340,9 +405,11 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
                   '--option-color': option.color || 'var(--river)',
                 }}
               >
-                <Icon name={option.icon} className="mb-1.5 size-7 text-ink max768:size-6" />
+                <span className="mb-1.5 grid size-12 place-items-center rounded-full bg-[color-mix(in_srgb,var(--option-color)_12%,transparent)] text-[var(--option-color)]" aria-hidden="true">
+                  <Icon name={option.icon} className="size-6" />
+                </span>
                 <span className="text-[16px] font-bold text-ink leading-[1.2] max768:text-[14px]">{option.label}</span>
-                <span className="text-[12px] font-medium text-[var(--muted,#66746f)] leading-[1.3]">{option.sub}</span>
+                <span className="font-display text-[14px] italic text-muted leading-[1.3]">{option.sub}</span>
               </button>
             ))}
           </div>
@@ -351,7 +418,7 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
         {/* Tarjetas de publicaciones (solo en vista de municipio) */}
         {isMunicipality && pubsForMuni.length > 0 && (
           <div className="mt-8 max-w-[700px] w-full">
-            <h3 className="font-sans tracking-[-.055em] text-[16px] font-bold text-[var(--muted,#66746f)] mt-0 mx-0 mb-4">Lo que se esta contando</h3>
+            <h3 className="font-sans tracking-[-.055em] text-[16px] font-bold text-[var(--muted,#66746f)] mt-0 mx-0 mb-4">Lo que se está contando</h3>
             <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(200px,1fr))] max768:grid-cols-[1fr]">
               {pubsForMuni.map((pub) => (
                 <div key={pub.id} className="bg-[rgba(255,255,255,0.7)] backdrop-blur-[8px] border border-[rgba(23,58,49,0.06)] rounded-[16px] p-4 text-left transition-all duration-300 ease-[ease] hover:[transform:translateY(-3px)] hover:[box-shadow:0_8px_24px_rgba(18,60,52,0.1)] hover:border-[rgba(29,143,163,0.15)]">
@@ -377,31 +444,12 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
           </div>
         )}
 
-        {/* Stats del ecosistema */}
-        {scene === 'greeting' && (
-          <div className="flex items-center gap-7 justify-center mt-12 pt-7 border-t border-t-[rgba(23,58,49,0.08)] max768:gap-4">
-            <div className={STAT}>
-              <span className={STAT_NUMBER}>6</span>
-              <span className={STAT_LABEL}>Municipios</span>
-            </div>
-            <div className={STAT_DIVIDER} />
-            <div className={STAT}>
-              <span className={STAT_NUMBER}>{publications.length || '247'}</span>
-              <span className={STAT_LABEL}>Historias</span>
-            </div>
-            <div className={STAT_DIVIDER} />
-            <div className={STAT}>
-              <span className={STAT_NUMBER}>1</span>
-              <span className={STAT_LABEL}>Rio que conecta</span>
-            </div>
-          </div>
-        )}
-
         {/* Boton de explorar (solo en greeting) */}
-        {scene === 'greeting' && (
-          <div className="mt-7">
-            <button className={BTN_CULTURAL} type="button" onClick={() => onExplore && onExplore()}>
-              Explorar el Territorio
+        {isGreeting && (
+          // El boton va directo bajo las tarjetas (sin respiro artificial).
+          <div className="mt-15">
+            <button className={HERO_CTA} type="button" onClick={() => onExplore && onExplore()}>
+              Explora el territorio
             </button>
           </div>
         )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import EmptyNote from '../EmptyNote.jsx';
 import Icon from '../Icon.jsx';
+import { BTN_GHOST, BTN_INK_MD, BTN_INK_OUTLINE_MD } from '../uiStyles.js';
 import { BRANCH_LABELS, CULTURAL_BRANCHES } from '../../utils/constants.js';
 
 // Panel de administracion de gestores (dentro de AdminModule, ProfileScreen).
@@ -13,10 +14,6 @@ const PANEL = 'min-w-0 rounded-[28px] border border-[#e2d9ca] bg-[#fffaf2] p-8 m
 const H2 = 'm-0 font-sans text-[26px] font-extrabold tracking-[-0.03em] text-ink';
 const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 // Botones: base sin fondo ni color; cada variante pone los suyos (README, patron 15).
-const BTN_BASE = `inline-flex cursor-pointer items-center gap-2 rounded-full border py-2.5 px-5 text-[14px] font-bold transition-colors duration-200 disabled:cursor-wait disabled:opacity-60 ${FOCUS}`;
-const BTN = `${BTN_BASE} border-ink bg-transparent text-ink hover:bg-ink hover:text-paper`;
-const BTN_SOLID = `${BTN_BASE} border-ink bg-ink text-paper hover:bg-ink-deep`;
-const BTN_SMALL = `inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-white py-1.5 px-3 text-[13px] font-semibold text-ink transition-colors duration-200 hover:border-ink disabled:cursor-wait disabled:opacity-60 ${FOCUS}`;
 const LABEL = 'grid gap-1.5 text-[12px] font-bold uppercase tracking-[.1em] text-muted';
 // text-[16px]: evita el zoom automatico de iOS al enfocar.
 const FIELD = 'w-full rounded-[12px] border border-line bg-white py-2.5 px-3 text-[16px] font-medium normal-case tracking-normal text-ink outline-none transition-colors duration-200 focus:border-river';
@@ -63,7 +60,7 @@ function InviteNotice({ notice, onClose }) {
       </div>
       <div className="mt-3 flex gap-2 max600:flex-col">
         <input className={`${FIELD} font-mono text-[13px]`} value={notice.link} readOnly onFocus={(event) => event.target.select()} aria-label="Enlace de invitación" />
-        <button type="button" onClick={copy} className={BTN_SOLID}>
+        <button type="button" onClick={copy} className={BTN_INK_MD}>
           <Icon name={copied ? 'check' : 'share'} className="size-4" /> {copied ? 'Copiado' : 'Copiar'}
         </button>
       </div>
@@ -108,8 +105,8 @@ function AddGestorForm({ onCreated, onCancel }) {
       </label>
       {error && <p className="col-span-2 m-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b] max600:col-span-1" role="alert">{error}</p>}
       <div className="col-span-2 flex flex-wrap gap-3 max600:col-span-1">
-        <button type="submit" className={BTN_SOLID} disabled={saving}><Icon name="send" className="size-4" /> {saving ? 'Creando...' : 'Crear e invitar'}</button>
-        <button type="button" className={BTN} onClick={onCancel}>Cancelar</button>
+        <button type="submit" className={BTN_INK_MD} disabled={saving}><Icon name="send" className="size-4" /> {saving ? 'Creando...' : 'Crear e invitar'}</button>
+        <button type="button" className={BTN_INK_OUTLINE_MD} onClick={onCancel}>Cancelar</button>
       </div>
     </form>
   );
@@ -165,7 +162,7 @@ export default function GestoresPanel() {
           <p className="mt-2 mb-0 text-[14px] text-muted">Quienes publican en TEJIDO. Cada gestor activa su cuenta desde el enlace de invitación.</p>
         </div>
         {!showForm && (
-          <button type="button" className={BTN_SOLID} onClick={() => { setShowForm(true); setNotice(null); }}>
+          <button type="button" className={BTN_INK_MD} onClick={() => { setShowForm(true); setNotice(null); }}>
             Agregar gestor
           </button>
         )}
@@ -209,11 +206,11 @@ export default function GestoresPanel() {
                     <td className="py-4">
                       <div className="flex justify-end gap-2">
                         {gestor.status === 'PENDIENTE' && (
-                          <button type="button" className={BTN_SMALL} disabled={busy} onClick={() => runRowAction(gestor, 'resend')}>
+                          <button type="button" className={`${BTN_GHOST} whitespace-nowrap`} disabled={busy} onClick={() => runRowAction(gestor, 'resend')}>
                             <Icon name="send" className="size-3.5" /> Reenviar invitación
                           </button>
                         )}
-                        <button type="button" className={BTN_SMALL} disabled={busy} onClick={() => runRowAction(gestor, 'toggle')}>
+                        <button type="button" className={`${BTN_GHOST} whitespace-nowrap`} disabled={busy} onClick={() => runRowAction(gestor, 'toggle')}>
                           {gestor.active ? 'Desactivar' : 'Activar'}
                         </button>
                       </div>

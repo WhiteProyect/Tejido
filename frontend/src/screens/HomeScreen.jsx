@@ -3,7 +3,7 @@ import TimelineSection from '../components/TimelineSection.jsx';
 import VideoText from '../components/VideoText.jsx';
 import HomeFeaturedArtist from './HomeFeaturedArtist.jsx';
 import HomeMapSection from './HomeMapSection.jsx';
-import { BTN_CULTURAL, BTN_CULTURAL_BASE } from '../components/uiStyles.js';
+import { BTN_CULTURAL_BASE, BTN_INK_MD } from '../components/uiStyles.js';
 
 // En la invitacion (fondo naranja) el boton cultural va en blanco; el de contorno es propio de aqui.
 const BTN_INVITE = `${BTN_CULTURAL_BASE} bg-white text-sunset hover:bg-ink-deep hover:text-white`;
@@ -38,7 +38,7 @@ export default function HomeScreen({ onExplore, publications = [] }) {
               className="py-3.5 px-5 border-2 border-solid border-[rgba(255,255,255,0.3)] rounded-[999px] bg-[rgba(255,255,255,0.15)] text-white text-[14px] w-[280px] backdrop-blur-[10px] placeholder:text-[rgba(255,255,255,0.7)] focus:outline-none focus:border-white focus:bg-[rgba(255,255,255,0.25)]"
               placeholder="Tu correo electrónico"
             />
-            <button className={BTN_CULTURAL} type="button">
+            <button className={BTN_INK_MD} type="button">
               Quiero Participar
             </button>
           </div>

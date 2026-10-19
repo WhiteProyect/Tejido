@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
-import { EYEBROW } from './uiStyles.js';
+import { BTN_GHOST, BTN_INK_SM, BTN_QUIET_SM, EYEBROW } from './uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { getInitials } from '../utils/initials.js';
 
@@ -8,7 +8,6 @@ import { getInitials } from '../utils/initials.js';
 // editables por el propio usuario con PATCH /api/me. La foto es una URL pegada (aun no hay
 // subida de archivos). Tras guardar avisa con un toast y entrega el usuario nuevo a
 // onUserUpdate (App lo guarda, asi el header del sitio cambia sin recargar).
-const SMALL_BTN = 'inline-flex cursor-pointer items-center gap-2 rounded-full border py-2 px-4 text-[14px] font-semibold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 const ICON_BTN = 'grid cursor-pointer place-items-center rounded-full border border-[#d9cfbe] bg-paper text-ink transition-colors duration-200 hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 
 async function patchMe(changes) {
@@ -128,8 +127,8 @@ export default function ProfileHeader({ user, roleLabel, markClass, onUserUpdate
           <p className="mt-2 mb-0 text-[15px] text-muted">{user.email}</p>
         </div>
 
-        <button type="button" onClick={onLogout} className={`${SMALL_BTN} max600:ml-[92px] border-[#d9cfbe] bg-transparent text-ink hover:border-ink`}>
-          <Icon name="logout" className="size-[18px]" /> Cerrar sesión
+        <button type="button" onClick={onLogout} className={`${BTN_GHOST} max600:ml-[92px]`}>
+          <Icon name="logout" className="size-4" /> Cerrar sesión
         </button>
       </div>
 
@@ -152,15 +151,15 @@ export default function ProfileHeader({ user, roleLabel, markClass, onUserUpdate
               onKeyDown={(event) => { if (event.key === 'Escape') setEditingAvatar(false); }}
             />
           </label>
-          <button type="submit" disabled={saving || !avatarDraft.trim()} className={`${SMALL_BTN} border-ink bg-ink text-paper hover:bg-ink-deep disabled:cursor-not-allowed disabled:opacity-50`}>
+          <button type="submit" disabled={saving || !avatarDraft.trim()} className={BTN_INK_SM}>
             {saving ? 'Guardando...' : 'Guardar foto'}
           </button>
           {user.avatar_url && (
-            <button type="button" disabled={saving} className={`${SMALL_BTN} border-[#d9cfbe] bg-transparent text-ink hover:border-ink`} onClick={() => commitAvatar(null, '')}>
+            <button type="button" disabled={saving} className={BTN_GHOST} onClick={() => commitAvatar(null, '')}>
               Quitar foto
             </button>
           )}
-          <button type="button" className={`${SMALL_BTN} border-transparent bg-transparent text-muted hover:text-ink`} onClick={() => setEditingAvatar(false)}>
+          <button type="button" className={BTN_QUIET_SM} onClick={() => setEditingAvatar(false)}>
             Cancelar
           </button>
         </form>

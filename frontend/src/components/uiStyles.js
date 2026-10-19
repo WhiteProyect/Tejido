@@ -53,21 +53,34 @@ export const SECTION_TITLE = 'font-sans text-[length:clamp(40px,5vw,64px)] font-
 // Boton "cultural" en pildora (legado: .btn-primary-cultural). La base no lleva fondo ni color:
 // cada variante pone los suyos, para que no compitan dos utilidades de la misma propiedad.
 export const BTN_CULTURAL_BASE = 'border-0 rounded-[999px] cursor-pointer font-bold py-4 px-8 transition-all duration-300 ease-[ease] no-underline hover:[transform:translateY(-3px)] hover:[box-shadow:0_12px_32px_rgba(45,90,61,0.3)]';
-// bg-transparent: el legado usaba el atajo `background:`, que tambien anula el gris nativo del boton.
-export const BTN_CULTURAL = `${BTN_CULTURAL_BASE} bg-transparent bg-[linear-gradient(135deg,var(--forest)_0%,var(--river)_100%)] text-white`;
+
+// Botones en pildora (estilo del CTA del hero): sin degradado, lift ni sombra. BTN_PILL es lo comun
+// (forma, peso, foco, deshabilitado); color y talla los pone cada variante.
+const BTN_PILL = 'inline-flex items-center justify-center rounded-full text-center font-bold cursor-pointer no-underline transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-65';
+// Tallas. El solido va sin borde; las variantes con borde de 1 px restan 1 px de padding por lado
+// para medir exactamente lo mismo que el solido de su talla. En <=480 px la MD recorta su padding
+// horizontal para que los textos largos quepan en una linea (la altura no cambia).
+const SIZE_LG = 'gap-2 py-3.5 px-8 text-[19px]';
+const SIZE_MD = 'gap-2 py-3.5 px-7 text-[16px] max480:px-5';
+const SIZE_MD_BORDER = 'gap-2 py-[13px] px-[27px] text-[16px] border border-solid max480:px-[19px]';
+const SIZE_SM = 'gap-1.5 py-2.5 px-4 text-[13px]';
+const SIZE_SM_BORDER = 'gap-1.5 py-[9px] px-[15px] text-[13px] border border-solid';
+// Solido de tinta: en hover la tinta se aclara un 15%.
+const BTN_INK_BASE = `${BTN_PILL} border-0 bg-ink text-white hover:bg-[color-mix(in_srgb,var(--ink)_85%,white)]`;
+export const BTN_INK_LG = `${BTN_INK_BASE} ${SIZE_LG}`; // hero
+export const BTN_INK_MD = `${BTN_INK_BASE} ${SIZE_MD}`; // formularios, CTA de seccion, accion principal de un panel
+export const BTN_INK_SM = `${BTN_INK_BASE} ${SIZE_SM}`; // tarjetas y acciones de fila
+// Contorno de tinta (secundario junto a un BTN_INK_MD).
+export const BTN_INK_OUTLINE_MD = `${BTN_PILL} ${SIZE_MD_BORDER} border-ink bg-transparent text-ink hover:bg-ink hover:text-white`;
+// Fantasma, peligro y discreto: acciones de fila, en talla SM.
+export const BTN_GHOST = `${BTN_PILL} ${SIZE_SM_BORDER} border-[#d9cfbe] bg-transparent text-ink hover:border-ink`;
+export const BTN_DANGER = `${BTN_PILL} ${SIZE_SM_BORDER} border-[rgba(216,91,54,.35)] bg-transparent text-[#a8431f] hover:border-[#a8431f]`;
+export const BTN_QUIET_SM = `${BTN_PILL} ${SIZE_SM_BORDER} border-transparent bg-transparent text-muted hover:text-ink`;
 
 // Paneles de las pantallas privadas (perfil, dashboard del gestor): tarjeta crema y su titulo.
 export const PANEL = 'min-w-0 rounded-[28px] border border-[#e2d9ca] bg-[#fffaf2] p-8 max600:p-6';
 export const PANEL_TITLE = 'm-0 font-sans text-[26px] font-extrabold tracking-[-0.03em] text-ink';
-// Botones-enlace: base sin fondo ni color de texto; cada variante pone los suyos (README, patron 15).
-const LINK_BTN_BASE = 'inline-flex cursor-pointer items-center gap-2 rounded-full border border-ink py-2.5 px-5 text-[14px] font-bold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-50';
-export const LINK_BTN = `${LINK_BTN_BASE} bg-transparent text-ink hover:bg-ink hover:text-paper`;
-export const LINK_BTN_SOLID = `${LINK_BTN_BASE} bg-ink text-paper hover:bg-ink-deep`;
 // Campos de formulario de esas pantallas.
 export const FORM_LABEL = 'grid gap-1.5 text-[12px] font-bold uppercase tracking-[.12em] text-muted';
 export const FORM_INPUT = 'w-full rounded-[12px] font-sans border border-[#d9cfbe] bg-white py-2.5 px-3.5 text-[15px] font-medium normal-case tracking-normal text-ink outline-none focus:border-ink disabled:opacity-60';
-// Botones chicos de acciones por fila (dashboards de gestor y admin).
-const SMALL_BTN = 'inline-flex cursor-pointer items-center gap-1.5 rounded-full border py-2 px-3.5 text-[13px] font-bold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-50';
-export const BTN_GHOST = `${SMALL_BTN} border-[#d9cfbe] bg-transparent text-ink hover:border-ink`;
-export const BTN_DARK = `${SMALL_BTN} border-ink bg-ink text-paper hover:bg-ink-deep`;
-export const BTN_DANGER = `${SMALL_BTN} border-[rgba(216,91,54,.35)] bg-transparent text-[#a8431f] hover:border-[#a8431f]`;
+

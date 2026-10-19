@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Logo from '../components/Logo.jsx';
-import { EYEBROW } from '../components/uiStyles.js';
+import { BTN_INK_MD, EYEBROW } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 
 // Activacion de cuenta desde el link de invitacion (#invitacion/<token>): la persona define
@@ -73,7 +73,7 @@ export default function AcceptInviteScreen({ token, onSuccess }) {
             </label>
             <p className="-mt-2 mb-0 text-[13px] text-muted">Mínimo {MIN_PASSWORD} caracteres.</p>
             {error && <p className="m-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{error}</p>}
-            <button className="mt-2 w-full cursor-pointer rounded-[999px] border-0 bg-ink py-4 px-6 text-[16px] font-bold text-white transition-colors duration-200 hover:bg-ink-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink disabled:cursor-wait disabled:opacity-65" type="submit" disabled={loading}>
+            <button className={`${BTN_INK_MD} mt-2 w-full disabled:cursor-wait!`} type="submit" disabled={loading}>
               {loading ? 'Activando...' : 'Activar mi cuenta'}
             </button>
           </form>

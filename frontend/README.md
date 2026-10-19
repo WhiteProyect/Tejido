@@ -126,7 +126,7 @@ Proceso que funcionó: 1) capturas de referencia (dos veces, para medir el ruido
 
 **Añadidos con Inicio (artista destacado, pasaporte, timeline, invitación):**
 
-32. **`background: linear-gradient(…)` en un `<button>` también anula su gris nativo.** `bg-[linear-gradient(…)]` solo pone `background-image`: sin preflight, debajo queda el `rgb(240,240,240)` del navegador, que asoma en los bordes redondeados. Suma `bg-transparent` (`BTN_CULTURAL` ya lo trae).
+32. **`background: linear-gradient(…)` en un `<button>` también anula su gris nativo.** `bg-[linear-gradient(…)]` solo pone `background-image`: sin preflight, debajo queda el `rgb(240,240,240)` del navegador, que asoma en los bordes redondeados. Suma `bg-transparent` (el antiguo `BTN_CULTURAL` lo traía; hoy los botones sólidos usan `BTN_INK_*`, de color plano).
 33. **Variantes de breakpoint, de la más ancha a la más angosta.** Tailwind las emite en el orden en que se registran; en `tailwind.css` están ordenadas `max1024` → `max800` → `max768` → `max600` → `max480`, así que la más angosta gana cuando dos tocan la misma propiedad. Una variante nueva va en su lugar de esa lista, no al final.
 34. **Estados por `localStorage` o datos: se simulan en la verificación.** El pasaporte (vacío, parcial, completo) se prueba escribiendo `tejido_passport` antes de cargar; el artista destacado, con respuestas de `/api/artists/home` sin imagen, sin enlaces o sin tema.
 
