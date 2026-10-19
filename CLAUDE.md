@@ -56,7 +56,7 @@ FRONTEND_BASE_URL=http://localhost:5173
 
 **Flujo de invitación gestor**: admin crea gestor → tabla `invite_tokens` → email Resend → `AcceptInviteScreen`.
 
-**Admins reales (cuenta activa=False, token de 30 días)**:
+**Admins reales (ya activaron su cuenta; los links de invitación ya se usaron)**:
 - id 4: Camilo (bryan.giraldo.0906@gmail.com)
 - id 5: Santi (MONEYSTACK999@gmail.com)
 - id 6: Daniel (danielopg1008@gmail.com)
@@ -76,22 +76,24 @@ MUSICA, CINE_AUDIOVISUAL, DANZA, TEATRO, ARTES_VISUALES, LITERATURA, ARTESANIAS,
 
 ### Completado ✓
 - Migración completa SQLite/stdlib → FastAPI/PostgreSQL (Neon), Fases 0–6.1
-- Sistema de autenticación: login, signup ciudadano, invitación gestor/admin, 3 admins reales sembrados
-- ExploreScreen: tarjetas horizontales (2 por fila), categorías culturales con portadas (CategoryCoversGrid), CategoryScreen con buscador y gestores
+- Sistema de autenticación: login, signup ciudadano, invitación gestor/admin, 3 admins reales (ya activos). Cerrar sesión lleva al login; volver a entrar desde ahí lleva al perfil
+- Explorar: portadas de las 10 categorías culturales (`CategoryCoversGrid`, imágenes en `frontend/public/images/categorias/<slug>.jpg`, ya subidas) → `CategoryScreen` con gestores, buscador por título y tarjetas horizontales
 - Sistema de toast: `ToastContext.jsx`, `Toast.jsx`, 6 eventos cableados, 5 tonos (rio/menta/dorado/naranja/morado)
-- ProfileScreen fase 1 (ciudadano: nombre/foto editable, solo "Tus guardados")
-- ProfileScreen fase 2 (gestor: dashboard con CRUD) — prompt entregado al arquitecto
-- ProfileScreen fase 3 (admin: dashboard con CRUD completo) — prompt entregado al arquitecto
-- Rediseño completo de HiloAssistant: lanzador compacto, susurros contextuales, Brújula 2x2, Chat Turístico con reglas de palabras clave (sin IA)
+- Perfiles por rol (3 fases, verificadas): nombre/foto editables para todos (`PATCH /api/me`); ciudadano solo con "Tus guardados"; gestor con biografía pública (`/api/me/organization`) y **Dashboard de Gestor** (`#gestor-dashboard`, CRUD de sus publicaciones); admin con **Dashboard de Admin** (`#admin-dashboard`: pulso, moderación aprobar/rechazar, CRUD de todas las publicaciones, panel de gestores)
+- Ciclo editorial completo en la UI: el gestor crea borradores y los envía; el admin aprueba o rechaza con motivo y puede publicar directo (`PublicationForm` compartido)
+- Rediseño completo de HiloAssistant: lanzador compacto (cápsula + Hilo a la derecha), susurros contextuales, panel con cabecera de color sólido, Brújula 2x2, Chat Turístico con reglas de palabras clave (sin IA)
+- Hero del inicio (propuesta definitiva del diseñador): fondo ilustrado claro (`arbol-tejido-claro.jpg`, original en `C:\Users\Bryan\Tejido\tejido-originales\`), Hilo grande al centro, saludo a la derecha (`GREETING_POSITION`), cápsula de estadísticas con conteo real, tarjetas glass y CTA de tinta
+- Botones unificados en `uiStyles.js`: `BTN_INK_LG/MD/SM`, `BTN_INK_OUTLINE_MD`, `BTN_GHOST`, `BTN_DANGER`, `BTN_QUIET_SM` (misma altura por talla: MD 49 px, SM 37 px)
 - VideoText en HomeScreen (efecto SVG mask + video sobre la palabra "TEJIDO")
 - EmptyNote como componente extraído y reutilizable
 
 ### Pendiente / En progreso
-- **Verificar** fase 2 (gestor dashboard) y fase 3 (admin dashboard) — prompts entregados, no verificado si el arquitecto los implementó
-- **Fix visual Hilo**: imagen al lado DERECHO del header del panel (hoy está izquierda), más grande; quitar degradado del fondo del header — prompt ya entregado al arquitecto
-- **Imágenes de categorías**: carpeta `frontend/public/images/categorias/` creada pero vacía — user debe subir JPGs con slugs: musica.jpg, cine-audiovisual.jpg, danza.jpg, teatro.jpg, artes-visuales.jpg, literatura.jpg, artesanias.jpg, patrimonio-memoria.jpg, gastronomia-cultural.jpg, emprendimiento-cultural.jpg
-- **LUGAR en Neon en vivo**: `seed_database()` solo corre en tests — la categoría LUGAR no está en la DB de dev real hasta que alguien la inserte manualmente
-- **Ciclo editorial**: UI de creación/edición de publicaciones (gestor crea, admin aprueba) — diferido explícitamente varias veces
+- **Hero, `GREETING_POSITION`**: a 1300 px el título "¡Bienvenido!" se sale por la derecha (bloque de 333 px más angosto que el título) y su centro queda ~110 px más abajo que el de Hilo — el user lo está cuadrando a mano
+- **Hero a 1024 px**: el sol del fondo queda a medias por el recorte de `object-cover`; opción: usar ahí el tratamiento de móvil
+- **"Quiero Participar" en móvil**: la fila del correo desborda a 390 px (input de 280 px fijo); propuesta: apilarla en ≤480 px
+- **"Crear mi primera publicación"** (dashboard de gestor vacío) se parte en dos líneas a ≤390 px; se resuelve con un texto más corto
+- **`cine-audiovisual.jpg`** pesa ~7.9 MB (las demás portadas 20–750 KB): comprimir
+- **Hero, "Volver" desde un municipio** vuelve directo al saludo, no a Historias (lógica de `goBack`)
 - **Cloudinary**: imágenes actualmente como URLs pegadas por el user — integración diferida
 - **Tailwind**: migración incremental en curso (Moneystack + Artista migrados); resto de pantallas pendiente
 
@@ -143,6 +145,11 @@ MUSICA, CINE_AUDIOVISUAL, DANZA, TEATRO, ARTES_VISUALES, LITERATURA, ARTESANIAS,
 | `frontend/src/components/CategoryCoversGrid.jsx` | Grid de portadas de categorías culturales |
 | `frontend/src/screens/CategoryScreen.jsx` | Pantalla de categoría con buscador y gestores |
 | `frontend/src/screens/ProfileScreen.jsx` | Perfil (ciudadano/gestor/admin) |
+| `frontend/src/screens/GestorDashboard.jsx` | Dashboard de Gestor (`#gestor-dashboard`) |
+| `frontend/src/screens/AdminDashboard.jsx` | Dashboard de Admin (`#admin-dashboard`) |
+| `frontend/src/components/PublicationForm.jsx` | Formulario de publicación compartido (gestor y admin) |
+| `frontend/src/components/HeroInteractive.jsx` | Hero del inicio (escenas con Hilo, fondo, saludo) |
+| `frontend/src/components/uiStyles.js` | Clases compartidas, incluida la familia de botones `BTN_*` |
 | `frontend/src/components/ProfileHeader.jsx` | Edición de nombre y avatar |
 | `frontend/src/components/Toast.jsx` + `context/ToastContext.jsx` | Sistema de toasts |
 | `frontend/src/components/EmptyNote.jsx` | Estado vacío reutilizable |
