@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { AX_BTN, AX_BTN_PRIMARY, AX_BTN_GHOST } from './axStyles.js';
+import { cdnImage } from '../../utils/cloudinaryUrl.js';
 
 const navSections = [
   { id: 'profile', label: 'Perfil' },
@@ -78,7 +79,7 @@ function ArtistHero({ artist, featuredTrack }) {
   }, []);
 
   const heroStyle = artist.hero_image || artist.image
-    ? { backgroundImage: `url(${artist.hero_image || artist.image})` }
+    ? { backgroundImage: `url(${cdnImage(artist.hero_image || artist.image, { width: 1600 })})` }
     : {};
 
   return (
@@ -198,7 +199,7 @@ function ArtistProfile({ artist, socialLinks }) {
       <div className="mx-auto grid max-w-[1100px] grid-cols-[300px_1fr] items-start gap-15 max768:grid-cols-[1fr] max768:gap-8">
         <div className="sticky top-[100px] aspect-[3/4] overflow-hidden rounded-ax max768:static max768:max-w-[250px]">
           {artist.image ? (
-            <img className="size-full object-cover" src={artist.image} alt={artist.stage_name} loading="lazy" />
+            <img className="size-full object-cover" src={cdnImage(artist.image, { width: 640 })} alt={artist.stage_name} loading="lazy" decoding="async" />
           ) : (
             <div className="flex size-full items-center justify-center bg-[linear-gradient(135deg,#1a1a2e,#0f3460)]">
               <span className="text-[80px] font-extrabold text-[rgba(212,168,67,0.2)]">{artist.stage_name?.charAt(0)}</span>

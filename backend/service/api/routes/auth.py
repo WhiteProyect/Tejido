@@ -15,6 +15,7 @@ from backend.service.schemas.users import OrganizationSelfUpdateInput, UserSelfU
 from backend.service.services.auth import login_user, logout_user
 from backend.service.services.invites import accept_invite
 from backend.service.services.organizations import get_my_organization, update_my_organization
+from backend.service.services.publications import category_overview
 from backend.service.services.signup import signup_user
 
 router = APIRouter()
@@ -127,6 +128,14 @@ def my_organization(user: Optional[dict] = Depends(get_current_user), db: Sessio
     """La organizacion (biografia publica) del gestor autenticado."""
     require_roles(user, ("GESTOR",), GESTOR_ONLY)
     return get_my_organization(db, user["id"])
+
+
+@router.get("/api/me/category")
+def my_category(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """La categoria del gestor: su rama, sus conteos por estado, sus colegas y lo publicado o en
+    revision por otros autores de la misma categoria (solo lectura)."""
+    require_roles(user, ("GESTOR",), GESTOR_ONLY)
+    return category_overview(db, user["id"])
 
 
 @router.patch("/api/me/organization")

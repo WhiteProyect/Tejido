@@ -44,7 +44,7 @@ function getRoute() {
   }
 
   if (hash.startsWith('artista/')) {
-    const slug = hash.split('/')[1] || 'og-mauro';
+    const slug = hash.split('/')[1];
     if (hash.includes('/media-kit')) return { screen: 'media-kit', slug };
     if (hash.includes('/dashboard')) return { screen: 'dashboard', slug };
     return { screen: 'artist', slug };
@@ -53,6 +53,16 @@ function getRoute() {
   // Categoria cultural: #categoria/<slug> (slugs en utils/constants.js::CULTURAL_CATEGORIES).
   if (hash.startsWith('categoria/')) {
     return { screen: 'categoria', slug: hash.slice('categoria/'.length) };
+  }
+
+  // Dashboard de gestor con pestana: #gestor-dashboard/<mis-publicaciones|mi-categoria>.
+  if (hash.startsWith('gestor-dashboard/')) {
+    return { screen: 'gestor-dashboard', slug: hash.slice('gestor-dashboard/'.length) };
+  }
+
+  // Dashboard de admin con pestana: #admin-dashboard/<seccion> (la seccion viaja en `slug`).
+  if (hash.startsWith('admin-dashboard/')) {
+    return { screen: 'admin-dashboard', slug: hash.slice('admin-dashboard/'.length) };
   }
 
   // Link de invitacion de cuenta: #invitacion/<token> (el token viaja en `slug`).
@@ -149,13 +159,13 @@ export default function App() {
   let content;
   switch (route.screen) {
     case 'artist':
-      content = <ArtistScreen />;
+      content = <ArtistScreen slug={route.slug} user={user} />;
       break;
     case 'media-kit':
-      content = <ArtistMediaKit />;
+      content = <ArtistMediaKit slug={route.slug} />;
       break;
     case 'dashboard':
-      content = user ? <ArtistDashboard /> : <LoginScreen onSuccess={handleLogin} />;
+      content = user ? <ArtistDashboard slug={route.slug} /> : <LoginScreen onSuccess={handleLogin} />;
       break;
     case 'explorar':
       content = <ExploreScreen />;
@@ -171,13 +181,13 @@ export default function App() {
       // Solo admins. Sin sesion: login (y vuelve aqui); con otro rol: no existe para el.
       if (!authReady) content = <section className="min-h-[62vh]" aria-busy="true" />;
       else if (!user) content = <LoginScreen onSuccess={handleLogin} />;
-      else content = user.role === 'ADMIN' ? <AdminDashboard user={user} /> : <NotFoundScreen />;
+      else content = user.role === 'ADMIN' ? <AdminDashboard user={user} section={route.slug} /> : <NotFoundScreen />;
       break;
     case 'gestor-dashboard':
       // Solo gestores. Sin sesion: login (y vuelve aqui); con otro rol: no existe para el.
       if (!authReady) content = <section className="min-h-[62vh]" aria-busy="true" />;
       else if (!user) content = <LoginScreen onSuccess={handleLogin} />;
-      else content = user.role === 'GESTOR' ? <GestorDashboard user={user} /> : <NotFoundScreen />;
+      else content = user.role === 'GESTOR' ? <GestorDashboard user={user} section={route.slug} /> : <NotFoundScreen />;
       break;
     case 'mapa':
       content = <MapScreen publications={publications} />;
@@ -202,7 +212,7 @@ export default function App() {
       content = user ? <ProfileScreen user={user} onLogout={handleLogout} onUserUpdate={setUser} /> : <section className="min-h-[62vh]" aria-busy="true" />;
       break;
     case 'moneystack':
-      content = <MoneystackScreen />;
+      content = <MoneystackScreen user={user} />;
       break;
     case 'login':
       content = <LoginScreen onSuccess={handleLogin} />;

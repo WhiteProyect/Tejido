@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
 import { BADGE_LIGHT } from '../components/uiStyles.js';
+import { cdnImage, cdnSrcSet } from '../utils/cloudinaryUrl.js';
 
 // Tarjeta oscura del artista destacado. Clases repetidas del reproductor y los iconos sociales.
 const PLAY_BTN = 'w-12 h-12 bg-gold border-none rounded-[50%] cursor-pointer flex items-center justify-center transition-all duration-300 ease-[ease] shrink-0 hover:[transform:scale(1.1)] hover:[box-shadow:0_8px_24px_rgba(212,168,67,0.4)]';
@@ -91,7 +92,7 @@ export default function HomeFeaturedArtist() {
       <div className="items-center flex flex-col gap-6 justify-center max1024:[order:-1]">
         <div className="relative">
           {artist.image ? (
-            <img src={artist.image} alt={artist.stage_name} className="w-full h-full object-cover rounded-[28px]" />
+            <img src={cdnImage(artist.image, { width: 960 })} srcSet={cdnSrcSet(artist.image, [640, 960, 1600])} sizes="(max-width: 1024px) 90vw, 480px" alt={artist.stage_name} className="w-full h-full object-cover rounded-[28px]" loading="lazy" decoding="async" />
           ) : (
             <div className="bg-[linear-gradient(135deg,var(--gold)_0%,var(--sunset)_100%)] rounded-[28px] h-[420px] w-[420px] flex items-center justify-center [box-shadow:0_32px_80px_rgba(212,168,67,0.25)]">
               <span className="text-white text-[100px] font-extrabold tracking-[-0.05em]">{artist.stage_name.charAt(0)}</span>

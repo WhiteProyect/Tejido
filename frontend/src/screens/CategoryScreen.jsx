@@ -7,6 +7,7 @@ import { SCREEN_SECTION, STATUS, STATUS_ERROR } from '../components/uiStyles.js'
 import { CULTURAL_CATEGORIES } from '../utils/constants.js';
 import { getInitials } from '../utils/initials.js';
 import { getMunicipalityFromLocation, stampMunicipality } from '../utils/passportUtils.js';
+import { cdnImage } from '../utils/cloudinaryUrl.js';
 
 // Una categoria cultural (#categoria/<slug>): arriba sus gestores (GET /api/gestores?branch=),
 // abajo sus publicaciones, filtradas de las que App ya cargo (cultural_category) y por el
@@ -20,7 +21,7 @@ function GestorAvatar({ gestor }) {
     <li className="flex w-[112px] flex-col items-center gap-2.5 text-center">
       <span className="grid size-[76px] place-items-center overflow-hidden rounded-full border-2 border-[#e2d9ca] bg-cream text-[22px] font-extrabold tracking-[.02em] text-ink" aria-hidden="true">
         {showPhoto
-          ? <img src={gestor.photo_url} alt="" className="size-full object-cover" onError={() => setPhotoFailed(true)} />
+          ? <img src={cdnImage(gestor.photo_url, { width: 152, fit: 'fill' })} alt="" className="size-full object-cover" loading="lazy" decoding="async" onError={() => setPhotoFailed(true)} />
           : getInitials(gestor.name)}
       </span>
       <span className="text-[14px] font-bold leading-[1.25] text-ink">{gestor.name}</span>

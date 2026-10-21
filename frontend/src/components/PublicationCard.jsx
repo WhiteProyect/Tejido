@@ -3,6 +3,7 @@ import Icon from './Icon.jsx';
 import { BTN_INK_SM } from './uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
+import { cdnImage } from '../utils/cloudinaryUrl.js';
 
 // Tarjeta de publicacion de Explorar (unico consumidor: ExploreSection).
 //
@@ -111,7 +112,7 @@ export default function PublicationCard({ publication, user }) {
         {hasRealImage ? (
           <div
             className={`absolute inset-0 bg-cover bg-center transition-[scale] duration-500 ${EASE} motion-safe:group-hover:scale-[1.04]`}
-            style={{ backgroundImage: `url("${image}")` }}
+            style={{ backgroundImage: `url("${cdnImage(image, { width: 960 })}")` }}
           />
         ) : (
           <div className="absolute inset-0 bg-[color-mix(in_srgb,var(--kind)_12%,#f3ece0)]" />

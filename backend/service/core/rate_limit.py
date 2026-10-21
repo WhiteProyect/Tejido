@@ -68,3 +68,16 @@ def is_signup_locked(ip: str) -> bool:
 
 def register_signup_attempt(ip: str) -> None:
     _limiter.hit(SIGNUP_LIMIT, _signup_key(ip))
+
+
+# ---------------------------------------------------------------------------
+# Firmas de subida (/api/uploads/sign): por usuario autenticado, todas cuentan.
+# Frena que una sesion pida firmas en bucle (cada firma permite subir a Cloudinary).
+# ---------------------------------------------------------------------------
+
+UPLOAD_SIGN_LIMIT = RateLimitItemPerMinute(30)
+
+
+def allow_upload_signature(user_id: int) -> bool:
+    """Cuenta el intento y dice si todavia esta dentro del limite."""
+    return _limiter.hit(UPLOAD_SIGN_LIMIT, f"upload-sign:user:{user_id}")

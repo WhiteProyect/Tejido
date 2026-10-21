@@ -86,6 +86,7 @@ MUSICA, CINE_AUDIOVISUAL, DANZA, TEATRO, ARTES_VISUALES, LITERATURA, ARTESANIAS,
 - Botones unificados en `uiStyles.js`: `BTN_INK_LG/MD/SM`, `BTN_INK_OUTLINE_MD`, `BTN_GHOST`, `BTN_DANGER`, `BTN_QUIET_SM` (misma altura por talla: MD 49 px, SM 37 px)
 - VideoText en HomeScreen (efecto SVG mask + video sobre la palabra "TEJIDO")
 - EmptyNote como componente extraído y reutilizable
+- **Artistas — CRUD admin** (decisión 2026-10-20: la BD es la única fuente; ya no hay JSON ni scripts de carga): endpoints con permisos y validación de URLs (`/api/artists`, `/api/admin/artists[/{id}]`), pestaña Artistas del AdminDashboard (`#admin-dashboard/artistas`) con lista, alta y archivar/restaurar, y editor por pestañas (`#admin-dashboard/artistas/<id>/<pestaña>`: Datos, Música, Galería, Trayectoria, Redes, Conexiones, Métricas). Accesos solo para admin en Moneystack y en el perfil público. Solo admins crean/archivan; "eliminar" = archivar (`active=False`). DJ Apolo y Og Mauro tienen contenido de ejemplo (no real) que el admin reemplaza desde el editor
 
 ### Pendiente / En progreso
 - **Hero, `GREETING_POSITION`**: a 1300 px el título "¡Bienvenido!" se sale por la derecha (bloque de 333 px más angosto que el título) y su centro queda ~110 px más abajo que el de Hilo — el user lo está cuadrando a mano
@@ -94,7 +95,9 @@ MUSICA, CINE_AUDIOVISUAL, DANZA, TEATRO, ARTES_VISUALES, LITERATURA, ARTESANIAS,
 - **"Crear mi primera publicación"** (dashboard de gestor vacío) se parte en dos líneas a ≤390 px; se resuelve con un texto más corto
 - **`cine-audiovisual.jpg`** pesa ~7.9 MB (las demás portadas 20–750 KB): comprimir
 - **Hero, "Volver" desde un municipio** vuelve directo al saludo, no a Historias (lógica de `goBack`)
-- **Cloudinary**: imágenes actualmente como URLs pegadas por el user — integración diferida
+- **Cloudinary (Fases A y B hechas, 2026-10-21)**: subida firmada desde el backend (`POST /api/uploads/sign`, el navegador sube directo), `ImageField` único, subida múltiple en Galería y entrega optimizada. Claves `CLOUDINARY_*` solo en `.env`. Pendiente del user: re-subir las fotos locales de Apolo y Mauro desde el editor
+- **EN CURSO — Dashboard de gestores por categoría** (decisiones 2026-10-21): (1) el gestor solo publica en su rama (`organizations.branch`), validado en el BACKEND (hoy no lo está) y con la categoría fija en el formulario; (2) ve lo suyo + lo del resto de su categoría en solo lectura (de los demás solo PUBLISHED y REVIEW, nunca borradores ni rechazadas); (3) editar una publicación PUBLISHED la pasa a REVIEW y la oculta hasta que el admin la apruebe; el admin conserva el estado al editar y puede publicar en el mismo PUT. Fase 1 backend, Fase 2 dashboard (identidad de categoría, contadores, pestañas Mis publicaciones / Mi categoría)
+- **Decisión de producto (2026-10-20)**: los artistas del apartado Moneystack (tabla `artists`, administrados solo por admin) son APARTE de los artistas de la sección Música de TEJIDO (los subirán/administrarán los gestores de la rama MUSICA; modelo por analizar, puede haber artistas en ambos). El contenido de la pantalla Moneystack (textos, chips, logo) se queda fijo en el código; solo la lista de artistas es administrable. El dashboard propio del artista (`ArtistDashboard`) NO aplica a Moneystack y queda diferido para los artistas de TEJIDO
 - **Tailwind**: migración incremental en curso (Moneystack + Artista migrados); resto de pantallas pendiente
 
 ### No tocar todavía (diferido)

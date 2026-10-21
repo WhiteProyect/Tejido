@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import PublicationForm from '../components/PublicationForm.jsx';
+import ArtistasPanel from '../components/admin/ArtistasPanel.jsx';
 import GestoresPanel from '../components/admin/GestoresPanel.jsx';
+import PillTabs from '../components/admin/PillTabs.jsx';
+import { confirmDiscard } from '../components/admin/artist/unsavedChanges.js';
 import { BTN_DANGER, BTN_GHOST, BTN_INK_MD, BTN_INK_SM, EYEBROW, FORM_INPUT, H1, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
@@ -10,9 +13,12 @@ import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
 import { formatDateShort } from '../utils/dateUtils.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
-// Dashboard del Admin (#admin-dashboard):
-// - Pulso: GET /api/admin/stats (incluye gestores_activos).
+// Dashboard del Admin (#admin-dashboard[/publicaciones|gestores|artistas[/<id>[/<pestana>]]]):
+// - Pulso: GET /api/admin/stats (incluye gestores_activos), visible en todas las pestanas.
+// - Pestanas: solo se monta el panel activo. La pestana va en la URL con replaceState (sin
+//   hashchange: App subiria la pagina y cada cambio llenaria el historial).
 // - Gestores: components/admin/GestoresPanel.jsx, tal cual vivia en el perfil.
+// - Artistas: components/admin/ArtistasPanel.jsx (lista y, con un id, el editor del artista).
 // - Publicaciones de TODOS los autores: GET /api/publications?status=<X> por cada estado (sin
 //   status el listado solo trae las publicadas). Acciones:
 //   REVIEW: Aprobar / Rechazar (motivo de 5+ caracteres) -> PATCH .../status
@@ -21,6 +27,19 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 const STATUSES = ['REVIEW', 'DRAFT', 'REJECTED', 'PUBLISHED'];
 const CATEGORY_LABELS = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
 const MIN_NOTE = 5; // mismo minimo que PATCH /api/publications/{id}/status
+
+const TABS = [
+  ['publicaciones', 'Publicaciones', 'book'],
+  ['gestores', 'Gestores', 'people'],
+  ['artistas', 'Artistas', 'music'],
+];
+const TAB_IDS = TABS.map(([id]) => id);
+// La seccion es "<pestana>[/<resto>]": el resto lo interpreta el panel (p. ej. artistas/2/galeria).
+function parseSection(section) {
+  const [tab, ...rest] = String(section || '').split('/');
+  return TAB_IDS.includes(tab) ? { tab, subpath: rest.join('/') } : { tab: 'publicaciones', subpath: '' };
+}
+const sectionFromHash = () => parseSection(window.location.hash.replace(/^#admin-dashboard\/?/, ''));
 
 const byPriority = (a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status)
   || String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at));
@@ -108,8 +127,9 @@ function AdminPublicationItem({ publication, busy, onEdit, onAction }) {
   );
 }
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ section }) {
   const { showToast } = useToast();
+  const [{ tab, subpath }, setSection] = useState(() => parseSection(section));
   const [stats, setStats] = useState(null);
   const [state, setState] = useState({ loading: true, error: '', publications: [], categories: [] });
   const [editor, setEditor] = useState(null); // null | { publication: null | objeto }
@@ -131,6 +151,20 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Enlaces a #admin-dashboard/<seccion> (desde fuera o abrir/cerrar el editor de un artista)
+  // llegan por hashchange.
+  useEffect(() => {
+    const sync = () => setSection(sectionFromHash());
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, []);
+
+  function changeTab(id) {
+    if (!confirmDiscard()) return;
+    setSection({ tab: id, subpath: '' });
+    window.history.replaceState(window.history.state, '', `#admin-dashboard/${id}`);
+  }
 
   function openEditor(publication = null) {
     setActionError('');
@@ -178,42 +212,59 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         <StatsPanel stats={stats} />
 
-        {editor && (
-          <div id="admin-editor" className="scroll-mt-24">
-            <PublicationForm
-              key={editor.publication?.id ?? 'nueva'}
-              publication={editor.publication}
-              categories={state.categories}
-              allowPublish
-              onCancel={() => setEditor(null)}
-              onSaved={() => { setEditor(null); load(); }}
-            />
-          </div>
-        )}
+        <PillTabs
+          idPrefix="admin"
+          label="Qué gestionar"
+          active={tab}
+          onChange={changeTab}
+          tabs={TABS.map(([id, label, icon]) => ({
+            id, label, icon,
+            ...(id === 'publicaciones' && pending > 0 ? { badge: pending, badgeLabel: 'en revisión', badgeTone: 'alert' } : {}),
+          }))}
+        />
 
-        <section className={PANEL} aria-labelledby="admin-publicaciones">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 id="admin-publicaciones" className={`${PANEL_TITLE} flex items-center gap-3`}><Icon name="book" className="size-6 text-river" /> Publicaciones</h2>
-              <p className="mt-2 mb-0 text-[14px] text-muted">De todos los gestores. {pending ? `${pending} esperando revisión, arriba.` : 'Nada esperando revisión.'}</p>
-            </div>
-            {!editor && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}><Icon name="pen" className="size-4" /> Nueva publicación</button>}
-          </div>
-          {actionError && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{actionError}</p>}
-          {state.loading && <p className="m-0 py-6 text-[14px] text-muted" aria-busy="true">Cargando...</p>}
-          {state.error && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{state.error}</p>}
-          {!state.loading && !state.error && (publications.length ? (
-            <ul className="mt-4 mb-0 grid list-none gap-1 p-0">
-              {publications.map((publication) => (
-                <AdminPublicationItem key={publication.id} publication={publication} busy={busyId === publication.id} onEdit={openEditor} onAction={handleAction} />
-              ))}
-            </ul>
-          ) : (
-            <div className="mt-6"><EmptyNote icon="book" title="Aún no hay publicaciones" text="Crea la primera o espera a que los gestores envíen las suyas." /></div>
-          ))}
-        </section>
+        <div id={`admin-panel-${tab}`} role="tabpanel" aria-labelledby={`admin-tab-${tab}`} className="grid grid-cols-[minmax(0,1fr)] gap-6">
+          {tab === 'publicaciones' && (
+            <>
+              {editor && (
+                <div id="admin-editor" className="scroll-mt-24">
+                  <PublicationForm
+                    key={editor.publication?.id ?? 'nueva'}
+                    publication={editor.publication}
+                    categories={state.categories}
+                    allowPublish
+                    onCancel={() => setEditor(null)}
+                    onSaved={() => { setEditor(null); load(); }}
+                  />
+                </div>
+              )}
 
-        <GestoresPanel />
+              <section className={PANEL} aria-labelledby="admin-publicaciones">
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                  <div>
+                    <h2 id="admin-publicaciones" className={`${PANEL_TITLE} flex items-center gap-3`}><Icon name="book" className="size-6 text-river" /> Publicaciones</h2>
+                    <p className="mt-2 mb-0 text-[14px] text-muted">De todos los gestores. {pending ? `${pending} esperando revisión, arriba.` : 'Nada esperando revisión.'}</p>
+                  </div>
+                  {!editor && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}><Icon name="pen" className="size-4" /> Nueva publicación</button>}
+                </div>
+                {actionError && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{actionError}</p>}
+                {state.loading && <p className="m-0 py-6 text-[14px] text-muted" aria-busy="true">Cargando...</p>}
+                {state.error && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{state.error}</p>}
+                {!state.loading && !state.error && (publications.length ? (
+                  <ul className="mt-4 mb-0 grid list-none gap-1 p-0">
+                    {publications.map((publication) => (
+                      <AdminPublicationItem key={publication.id} publication={publication} busy={busyId === publication.id} onEdit={openEditor} onAction={handleAction} />
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="mt-6"><EmptyNote icon="book" title="Aún no hay publicaciones" text="Crea la primera o espera a que los gestores envíen las suyas." /></div>
+                ))}
+              </section>
+            </>
+          )}
+          {tab === 'gestores' && <GestoresPanel />}
+          {tab === 'artistas' && <ArtistasPanel subpath={subpath} />}
+        </div>
       </div>
     </section>
   );

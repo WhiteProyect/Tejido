@@ -1,3 +1,5 @@
+import { apiRequest } from '../utils/api.js';
+
 const API = '/api';
 
 async function getJson(url) {
@@ -107,3 +109,39 @@ export function deleteConnection(artistId, connectionId) {
 export function createMetric(artistId, data) {
   return sendJson(`${API}/artists/${artistId}/metrics`, 'POST', data);
 }
+
+// ───────────────────────── panel de admin (CRUD completo) ─────────────────────────
+// Todo lo nuevo pasa por apiRequest (utils/api.js), que tolera respuestas sin cuerpo y devuelve
+// el mensaje del backend en el Error. Las funciones de arriba (sendJson) quedan para ArtistDashboard.
+
+// Detalle para el editor: activo o archivado, canciones en borrador incluidas, cada fila con su id.
+export function fetchAdminArtist(artistId) {
+  return apiRequest(`${API}/admin/artists/${artistId}`);
+}
+
+// CRUD de una seccion del artista: /api/artists/{id}/<path>[/{rowId}].
+function section(path) {
+  return {
+    create: (artistId, data) => apiRequest(`${API}/artists/${artistId}/${path}`, { method: 'POST', body: data }),
+    update: (artistId, rowId, data) => apiRequest(`${API}/artists/${artistId}/${path}/${rowId}`, { method: 'PUT', body: data }),
+    remove: (artistId, rowId) => apiRequest(`${API}/artists/${artistId}/${path}/${rowId}`, { method: 'DELETE' }),
+  };
+}
+
+export const adminArtistApi = {
+  list: () => apiRequest(`${API}/admin/artists`),
+  detail: fetchAdminArtist,
+  create: (data) => apiRequest(`${API}/artists`, { method: 'POST', body: data }),
+  update: (artistId, data) => apiRequest(`${API}/artists/${artistId}`, { method: 'PUT', body: data }),
+  archive: (artistId) => apiRequest(`${API}/artists/${artistId}`, { method: 'DELETE' }),
+  restore: (artistId) => apiRequest(`${API}/artists/${artistId}/restore`, { method: 'POST' }),
+  tracks: section('tracks'),
+  media: section('media'),
+  timeline: section('timeline'),
+  social: section('social'),
+  connections: section('connections'),
+  metrics: {
+    ...section('metrics'),
+    list: (artistId) => apiRequest(`${API}/artists/${artistId}/metrics`),
+  },
+};

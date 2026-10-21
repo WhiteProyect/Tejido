@@ -28,10 +28,24 @@ Vite proxea `/api` al backend en `http://127.0.0.1:8765` y sirve `public/` direc
 npm run build      # genera dist/, que el backend sirve como estático
 ```
 
+## Subida de imágenes (Cloudinary)
+
+Todo campo de imagen usa `src/components/ImageField.jsx`: el navegador pide una firma a `POST /api/uploads/sign` (el backend decide la carpeta según el `scope`, los formatos y una transformación que reduce la foto a 2400 px como máximo) y sube el archivo directo a Cloudinary; en la base solo se guarda el `secure_url`. "Usar un enlace" sigue aceptando `https://...` o rutas `/assets/...`.
+
+Variables en el `.env` de la raíz (nunca en el código; ver `.env.example`):
+
+```
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+```
+
+Sin ellas el backend arranca igual y "Subir foto" responde "La subida de imágenes no está configurada" (queda el enlace). Tras ponerlas, nodemon recarga el backend solo. Para probar: subir una foto desde cada pantalla (perfil, biografía del gestor, publicación, editor de artistas) y comprobar en Cloudinary > Media Library que cae en `tejido/perfiles`, `tejido/gestores`, `tejido/publicaciones` o `tejido/artistas/<slug>`.
+
 ## Convenciones
 
 - Identidad visual y animaciones: `docs/MANUAL_ESENCIA_TEJIDO.md`.
-- Imágenes de artistas: `public/assets/artistas/<slug>/` y la ruta se guarda en la base de datos (`artists.image`, `artist_media.url`).
+- Imágenes subidas por la app (artistas, publicaciones, foto del gestor, avatar): ver **Subida de imágenes (Cloudinary)**. Las de `public/` (portadas de categorías, hero, fotos antiguas de artistas en `public/assets/artistas/<slug>/`) siguen sirviéndose como estáticas.
 
 ## Tailwind
 

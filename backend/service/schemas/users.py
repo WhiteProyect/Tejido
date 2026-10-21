@@ -3,22 +3,10 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
+from backend.service.schemas.fields import optional_text as _optional_text
+from backend.service.schemas.fields import url_or_path as image_url
+
 MAX_NAME_LENGTH = 120
-
-
-def image_url(v):
-    """URL de imagen que termina en un <img src>: absoluta http(s) o ruta del sitio (/images/...).
-    Vacio = quitarla (None). Se rechaza cualquier otro esquema (javascript:, data:, etc.)."""
-    if v is None:
-        return None
-    v = str(v).strip()
-    if not v:
-        return None
-    if not (v.startswith("/") or v.startswith("https://") or v.startswith("http://")):
-        raise ValueError("La imagen debe ser una URL (https://...) o una ruta del sitio (/images/...)")
-    if len(v) > 500:
-        raise ValueError("La URL de la imagen es demasiado larga")
-    return v
 
 
 class UserSelfUpdateInput(BaseModel):
@@ -45,16 +33,6 @@ class UserSelfUpdateInput(BaseModel):
 
 
 MAX_DESCRIPTION_LENGTH = 2000
-
-
-def _optional_text(v, max_length, label):
-    """Texto opcional: vacio = quitarlo (None)."""
-    if v is None:
-        return None
-    v = str(v).strip()
-    if len(v) > max_length:
-        raise ValueError(f"{label} no puede superar {max_length} caracteres")
-    return v or None
 
 
 class OrganizationSelfUpdateInput(BaseModel):

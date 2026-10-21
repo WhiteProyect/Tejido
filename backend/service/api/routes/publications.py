@@ -72,10 +72,11 @@ def update_publication(publication_id: int, item: PublicationInput, user: Option
         raise AppError(403, "FORBIDDEN", "Acceso denegado")
     if current["author_id"] != user["id"] and user["role"] != "ADMIN":
         raise AppError(403, "FORBIDDEN", "No puedes editar este contenido")
-    if user["role"] == "GESTOR" and current["status"] not in ("DRAFT", "REJECTED"):
-        raise AppError(409, "INVALID_STATE", "Solo puedes editar borradores o contenidos rechazados")
+    # Una publicada se puede editar (vuelve a revision); una en revision espera la respuesta del equipo.
+    if user["role"] == "GESTOR" and current["status"] == "REVIEW":
+        raise AppError(409, "INVALID_STATE", "Esta publicación está en revisión: espera la respuesta del equipo para editarla")
     svc.validate_category(db, item.category_id, item.kind)
-    svc.update_publication(db, publication_id, item)
+    svc.update_publication(db, user, publication_id, current["status"], item)
     return {"message": "Contenido actualizado"}
 
 

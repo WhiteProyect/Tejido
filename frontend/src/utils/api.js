@@ -1,5 +1,5 @@
 // Peticion JSON a la API con la sesion actual (Bearer de localStorage). Devuelve el cuerpo
-// o lanza un Error con el mensaje del backend.
+// o lanza un Error con el mensaje del backend (y el codigo HTTP en error.status).
 export async function apiRequest(url, { method = 'GET', body } = {}) {
   const token = localStorage.getItem('tejido_token');
   const response = await fetch(url, {
@@ -11,6 +11,10 @@ export async function apiRequest(url, { method = 'GET', body } = {}) {
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.message || 'No fue posible completar la acción.');
+  if (!response.ok) {
+    const error = new Error(data.message || 'No fue posible completar la acción.');
+    error.status = response.status;
+    throw error;
+  }
   return data;
 }

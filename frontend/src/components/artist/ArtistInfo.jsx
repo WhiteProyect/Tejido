@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion';
 import { AX_SECTION, AX_SECTION_TITLE } from './axStyles.js';
+import { CONNECTION_TYPES } from '../../utils/artistOptions.js';
+import { cdnImage, cdnSrcSet } from '../../utils/cloudinaryUrl.js';
 
 // ── Linea de tiempo ──────────────────────────────────────────────────────────
 // Mobile (<=768px): una sola columna; la curva serpenteante (svg) no tiene espacio para mecerse,
@@ -101,7 +103,7 @@ function ArtistTimeline({ timeline }) {
               )}
               {item.imagen_url && (
                 <div className="mt-3 overflow-hidden rounded-ax-sm">
-                  <img className="block h-auto w-full" src={item.imagen_url} alt={item.titulo} loading="lazy" />
+                  <img className="block h-auto w-full" src={cdnImage(item.imagen_url, { width: 640 })} srcSet={cdnSrcSet(item.imagen_url, [320, 640, 960])} sizes="(max-width: 768px) 100vw, 380px" alt={item.titulo} loading="lazy" decoding="async" />
                 </div>
               )}
               {item.video_url && (
@@ -120,30 +122,18 @@ function ArtistTimeline({ timeline }) {
   );
 }
 
-const entityLabels = {
-  event: 'Evento',
-  artist: 'Artista',
-  collective: 'Colectivo',
-  story: 'Historia',
-  place: 'Lugar',
-};
+// Etiqueta y color por tipo: utils/artistOptions.js (el editor del admin ofrece los mismos tipos).
+const entityLabels = Object.fromEntries(Object.entries(CONNECTION_TYPES).map(([type, [label]]) => [type, label]));
+const entityColors = Object.fromEntries(Object.entries(CONNECTION_TYPES).map(([type, [, color]]) => [type, color]));
 
-const entityColors = {
-  event: '#F59E0B',
-  artist: '#EC4899',
-  collective: '#8B5CF6',
-  story: '#3B82F6',
-  place: '#10B981',
-};
-
-function ArtistTerritory({ connections }) {
+function ArtistTerritory({ connections, artistName }) {
   if (!connections || connections.length === 0) return null;
 
   return (
     <section className={AX_SECTION}>
       <h2 className={AX_SECTION_TITLE}>Desde el territorio</h2>
       <p className="-mt-4 mb-10 text-[16px] leading-[1.6] text-ax-dim">
-        Las conexiones de {connections[0]?.titulo ? 'este artista' : 'OG MAURO'} con el ecosistema cultural del Bajo Cauca.
+        Las conexiones de {artistName || 'este artista'} con el ecosistema cultural del Bajo Cauca.
       </p>
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
@@ -158,7 +148,7 @@ function ArtistTerritory({ connections }) {
               </span>
               {conn.imagen_url && (
                 <div className="size-10 overflow-hidden rounded-[10px]">
-                  <img className="size-full object-cover" src={conn.imagen_url} alt={conn.titulo} loading="lazy" />
+                  <img className="size-full object-cover" src={cdnImage(conn.imagen_url, { width: 160 })} alt={conn.titulo} loading="lazy" decoding="async" />
                 </div>
               )}
             </div>
@@ -233,7 +223,7 @@ function ArtistEvents({ events }) {
   );
 }
 
-export default function ArtistInfo({ timeline, connections, events }) {
+export default function ArtistInfo({ artistName, timeline, connections, events }) {
   const hasTimeline = timeline && timeline.length > 0;
   const hasConnections = connections && connections.length > 0;
   const hasEvents = events && events.length > 0;
@@ -248,7 +238,7 @@ export default function ArtistInfo({ timeline, connections, events }) {
 
       {hasConnections && (
         <div id="ax-territory">
-          <ArtistTerritory connections={connections} />
+          <ArtistTerritory connections={connections} artistName={artistName} />
         </div>
       )}
 

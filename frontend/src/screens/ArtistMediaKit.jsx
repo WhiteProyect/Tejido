@@ -1,23 +1,26 @@
 import { useState, useEffect } from 'react';
 import { fetchMediaKit } from '../services/artistApi.js';
+import { cdnImage } from '../utils/cloudinaryUrl.js';
 
-function getSlug() {
-  const hash = window.location.hash.replace('#', '');
-  const parts = hash.split('/');
-  return parts[1] || 'og-mauro';
-}
-
-export default function ArtistMediaKit() {
+export default function ArtistMediaKit({ slug }) {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(slug));
 
   useEffect(() => {
-    const slug = getSlug();
+    setData(null);
+    if (!slug) {
+      setLoading(false);
+      return;
+    }
+    // Si el slug cambia antes de que llegue la respuesta, la vieja no pisa al artista nuevo.
+    let active = true;
+    setLoading(true);
     fetchMediaKit(slug)
-      .then(setData)
+      .then((result) => { if (active) setData(result); })
       .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [slug]);
 
   // `ax-artist-page` en el contenedor (no en el body) da al Media Kit el tema oscuro de
   // artista: fondo, texto y los tokens ax-* (sin el, --ax-accent no existia y los
@@ -55,7 +58,7 @@ export default function ArtistMediaKit() {
         <div className="flex gap-10 items-center mb-15 max600:flex-col max600:text-center">
           {artist.image && (
             <div className="w-40 h-40 rounded-[20px] overflow-hidden shrink-0 max600:w-30 max600:h-30">
-              <img src={artist.image} alt={artist.stage_name} className="w-full h-full object-cover" />
+              <img src={cdnImage(artist.image, { width: 320 })} alt={artist.stage_name} className="w-full h-full object-cover" decoding="async" />
             </div>
           )}
           <div>

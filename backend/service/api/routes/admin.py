@@ -10,6 +10,7 @@ from backend.service.db.session import get_db
 from backend.service.errors import AppError
 from backend.service.models.tables import Organization, Publication, Report, Role, Suggestion, User
 from backend.service.schemas.organizations import GestorCreateInput, GestorUpdateInput
+from backend.service.services import artists as artists_service
 from backend.service.services import email as email_service
 from backend.service.services.auth import now_utc
 from backend.service.services.invites import create_invite, invite_link, unusable_password_hash
@@ -159,6 +160,23 @@ def update_gestor(gestor_id: int, payload: GestorUpdateInput, user: Optional[dic
             organization.photo_url = org_fields["photo_url"] or None
     db.flush()
     return {"ok": True, "id": gestor.id, "active": gestor.active, "status": _status(gestor.active)}
+
+
+@router.get("/artists")
+def list_artists(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Todos los artistas, tambien los archivados (la web publica solo ve los activos)."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    return artists_service.list_artists_admin(db)
+
+
+@router.get("/artists/{artist_id:int}")
+def artist_detail(artist_id: int, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Un artista completo para editarlo, aunque este archivado o tenga canciones en borrador."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    data = artists_service.get_artist_admin_detail(db, artist_id)
+    if not data:
+        raise AppError(404, "NOT_FOUND", "Artista no encontrado")
+    return data
 
 
 @router.post("/gestores/{gestor_id}/resend-invite")

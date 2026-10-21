@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AX_SECTION, AX_SECTION_TITLE } from './axStyles.js';
+import { cdnImage, cdnSrcSet } from '../../utils/cloudinaryUrl.js';
 
 // ── Discografia ──────────────────────────────────────────────────────────────
 // El fondo y el color del borde NO van en la base: los tres estados (normal, destacado, abierto)
@@ -60,7 +61,7 @@ function ArtistDiscography({ tracks }) {
           >
             <div className="relative size-16 shrink-0 overflow-hidden rounded-[12px] max480:size-13">
               {track.cover_image ? (
-                <img className="size-full object-cover" src={track.cover_image} alt={track.title} loading="lazy" />
+                <img className="size-full object-cover" src={cdnImage(track.cover_image, { width: 160 })} alt={track.title} loading="lazy" decoding="async" />
               ) : (
                 <div className="flex size-full items-center justify-center bg-[linear-gradient(135deg,#1a1a2e,#2a1a3e)] text-ax-muted">
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -166,7 +167,16 @@ function ArtistGallery({ media }) {
               </div>
             ) : (
               <>
-                <img className="size-full object-cover transition-[transform] duration-500 ease-[ease] group-hover:[transform:scale(1.05)]" src={item.url} alt={item.titulo || ''} loading="lazy" />
+                <img
+                  className="size-full object-cover transition-[transform] duration-500 ease-[ease] group-hover:[transform:scale(1.05)]"
+                  // Las destacadas ocupan 2x2 en el mosaico: piden variantes mas grandes.
+                  src={cdnImage(item.url, { width: item.destacado ? 960 : 640 })}
+                  srcSet={cdnSrcSet(item.url, item.destacado ? [640, 960, 1600] : [320, 640, 960])}
+                  sizes={item.destacado ? '(max-width: 768px) 100vw, 520px' : '(max-width: 480px) 100vw, (max-width: 768px) 50vw, 260px'}
+                  alt={item.titulo || ''}
+                  loading="lazy"
+                  decoding="async"
+                />
                 {item.titulo && <span className={GAL_CAPTION}>{item.titulo}</span>}
               </>
             )}
@@ -182,7 +192,7 @@ function ArtistGallery({ media }) {
                 <path d="M18 6L6 18M6 6l12 12"/>
               </svg>
             </button>
-            <img className="max-h-[80vh] max-w-full rounded-ax object-contain" src={lightbox.url} alt={lightbox.titulo || ''} />
+            <img className="max-h-[80vh] max-w-full rounded-ax object-contain" src={cdnImage(lightbox.url, { width: 1600 })} alt={lightbox.titulo || ''} decoding="async" />
             {lightbox.titulo && <p className="mt-4 mb-1 text-[16px] font-semibold text-white">{lightbox.titulo}</p>}
             {lightbox.descripcion && <p className="m-0 text-[14px] text-ax-dim">{lightbox.descripcion}</p>}
           </div>

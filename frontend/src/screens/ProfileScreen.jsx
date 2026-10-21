@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
-import ImageUrlField from '../components/ImageUrlField.jsx';
+import ImageField from '../components/ImageField.jsx';
 import ProfileHeader from '../components/ProfileHeader.jsx';
 import { BTN_INK_MD, BTN_INK_OUTLINE_MD, EYEBROW, FORM_INPUT, FORM_LABEL, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
@@ -165,7 +165,7 @@ function GestorBio() {
             <label className={FORM_LABEL}>Biografía
               <textarea className={`${FORM_INPUT} min-h-[140px] resize-y leading-[1.55]`} value={form.description} onChange={(event) => set('description')(event.target.value)} maxLength={2000} placeholder="Qué hacen, desde cuándo, dónde los encuentran..." disabled={saving} />
             </label>
-            <ImageUrlField label="Foto (enlace)" value={form.photo_url} onChange={set('photo_url')} disabled={saving} round hint="Pega el enlace de una imagen; aparece en la página de tu categoría." />
+            <ImageField label="Foto" value={form.photo_url} onChange={set('photo_url')} scope="organization" disabled={saving} round hint="Aparece en la página de tu categoría." />
             <label className={FORM_LABEL}>Contacto (opcional)
               <input className={FORM_INPUT} value={form.contact} onChange={(event) => set('contact')(event.target.value)} maxLength={200} placeholder="Correo, teléfono o red social" disabled={saving} />
             </label>

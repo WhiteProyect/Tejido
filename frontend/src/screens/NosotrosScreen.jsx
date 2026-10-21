@@ -13,7 +13,7 @@ const TEAM_MEMBERS = [
   { name: 'Santiago Alvarez', role: 'Dirección, contenidos, Comunidad y territorio', bio: 'Escucha al territorio recorre las calles y conecta a quienes hacen cultura y decide qué historias merecen quedarse.', tone: 'bg-river text-white' },
   { name: 'Bryan Giraldo', role: 'Desarrollo y produccion', bio: 'Lider de desarrollo, construcción y produccion de la plataforma dando forma a la experiencia del usuario.', tone: 'bg-ink text-paper' },
   { name: 'Daniel Lopez', role: 'Diseño e identidad', bio: 'Traduce el río, el oro y la sabana en formas y colores dando vida a la identidad visual de la plataforma.', tone: 'bg-orange text-white' },
-  { name: 'Miguel Padilla', role: 'Desarrollo', bio: 'Elabora soluciones digitales, estrategias de contenido y produccion digital.', tone: 'bg-mint text-ink' },
+  { name: 'Jeison Isaza', role: 'Desarrollo', bio: 'Elabora soluciones digitales, estrategias de contenido y produccion digital.', tone: 'bg-mint text-ink' },
 ];
 
 const PILLARS = [

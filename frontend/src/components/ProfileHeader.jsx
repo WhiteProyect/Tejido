@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
+import ImageField from './ImageField.jsx';
 import { BTN_GHOST, BTN_INK_SM, BTN_QUIET_SM, EYEBROW } from './uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { getInitials } from '../utils/initials.js';
+import { cdnImage } from '../utils/cloudinaryUrl.js';
 
 // Cabecera del perfil, comun a todos los roles: avatar (foto o iniciales) y nombre, ambos
-// editables por el propio usuario con PATCH /api/me. La foto es una URL pegada (aun no hay
-// subida de archivos). Tras guardar avisa con un toast y entrega el usuario nuevo a
-// onUserUpdate (App lo guarda, asi el header del sitio cambia sin recargar).
+// editables por el propio usuario con PATCH /api/me. La foto se sube a Cloudinary (ImageField,
+// scope "avatar") y se guarda al terminar de subir; un enlace pegado o "Quitar imagen" se guardan
+// con "Guardar foto". Tras guardar avisa con un toast y entrega el usuario nuevo a onUserUpdate
+// (App lo guarda, asi el header del sitio cambia sin recargar).
 const ICON_BTN = 'grid cursor-pointer place-items-center rounded-full border border-[#d9cfbe] bg-paper text-ink transition-colors duration-200 hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 
 async function patchMe(changes) {
@@ -32,7 +35,7 @@ export default function ProfileHeader({ user, roleLabel, markClass, onUserUpdate
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const nameInputRef = useRef(null);
-  const avatarInputRef = useRef(null);
+  const avatarFormRef = useRef(null);
   // Enter y luego el blur del input llegan los dos con el mismo estado: el ref deja pasar uno.
   const nameEditOpen = useRef(false);
 
@@ -41,7 +44,7 @@ export default function ProfileHeader({ user, roleLabel, markClass, onUserUpdate
     nameEditOpen.current = editingName;
     if (editingName) nameInputRef.current?.select();
   }, [editingName]);
-  useEffect(() => { if (editingAvatar) avatarInputRef.current?.focus(); }, [editingAvatar]);
+  useEffect(() => { if (editingAvatar) avatarFormRef.current?.querySelector('button')?.focus(); }, [editingAvatar]);
 
   async function save(changes) {
     setSaving(true);
@@ -83,7 +86,7 @@ export default function ProfileHeader({ user, roleLabel, markClass, onUserUpdate
         <div className="relative size-[92px] shrink-0 max600:size-[72px]">
           <span className="absolute -right-2.5 -bottom-2 size-full rounded-full border-2 border-ink/15" aria-hidden="true" />
           {showPhoto ? (
-            <img src={user.avatar_url} alt={`Foto de ${user.name}`} onError={() => setAvatarFailed(true)} className="relative size-full rounded-full object-cover" />
+            <img src={cdnImage(user.avatar_url, { width: 184, fit: 'fill' })} alt={`Foto de ${user.name}`} decoding="async" onError={() => setAvatarFailed(true)} className="relative size-full rounded-full object-cover" />
           ) : (
             <span className={`relative flex size-full items-center justify-center rounded-full text-[30px] font-extrabold max600:text-[24px] ${markClass}`} aria-hidden="true">{getInitials(user.name)}</span>
           )}
@@ -133,35 +136,30 @@ export default function ProfileHeader({ user, roleLabel, markClass, onUserUpdate
       </div>
 
       {editingAvatar && (
-        <form className="mt-6 flex max-w-[640px] flex-wrap items-end gap-3" onSubmit={commitAvatar}>
-          <label className="grid min-w-[240px] flex-1 gap-1.5 text-[12px] font-bold uppercase tracking-[.12em] text-muted">
-            Enlace de tu foto
-            <input
-              ref={avatarInputRef}
-              className="rounded-[12px] border border-[#d9cfbe] bg-white py-2.5 px-3.5 text-[15px] font-medium normal-case tracking-normal text-ink outline-none focus:border-ink"
-              // text y no url: el navegador bloquearia las rutas del sitio (/images/...), que el
-              // backend si acepta. La validacion la hace PATCH /api/me.
-              type="text"
-              inputMode="url"
-              autoComplete="url"
-              placeholder="https://..."
-              value={avatarDraft}
-              disabled={saving}
-              onChange={(event) => setAvatarDraft(event.target.value)}
-              onKeyDown={(event) => { if (event.key === 'Escape') setEditingAvatar(false); }}
-            />
-          </label>
-          <button type="submit" disabled={saving || !avatarDraft.trim()} className={BTN_INK_SM}>
-            {saving ? 'Guardando...' : 'Guardar foto'}
-          </button>
-          {user.avatar_url && (
-            <button type="button" disabled={saving} className={BTN_GHOST} onClick={() => commitAvatar(null, '')}>
-              Quitar foto
+        <form
+          ref={avatarFormRef}
+          className="mt-6 grid max-w-[640px] gap-3"
+          onSubmit={commitAvatar}
+          onKeyDown={(event) => { if (event.key === 'Escape') setEditingAvatar(false); }}
+        >
+          <ImageField
+            id="perfil-foto"
+            label="Tu foto"
+            value={avatarDraft}
+            onChange={setAvatarDraft}
+            onUploaded={(url) => commitAvatar(null, url)}
+            scope="avatar"
+            round
+            disabled={saving}
+          />
+          <div className="flex flex-wrap gap-3">
+            <button type="submit" disabled={saving || avatarDraft.trim() === (user.avatar_url || '')} className={BTN_INK_SM}>
+              {saving ? 'Guardando...' : 'Guardar foto'}
             </button>
-          )}
-          <button type="button" className={BTN_QUIET_SM} onClick={() => setEditingAvatar(false)}>
-            Cancelar
-          </button>
+            <button type="button" className={BTN_QUIET_SM} onClick={() => setEditingAvatar(false)}>
+              Cancelar
+            </button>
+          </div>
         </form>
       )}
       {error && <p className="mt-4 mb-0 max-w-[640px] rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{error}</p>}

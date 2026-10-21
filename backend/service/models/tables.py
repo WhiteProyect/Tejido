@@ -36,7 +36,7 @@ rechaza con 400 antes de tocar la base de datos.
 """
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -287,6 +287,11 @@ class ActivityType(Base):
 
 class Artist(Base):
     __tablename__ = "artists"
+    __table_args__ = (
+        # Slug unico sin distinguir mayusculas (la URL publica /artistas/<slug> lo resuelve con lower()).
+        # Indice funcional: autogenerate no lo detecta, la migracion lo escribe a mano.
+        Index("uq_artists_slug_lower", func.lower(text("slug")), unique=True),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))

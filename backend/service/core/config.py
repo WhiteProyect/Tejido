@@ -46,5 +46,11 @@ class Settings(BaseSettings):
     # Base del link de invitacion: {frontend_base_url}/#invitacion/{token}
     frontend_base_url: str = "http://localhost:5173"
 
+    # Subida de imagenes (Cloudinary): el backend firma y el navegador sube directo. Con defaults
+    # vacios para que el backend arranque sin ellas; sin claves, POST /api/uploads/sign responde 503.
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
+
 
 settings = Settings()

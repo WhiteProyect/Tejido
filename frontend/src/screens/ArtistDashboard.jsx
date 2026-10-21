@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchArtistDashboard } from '../services/artistApi.js';
+import { fetchArtistDashboard, fetchArtistProfile } from '../services/artistApi.js';
 
 const menuItems = [
   { id: 'overview', label: 'Vista General', icon: '◉' },
@@ -75,23 +75,47 @@ function ProgressBar({ label, current, target, color }) {
   );
 }
 
-export default function ArtistDashboard() {
+export default function ArtistDashboard({ slug }) {
+  const [artist, setArtist] = useState(null);
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(slug));
   const [activeTab, setActiveTab] = useState('overview');
 
+  // El dashboard va por id: se resuelve desde el slug y el endpoint valida si el usuario puede verlo.
   useEffect(() => {
-    fetchArtistDashboard(1)
-      .then(setData)
+    setArtist(null);
+    setData(null);
+    if (!slug) {
+      setLoading(false);
+      return;
+    }
+    let active = true;
+    setLoading(true);
+    fetchArtistProfile(slug)
+      .then((profile) => {
+        if (!active) return null;
+        setArtist(profile.artist);
+        return fetchArtistDashboard(profile.artist.id).then((result) => { if (active) setData(result); });
+      })
       .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [slug]);
 
   if (loading) {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center bg-[#0a0a0a] text-white gap-4">
         <div className="w-8 h-8 border-2 border-[#1a1a1a] border-t-[#00ff88] rounded-[50%] animate-[msSpin_0.6s_linear_infinite]" />
         <p>Cargando dashboard...</p>
+      </div>
+    );
+  }
+
+  if (!artist) {
+    return (
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-[#0a0a0a] text-white gap-4">
+        <p>Artista no encontrado</p>
+        <a href="/#moneystack" className="text-[13px] text-[#00ff88]! font-sans">Volver a Moneystack</a>
       </div>
     );
   }
@@ -124,7 +148,7 @@ export default function ArtistDashboard() {
         </nav>
 
         <div className="py-4 px-5 border-t border-t-[#1a1a1a]">
-          <a href="#artista/og-mauro" className="text-[12px] text-[#555]! font-sans hover:text-[#00ff88]!">← Ver perfil publico</a>
+          <a href={`#artista/${artist.slug}`} className="text-[12px] text-[#555]! font-sans hover:text-[#00ff88]!">← Ver perfil publico</a>
         </div>
       </aside>
 

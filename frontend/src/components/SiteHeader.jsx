@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Logo from './Logo.jsx';
+import { cdnImage } from '../utils/cloudinaryUrl.js';
 
 export default function SiteHeader({ user, onLogin, onLogout, isMoneystack = false }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -74,7 +75,7 @@ export default function SiteHeader({ user, onLogin, onLogout, isMoneystack = fal
         <div className="relative" ref={menuRef}>
           <button className="w-9 h-9 overflow-hidden rounded-[50%] bg-ink text-white border-none p-0 text-[14px] font-bold cursor-pointer" aria-label={`Menú de ${user.name}`} onClick={() => setShowUserMenu(!showUserMenu)}>
             {user.avatar_url && !avatarFailed
-              ? <img src={user.avatar_url} alt="" className="size-full object-cover" onError={() => setAvatarFailed(true)} />
+              ? <img src={cdnImage(user.avatar_url, { width: 72, fit: 'fill' })} alt="" className="size-full object-cover" decoding="async" onError={() => setAvatarFailed(true)} />
               : user.name?.charAt(0) || '?'}
           </button>
           {showUserMenu && (

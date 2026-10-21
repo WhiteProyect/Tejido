@@ -45,6 +45,10 @@ def client():
             seed_db = TestSessionLocal()
             try:
                 seed_database(seed_db)
+                # El gestor demo (user 2) no tiene rama en el seed y un gestor sin rama no puede
+                # publicar (409). Solo en el schema de test se le da una que ningun test filtra.
+                seed_db.execute(text("UPDATE organizations SET branch = 'PATRIMONIO_MEMORIA' WHERE user_id = 2"))
+                seed_db.commit()
             finally:
                 seed_db.close()
 

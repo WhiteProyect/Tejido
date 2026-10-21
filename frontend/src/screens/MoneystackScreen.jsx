@@ -6,20 +6,28 @@
  *
  * Ruta: #moneystack
  *
+ * Para admins: "Agregar artista" junto a "Nuestros Artistas" y "Editar perfil" en cada tarjeta, hacia
+ * el panel de artistas (#admin-dashboard/artistas). Enlaces absolutos a la raiz ("/#..."): desde una
+ * pagina abierta por path (/artistas/<slug>) un enlace que solo cambia el hash no navegaria.
+ *
  * Estilos: Tailwind (pantalla piloto). Patrones y trampas: frontend/README.md,
  * secciones "Tailwind" > "Patrones aprendidos (Moneystack)".
  */
 
 import { useState, useEffect } from 'react';
 import { BADGE_LIGHT } from '../components/uiStyles.js';
+import { cdnImage } from '../utils/cloudinaryUrl.js';
 
 // "moneystack-section" es solo un marcador (sin estilos propios): dispara la regla
 // html:has(.moneystack-section) de main.css, que pinta de negro el fondo tras el footer flotante.
 const SECTION = 'moneystack-section px-[7vw] py-15 bg-[linear-gradient(180deg,#0a0a0a_0%,#111_50%,#0a0a0a_100%)] text-white';
 // h2 globales (main.css) fijan font-size y margin: por eso el "!" en esas dos propiedades.
 const SECTION_TITLE = 'mb-6! text-[28px]! font-extrabold text-white';
+// Accesos de admin sobre el tema oscuro. "a" global fija el color: por eso text-white!.
+const ADMIN_PILL = 'inline-flex items-center gap-1.5 rounded-full border border-[rgba(255,255,255,0.35)] bg-[rgba(10,10,10,0.78)] py-2 px-4 text-[13px] font-bold text-white! no-underline backdrop-blur-[6px] transition-colors duration-200 hover:bg-white hover:text-[#0a0a0a]! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
 
-export default function MoneystackScreen() {
+export default function MoneystackScreen({ user }) {
+  const isAdmin = user?.role === 'ADMIN';
   // Estado para artistas, loading y error
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,40 +98,50 @@ export default function MoneystackScreen() {
 
       {/* Artistas del sello */}
       <div className="mx-auto mb-15 max-w-[1000px]">
-        <h2 className={SECTION_TITLE}>Nuestros Artistas</h2>
+        <div className="flex flex-wrap items-center justify-between gap-x-4">
+          <h2 className={SECTION_TITLE}>Nuestros Artistas</h2>
+          {isAdmin && <a href="/#admin-dashboard/artistas/nuevo" className={`${ADMIN_PILL} mb-6`}><span aria-hidden="true">+</span> Agregar artista</a>}
+        </div>
         {error ? (
           <p className="py-7.5 text-[#ff7a5c]">{error}. Verifica que el backend Python esté activo en el puerto 8765.</p>
         ) : artists.length === 0 ? (
           <p className="text-[rgba(255,255,255,0.4)] italic">Pronto habrá artistas aquí</p>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
-            {artists.map(artist => (
-              // "a" global hereda el color del padre (blanco, de SECTION): no lleva text-white
-              <a
-                key={artist.id}
-                href={`/artistas/${artist.slug || 'og-mauro'}`}
-                className="group block overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] transition-all duration-300 ease-[ease] hover:-translate-y-1 hover:border-[rgba(255,255,255,0.3)] hover:shadow-[0_12px_40px_rgba(255,255,255,0.15)]"
-              >
-                {/* Imagen del artista — usa la imagen real si existe, si no placeholder */}
-                <div
-                  className="flex h-50 items-center justify-center bg-[linear-gradient(135deg,#262626,#050505)] bg-cover bg-center transition-transform duration-400 ease-[ease] group-hover:scale-[1.06]"
-                  style={{
-                    backgroundImage: artist.image ? `url(${artist.image})` : undefined,
-                  }}
+            {artists.filter(artist => artist.slug).map(artist => (
+              // "Editar perfil" va como hermano superpuesto, no dentro del <a> de la tarjeta (no se anidan enlaces).
+              <div key={artist.id} className="relative">
+                {/* "a" global hereda el color del padre (blanco, de SECTION): no lleva text-white */}
+                <a
+                  href={`/artistas/${artist.slug}`}
+                  className="group block overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] transition-all duration-300 ease-[ease] hover:-translate-y-1 hover:border-[rgba(255,255,255,0.3)] hover:shadow-[0_12px_40px_rgba(255,255,255,0.15)]"
                 >
-                  {!artist.image && <span className="text-[64px] font-extrabold text-[rgba(255,255,255,0.6)]">{artist.stage_name.charAt(0)}</span>}
-                </div>
-                <div className="p-5">
-                  {artist.genre && (
-                    <span className="mb-2 block text-[11px] font-bold tracking-[0.08em] text-[rgba(255,255,255,0.45)] uppercase">{artist.genre.split('/')[0].trim()}</span>
-                  )}
-                  <h3 className="mb-1! text-[20px]! font-bold">{artist.stage_name}</h3>
-                  <p className="mt-0 mb-3 text-[14px] text-[rgba(255,255,255,0.5)]">{artist.name}</p>
-                  <span className="flex items-center gap-1.5 border-t border-[rgba(255,255,255,0.08)] pt-3.5 text-[13px] font-semibold text-[rgba(255,255,255,0.7)] transition-[color] duration-200 ease-[ease] group-hover:text-white">
-                    Ver perfil <span className="transition-transform duration-250 ease-[ease] group-hover:translate-x-[3px]">→</span>
-                  </span>
-                </div>
-              </a>
+                  {/* Imagen del artista — usa la imagen real si existe, si no placeholder */}
+                  <div
+                    className="flex h-50 items-center justify-center bg-[linear-gradient(135deg,#262626,#050505)] bg-cover bg-center transition-transform duration-400 ease-[ease] group-hover:scale-[1.06]"
+                    style={{
+                      backgroundImage: artist.image ? `url(${cdnImage(artist.image, { width: 640 })})` : undefined,
+                    }}
+                  >
+                    {!artist.image && <span className="text-[64px] font-extrabold text-[rgba(255,255,255,0.6)]">{artist.stage_name.charAt(0)}</span>}
+                  </div>
+                  <div className="p-5">
+                    {artist.genre && (
+                      <span className="mb-2 block text-[11px] font-bold tracking-[0.08em] text-[rgba(255,255,255,0.45)] uppercase">{artist.genre.split('/')[0].trim()}</span>
+                    )}
+                    <h3 className="mb-1! text-[20px]! font-bold">{artist.stage_name}</h3>
+                    <p className="mt-0 mb-3 text-[14px] text-[rgba(255,255,255,0.5)]">{artist.name}</p>
+                    <span className="flex items-center gap-1.5 border-t border-[rgba(255,255,255,0.08)] pt-3.5 text-[13px] font-semibold text-[rgba(255,255,255,0.7)] transition-[color] duration-200 ease-[ease] group-hover:text-white">
+                      Ver perfil <span className="transition-transform duration-250 ease-[ease] group-hover:translate-x-[3px]">→</span>
+                    </span>
+                  </div>
+                </a>
+                {isAdmin && (
+                  <a href={`/#admin-dashboard/artistas/${artist.id}`} className={`${ADMIN_PILL} absolute top-3 right-3`} aria-label={`Editar perfil de ${artist.stage_name}`}>
+                    Editar perfil
+                  </a>
+                )}
+              </div>
             ))}
           </div>
         )}
