@@ -16,6 +16,9 @@ from backend.tests_fastapi.test_gestores_invites import GOOD_PASSWORD, create_ge
 from backend.tests_fastapi.test_parity import hit, tokens  # noqa: F401
 
 USER_KEYS = {"id", "name", "email", "role", "avatar_url"}
+# GET / PATCH /api/me agregan la rama del gestor y si la lidera (null / false para los demas).
+ME_KEYS = USER_KEYS | {"branch", "is_leader"}
+NO_BRANCH = {"branch": None, "is_leader": False}
 
 
 @pytest.fixture(autouse=True)
@@ -38,13 +41,13 @@ def test_patch_me_updates_name_and_avatar(client):
 
     resp = hit(client, "auth", "patch_me", "PATCH", "/api/me", json={"name": "  Ana María  "}, headers=auth)
     assert resp.status_code == 200, resp.text
-    assert set(resp.json()["user"]) == USER_KEYS
+    assert set(resp.json()["user"]) == ME_KEYS
     assert resp.json()["user"]["name"] == "Ana María"
 
     resp = client.patch("/api/me", json={"avatar_url": "https://cdn.tejido.co/ana.jpg"}, headers=auth)
     assert resp.status_code == 200
     me = client.get("/api/me", headers=auth).json()["user"]
-    assert me == {**user, "name": "Ana María", "avatar_url": "https://cdn.tejido.co/ana.jpg"}
+    assert me == {**user, **NO_BRANCH, "name": "Ana María", "avatar_url": "https://cdn.tejido.co/ana.jpg"}
 
     # Mandar solo un campo no borra el otro; vacio quita la foto.
     assert client.patch("/api/me", json={"name": "Ana"}, headers=auth).json()["user"]["avatar_url"] == "https://cdn.tejido.co/ana.jpg"
@@ -85,7 +88,7 @@ def test_session_responses_include_avatar_url(client, tokens, sent_emails):
 
     login = client.post("/api/auth/login", json={"email": user["email"], "password": GOOD_PASSWORD})
     assert login.json()["user"]["avatar_url"] == "/images/avatar.jpg"  # login
-    assert set(client.get("/api/me", headers=auth).json()["user"]) == USER_KEYS  # GET /me
+    assert set(client.get("/api/me", headers=auth).json()["user"]) == ME_KEYS  # GET /me
 
     _, created = create_gestor(client, tokens)
     token = created["invite_link"].rsplit("/", 1)[-1]

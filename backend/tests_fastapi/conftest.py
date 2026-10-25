@@ -78,6 +78,29 @@ def client():
         admin_engine.dispose()
 
 
+@pytest.fixture(autouse=True)
+def _no_real_email(monkeypatch):
+    """Ningun test golpea Resend, aunque el .env tenga RESEND_API_KEY y SUPPORT_EMAIL: el envio
+    real falla siempre (como sin API key). Los tests que revisan avisos reemplazan las funciones
+    de services/email.py por encima de esto."""
+    import resend
+
+    def blocked(*args, **kwargs):
+        raise RuntimeError("Resend bloqueado en los tests")
+
+    monkeypatch.setattr(resend.Emails, "send", blocked)
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    # Los limites viven en memoria y son por IP: todos los tests comparten la IP del TestClient.
+    from backend.service.core.rate_limit import reset_login_rate_limit
+
+    reset_login_rate_limit()
+    yield
+    reset_login_rate_limit()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _write_baseline_report():
     yield

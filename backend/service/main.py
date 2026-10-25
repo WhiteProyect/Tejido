@@ -10,7 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import text
 
-from backend.service.api.routes import admin, artists, auth, collaborators, gestores, misc, publications, uploads
+from backend.service.api.routes import admin, admin_inbox, artists, auth, branches, collaborators, gestores, misc, publications, uploads
 from backend.service.core.config import settings
 from backend.service.core.logging_config import configure_logging
 from backend.service.db.session import engine
@@ -46,10 +46,12 @@ app = FastAPI(
 app.include_router(auth.router)
 app.include_router(misc.router)
 app.include_router(admin.router)
+app.include_router(admin_inbox.router)
 app.include_router(publications.router)
 app.include_router(collaborators.router)
 app.include_router(artists.router)
 app.include_router(gestores.router)
+app.include_router(branches.router)
 app.include_router(uploads.router)
 
 

@@ -9,8 +9,10 @@ from backend.service.api.deps import get_current_user, require_roles
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
 from backend.service.models.tables import Organization, Publication, Report, Role, Suggestion, User
+from backend.service.schemas.branches import LeaderInput
 from backend.service.schemas.organizations import GestorCreateInput, GestorUpdateInput
 from backend.service.services import artists as artists_service
+from backend.service.services import branches as branch_service
 from backend.service.services import email as email_service
 from backend.service.services.auth import now_utc
 from backend.service.services.invites import create_invite, invite_link, unusable_password_hash
@@ -40,19 +42,6 @@ def stats(user: Optional[dict] = Depends(get_current_user), db: Session = Depend
     suggestions = db.execute(select(func.count()).select_from(Suggestion).where(Suggestion.status == "NEW")).scalar_one()
     return {"published": published, "pending": pending, "users": users, "gestores_activos": gestores_activos,
             "reports": reports, "suggestions": suggestions}
-
-
-@router.get("/suggestions")
-def list_suggestions(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_roles(user, ("ADMIN",), "Acceso administrativo requerido")
-    rows = db.execute(
-        select(Suggestion.id, Suggestion.message, Suggestion.status, Suggestion.created_at,
-               User.name.label("user_name"), User.email.label("user_email"))
-        .join(User, User.id == Suggestion.user_id, isouter=True)
-        .order_by(Suggestion.created_at.desc())
-        .limit(50)
-    ).all()
-    return rows_to_dicts(rows)
 
 
 # ---------------------------------------------------------------------------
@@ -102,8 +91,11 @@ def create_gestor(payload: GestorCreateInput, user: Optional[dict] = Depends(get
     )
     db.add(gestor)
     db.flush()
+    if payload.is_leader and branch_service.current_leader_row(db, payload.branch):
+        raise AppError(409, "LEADER_EXISTS", "Esa rama ya tiene líder: quítale el liderazgo antes de nombrar otro")
     organization = Organization(
         user_id=gestor.id, name=payload.organization_name, branch=payload.branch, contact=payload.contact,
+        is_leader=payload.is_leader,
     )
     db.add(organization)
     db.flush()
@@ -153,6 +145,8 @@ def update_gestor(gestor_id: int, payload: GestorUpdateInput, user: Optional[dic
         if org_fields.get("organization_name"):
             organization.name = org_fields["organization_name"]
         if org_fields.get("branch"):
+            if organization.is_leader and org_fields["branch"] != organization.branch:
+                raise AppError(409, "IS_LEADER", "Este gestor es líder de su rama: quita primero el liderazgo para cambiarlo de rama")
             organization.branch = org_fields["branch"]
         if "contact" in org_fields:
             organization.contact = org_fields["contact"] or None
@@ -189,3 +183,28 @@ def resend_invite(gestor_id: int, user: Optional[dict] = Depends(get_current_use
     db.commit()
     link, email_sent = _send_invite(gestor, token)
     return {"user_id": gestor.id, "invite_link": link, "email_sent": email_sent}
+
+
+# ---------------------------------------------------------------------------
+# Lider de cada rama (solo ADMIN). La gestion de la rama vive en routes/branches.py.
+# ---------------------------------------------------------------------------
+
+@router.get("/branches")
+def list_branches(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Las 10 ramas con su lider (o null), participantes y solicitudes pendientes."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    return branch_service.branches_overview(db)
+
+
+@router.put("/branches/{branch}/leader")
+def put_branch_leader(branch: str, payload: LeaderInput, user: Optional[dict] = Depends(get_current_user),
+                      db: Session = Depends(get_db)):
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    return branch_service.set_leader(db, branch, payload.gestor_id)
+
+
+@router.delete("/branches/{branch}/leader")
+def delete_branch_leader(branch: str, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    branch_service.clear_leader(db, branch)
+    return {"ok": True}

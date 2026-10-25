@@ -22,6 +22,7 @@ import NosotrosScreen from './screens/NosotrosScreen.jsx';
 import NotFoundScreen from './screens/NotFoundScreen.jsx';
 import OpportunitiesScreen from './screens/OpportunitiesScreen.jsx';
 import ProfileScreen from './screens/ProfileScreen.jsx';
+import PublicationScreen from './screens/PublicationScreen.jsx';
 import SavedScreen from './screens/SavedScreen.jsx';
 import TalentScreen from './screens/TalentScreen.jsx';
 
@@ -30,6 +31,10 @@ async function getJson(url) {
   if (!response.ok) throw new Error('No fue posible cargar los contenidos');
   return response.json();
 }
+
+// true tras la primera navegacion dentro de la app: "Volver" puede usar history.back(); un
+// enlace compartido abierto en una pestana nueva no tiene a donde volver y va a Explorar.
+let hasNavigated = false;
 
 function getRoute() {
   const path = window.location.pathname;
@@ -58,6 +63,11 @@ function getRoute() {
   // Dashboard de gestor con pestana: #gestor-dashboard/<mis-publicaciones|mi-categoria>.
   if (hash.startsWith('gestor-dashboard/')) {
     return { screen: 'gestor-dashboard', slug: hash.slice('gestor-dashboard/'.length) };
+  }
+
+  // Pagina de una publicacion (enlaces compartidos y "Ver detalles"): #publicacion/<id>.
+  if (hash.startsWith('publicacion/')) {
+    return { screen: 'publicacion', slug: hash.slice('publicacion/'.length) };
   }
 
   // Dashboard de admin con pestana: #admin-dashboard/<seccion> (la seccion viaja en `slug`).
@@ -92,6 +102,7 @@ export default function App() {
 
   useEffect(() => {
     const handleChange = () => {
+      hasNavigated = true;
       setRoute(getRoute());
       window.scrollTo(0, 0);
     };
@@ -170,6 +181,9 @@ export default function App() {
     case 'explorar':
       content = <ExploreScreen />;
       break;
+    case 'publicacion':
+      content = <PublicationScreen id={route.slug} user={user} canGoBack={hasNavigated} />;
+      break;
     case 'categoria': {
       const category = CULTURAL_CATEGORIES.find(([, , slug]) => slug === route.slug);
       content = category
@@ -230,7 +244,7 @@ export default function App() {
     <>
       {!isArtistRoute && (
         <>
-          {!isLoginRoute && <SiteHeader user={user} isMoneystack={route.screen === 'moneystack'} onLogin={() => { sessionStorage.setItem('tejido_return_to', getRoute().screen); window.location.hash = 'login'; }} onLogout={handleLogout} />}
+          {!isLoginRoute && <SiteHeader user={user} isMoneystack={route.screen === 'moneystack'} onLogin={() => { sessionStorage.setItem('tejido_return_to', window.location.hash.replace('#', '') || 'inicio'); window.location.hash = 'login'; }} onLogout={handleLogout} />}
           <main>
             <AnimatePresence mode="wait">
               <motion.div

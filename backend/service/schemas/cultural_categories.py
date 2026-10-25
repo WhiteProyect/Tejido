@@ -19,3 +19,8 @@ CULTURAL_CATEGORY_LABELS = {
 }
 
 CULTURAL_CATEGORIES = frozenset(CULTURAL_CATEGORY_LABELS)
+
+
+def category_slug(key: str) -> str:
+    """MUSICA -> musica, CINE_AUDIOVISUAL -> cine-audiovisual (el mismo slug de constants.js)."""
+    return key.lower().replace("_", "-")

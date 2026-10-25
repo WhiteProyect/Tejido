@@ -86,6 +86,32 @@ def get_publication(db: Session, user: Optional[dict], publication_id: int):
     return row_to_dict(db.execute(stmt).first())
 
 
+def get_publication_detail(db: Session, user: Optional[dict], publication_id: int):
+    """get_publication + lo que necesita la pagina de la publicacion (#publicacion/<id>): datos de
+    su evento u oportunidad, la organizacion publica del autor (solo nombre, rama y foto, lo mismo
+    que GET /api/gestores) y la galeria. Los permisos los resuelve la ruta."""
+    row = get_publication(db, user, publication_id)
+    if not row:
+        return None
+    extra = db.execute(
+        select(Event.venue, Event.capacity, Opportunity.organization_name, Opportunity.deadline)
+        .select_from(Publication)
+        .join(Event, Event.publication_id == Publication.id, isouter=True)
+        .join(Opportunity, Opportunity.publication_id == Publication.id, isouter=True)
+        .where(Publication.id == publication_id)
+    ).first()
+    row.update(row_to_dict(extra))
+    organization = db.execute(
+        select(Organization.name, Organization.branch, Organization.photo_url)
+        .where(Organization.user_id == row["author_id"], Organization.active.is_(True))
+        .order_by(Organization.id)
+        .limit(1)
+    ).first()
+    row["author_organization"] = row_to_dict(organization)
+    row["images"] = list_publication_images(db, publication_id)
+    return row
+
+
 def get_publication_owner_state(db: Session, publication_id: int):
     row = db.execute(
         select(Publication.id, Publication.status, Publication.author_id)
@@ -254,3 +280,4 @@ def update_publication(db: Session, user: dict, publication_id: int, current_sta
         changes["moderation_note"] = None
     db.query(Publication).filter(Publication.id == publication_id).update(changes)
     _sync_publication_detail(db, publication_id, item)
+    return status

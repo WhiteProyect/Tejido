@@ -7,6 +7,7 @@ import PillTabs from '../components/admin/PillTabs.jsx';
 import { BTN_DANGER, BTN_GHOST, BTN_INK_MD, BTN_INK_SM, EYEBROW, H1, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
+import { coverSources, useCategoryCovers } from '../utils/categoryCovers.js';
 import { cdnImage } from '../utils/cloudinaryUrl.js';
 import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
 import { formatDateShort } from '../utils/dateUtils.js';
@@ -34,16 +35,22 @@ const COUNT_LABELS = { DRAFT: 'Borradores', REVIEW: 'En revisión', REJECTED: 'R
 const ALERT = 'mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]';
 const OUTSIDE_TAG = 'whitespace-nowrap rounded-full bg-[rgba(212,168,67,0.18)] py-0.5 px-2.5 text-[11px] font-bold uppercase tracking-[.08em] text-[#7a5c12]';
 
-function CategoryCover({ slug, label }) {
-  const [failed, setFailed] = useState(false);
-  if (!slug || failed) {
+// Portada de la rama: la de la base (Cloudinary), si falla la estatica, y si no, la inicial.
+function CategoryCover({ categoryKey, slug, label }) {
+  const covers = useCategoryCovers();
+  const sources = coverSources(covers, categoryKey, slug, { width: 200, fit: 'fill' });
+  const [attempt, setAttempt] = useState(0);
+  if (covers === null) {
+    return <span className="size-24 shrink-0 rounded-[22px] bg-[rgba(29,143,163,0.14)] max600:size-18" aria-hidden="true" />;
+  }
+  if (!slug || attempt >= sources.length) {
     return (
       <span className="grid size-24 shrink-0 place-items-center rounded-[22px] bg-[rgba(29,143,163,0.14)] text-[34px] font-extrabold text-[#146f80] max600:size-18 max600:text-[26px]" aria-hidden="true">
         {(label || '?').charAt(0)}
       </span>
     );
   }
-  return <img src={`/images/categorias/${slug}.jpg`} alt="" className="size-24 shrink-0 rounded-[22px] object-cover max600:size-18" onError={() => setFailed(true)} />;
+  return <img src={sources[attempt]} alt="" className="size-24 shrink-0 rounded-[22px] object-cover max600:size-18" onError={() => setAttempt(attempt + 1)} />;
 }
 
 // Contadores por estado (estilo del Pulso del admin): cada uno filtra la lista; "Todas" la limpia.
@@ -285,7 +292,7 @@ export default function GestorDashboard({ user, section }) {
       </a>
       <header className="mb-10 flex flex-wrap items-end justify-between gap-6">
         <div className="flex min-w-0 max-w-[820px] items-center gap-6 max600:items-start max600:gap-4">
-          {ready && branch && <CategoryCover slug={info.slug} label={info.label} />}
+          {ready && branch && <CategoryCover categoryKey={branch} slug={info.slug} label={info.label} />}
           <div className="min-w-0">
             <p className={EYEBROW}>Dashboard de gestor</p>
             <h1 className={H1}>{ready && branch ? info.label : 'Tu taller'}</h1>

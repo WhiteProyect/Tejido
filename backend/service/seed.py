@@ -12,6 +12,7 @@ from sqlalchemy import select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
+from backend.service.core.config import settings
 from backend.service.core.security import hash_password
 from backend.service.models.tables import (
     Artist,
@@ -49,6 +50,9 @@ def _upsert_ignore(db: Session, model, rows: list[dict], conflict_cols: list[str
 
 
 def seed_database(db: Session):
+    # Crea cuentas demo con contrasenas que estan en el repo: jamas en produccion.
+    if settings.environment == "production":
+        raise RuntimeError("seed_database() no se puede correr con ENVIRONMENT=production: crea cuentas demo con contrasenas publicas.")
     _upsert_ignore(db, Role, [
         {"id": 1, "name": "ADMIN"}, {"id": 2, "name": "GESTOR"}, {"id": 3, "name": "CIUDADANO"},
     ], ["id"])

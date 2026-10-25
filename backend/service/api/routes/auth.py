@@ -13,6 +13,7 @@ from backend.service.errors import AppError
 from backend.service.models.tables import User
 from backend.service.schemas.users import OrganizationSelfUpdateInput, UserSelfUpdateInput
 from backend.service.services.auth import login_user, logout_user
+from backend.service.services.branches import me_branch
 from backend.service.services.invites import accept_invite
 from backend.service.services.organizations import get_my_organization, update_my_organization
 from backend.service.services.publications import category_overview
@@ -99,8 +100,10 @@ def logout(authorization: Optional[str] = Header(default=None), db: Session = De
 
 
 @router.get("/api/me")
-def me(user: Optional[dict] = Depends(get_current_user)):
-    return {"user": user}
+def me(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Sesion actual. branch / is_leader: la rama de un GESTOR y si la lidera (null / false para
+    los demas roles)."""
+    return {"user": {**user, **me_branch(db, user)} if user else None}
 
 
 @router.patch("/api/me")
@@ -117,7 +120,7 @@ def update_me(payload: UserSelfUpdateInput, user: Optional[dict] = Depends(get_c
     if "avatar_url" in sent:
         row.avatar_url = payload.avatar_url
     db.flush()
-    return {"user": {**user, "name": row.name, "avatar_url": row.avatar_url}}
+    return {"user": {**user, "name": row.name, "avatar_url": row.avatar_url, **me_branch(db, user)}}
 
 
 GESTOR_ONLY = "Solo un gestor tiene una organización propia"

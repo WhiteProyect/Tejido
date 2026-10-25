@@ -36,7 +36,7 @@ rechaza con 400 antes de tocar la base de datos.
 """
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, text
+from sqlalchemy import CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -80,6 +80,11 @@ class Category(Base):
 
 class Organization(Base):
     __tablename__ = "organizations"
+    __table_args__ = (
+        # Un lider por rama, forzado por la base (indice unico parcial).
+        Index("uq_organizations_branch_leader", "branch", unique=True, postgresql_where=text("is_leader")),
+        CheckConstraint("is_leader = false OR branch IS NOT NULL", name="ck_organizations_leader_has_branch"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
@@ -92,6 +97,9 @@ class Organization(Base):
     branch: Mapped[str | None] = mapped_column(String)
     # Foto publica del gestor (URL o ruta del sitio). Nullable: hoy ningun gestor tiene.
     photo_url: Mapped[str | None] = mapped_column(String)
+    # Lider de su rama (no es un rol: lo nombra el admin). Modera lo que publican los
+    # participantes de la rama y aprueba sus solicitudes de ingreso (services/branches.py).
+    is_leader: Mapped[bool] = mapped_column(default=False, server_default=text("false"), nullable=False)
 
 
 class InviteToken(Base):
@@ -184,6 +192,9 @@ class Report(Base):
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String, default="OPEN", nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Lo llena el admin al atender el reporte (bandeja del AdminDashboard).
+    resolution_note: Mapped[str | None] = mapped_column(Text)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Suggestion(Base):
@@ -399,3 +410,35 @@ class ArtistMetric(Base):
     valor: Mapped[float] = mapped_column(Float, default=0, nullable=False)
     fecha: Mapped[date] = mapped_column(Date, nullable=False)
     metadata_: Mapped[dict | list | str | float | int | bool | None] = mapped_column("metadata", JSONB)
+
+
+class CulturalCategoryCover(Base):
+    """Portada de cada categoria cultural (las categorias viven en codigo:
+    schemas/cultural_categories.py). Sin fila, el frontend usa /images/categorias/<slug>.jpg."""
+    __tablename__ = "cultural_category_covers"
+
+    category_key: Mapped[str] = mapped_column(String, primary_key=True)
+    image_url: Mapped[str] = mapped_column(String, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class BranchJoinRequest(Base):
+    """Solicitud de un ciudadano para participar en una rama cultural. La aprueba o rechaza el
+    lider de la rama (o el admin si no hay lider): services/branches.py."""
+    __tablename__ = "branch_join_requests"
+    __table_args__ = (
+        # Una solicitud pendiente por persona.
+        Index("uq_branch_join_requests_pending_user", "user_id", unique=True, postgresql_where=text("status = 'PENDING'")),
+        Index("ix_branch_join_requests_branch_status", "branch", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    branch: Mapped[str] = mapped_column(String, nullable=False)
+    message: Mapped[str | None] = mapped_column(Text)
+    # PENDING | APPROVED | REJECTED | CANCELLED
+    status: Mapped[str] = mapped_column(String, default="PENDING", nullable=False)
+    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    decision_note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

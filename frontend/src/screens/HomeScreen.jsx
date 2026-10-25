@@ -21,8 +21,8 @@ export default function HomeScreen({ onExplore, publications = [] }) {
       {/* Mismo aire que dejaba el padding del Pasaporte antes de la Cronologia. */}
       <VideoText className="mb-[100px] max800:mb-[70px]" />
 
-      {/* Bloque oscuro propio: si no hay publicaciones con fecha, no deja una caja vacia. */}
-      <TimelineSection publications={publications} />
+      {/* Hitos fijos, editables en utils/timelineItems.js (no dependen de la base). */}
+      <TimelineSection />
 
       <section className="bg-[linear-gradient(135deg,var(--sunset)_0%,var(--gold)_100%)] mt-[60px] mx-[4vw] mb-0 py-[100px] px-[8vw] rounded-[40px] text-center">
         <div className="max-w-[600px] my-0 mx-auto">

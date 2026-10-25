@@ -42,7 +42,10 @@ class Settings(BaseSettings):
     # backend arranque sin ellos: si falta la API key, el envio falla, se loguea y el
     # endpoint devuelve igual el invite_link para compartirlo a mano.
     resend_api_key: str = ""
-    email_from: str = "TEJIDO <notificaciones@tejido.co>"
+    email_from: str = "TEJIDO <notificaciones@tejido.com.co>"
+    # Avisos al equipo (sugerencias, reportes, publicaciones en revision): una o varias
+    # direcciones separadas por coma. Vacia = los avisos se omiten con un log de advertencia.
+    support_email: str = ""
     # Base del link de invitacion: {frontend_base_url}/#invitacion/{token}
     frontend_base_url: str = "http://localhost:5173"
 
@@ -51,6 +54,10 @@ class Settings(BaseSettings):
     cloudinary_cloud_name: str = ""
     cloudinary_api_key: str = ""
     cloudinary_api_secret: str = ""
+
+    @property
+    def support_recipients(self) -> list[str]:
+        return [address.strip() for address in self.support_email.split(",") if address.strip()]
 
 
 settings = Settings()

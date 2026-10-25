@@ -31,6 +31,8 @@ class GestorCreateInput(BaseModel):
     organization_name: str
     branch: str
     contact: Optional[str] = None
+    # Nombrarlo lider de su rama al crearlo (409 si la rama ya tiene lider).
+    is_leader: bool = False
 
     @field_validator("name", mode="before")
     @classmethod

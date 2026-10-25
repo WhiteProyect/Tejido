@@ -13,8 +13,8 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
 // Perfil privado: UNA pantalla con cabecera comun y un modulo por rol (user.role).
 // Cada modulo solo usa endpoints existentes; no hay datos simulados:
-// - ADMIN: GET /api/admin/suggestions (mensajes de Nosotros) y el acceso a #admin-dashboard
-//   (pulso, gestores y moderacion de publicaciones).
+// - ADMIN: el acceso a #admin-dashboard y un resumen de la bandeja (GET /api/admin/stats:
+//   mensajes nuevos y reportes abiertos); la bandeja en si vive en #admin-dashboard/bandeja.
 // - GESTOR: GET /api/publications?mine=1, GET /api/artists (artista asociado por user_id), su
 //   biografia publica (GET/PATCH /api/me/organization) y el acceso a #gestor-dashboard.
 // - CIUDADANO: GET /api/publications con sesion (campo `favorite`): sus guardados.
@@ -71,11 +71,16 @@ function PublicationRow({ publication, showStatus }) {
 }
 
 // ── ADMIN ────────────────────────────────────────────────────────────────────
-// El pulso, los gestores y la moderacion viven en #admin-dashboard (screens/AdminDashboard.jsx);
-// aqui quedan la tarjeta de acceso y los mensajes de Nosotros.
+// El pulso, los gestores, la moderacion y la bandeja viven en #admin-dashboard
+// (screens/AdminDashboard.jsx); aqui quedan la tarjeta de acceso y el resumen de la bandeja.
 function AdminModule({ user }) {
-  const state = useProfileData(() => getJson('/api/admin/suggestions'));
-  const messages = state.data || [];
+  const state = useProfileData(() => getJson('/api/admin/stats'));
+  const messages = state.data?.suggestions || 0;
+  const reports = state.data?.reports || 0;
+  const parts = [
+    messages && `${messages} ${messages === 1 ? 'mensaje nuevo' : 'mensajes nuevos'}`,
+    reports && `${reports} ${reports === 1 ? 'reporte abierto' : 'reportes abiertos'}`,
+  ].filter(Boolean);
   return (
     <>
       <DashboardCard
@@ -85,28 +90,16 @@ function AdminModule({ user }) {
         text="Modera publicaciones, acompaña a los gestores y revisa cómo va la plataforma."
         cta="Abrir Dashboard de Admin"
       />
-      <section className={PANEL} aria-labelledby="admin-mensajes">
-        <h2 id="admin-mensajes" className={`${H2} flex items-center gap-3`}><Icon name="inbox" className="size-6 text-river" /> Mensajes recientes</h2>
-        <p className="mt-2 mb-0 text-[14px] text-muted">Lo que llega desde el formulario de Nosotros.</p>
-        <StateNote state={state}>
-          {messages.length === 0 ? (
-            <div className="mt-6"><EmptyNote icon="inbox" title="No hay mensajes todavía" text="Cuando alguien escriba desde Nosotros, su mensaje aparecerá aquí." /></div>
-          ) : (
-            <ul className="mt-4 mb-0 list-none p-0">
-              {messages.slice(0, 6).map((item) => (
-                <li key={item.id} className="border-b border-b-line py-4 last:border-b-0">
-                  <p className="m-0 flex flex-wrap items-center gap-x-2 text-[12px] text-muted">
-                    <strong className="text-ink">{item.user_name || 'Visitante'}</strong>
-                    {item.user_email && <span>{item.user_email}</span>}
-                    <span>· {formatDateShort(item.created_at)}</span>
-                    {item.status === 'NEW' && <span className="rounded-full bg-[rgba(212,168,67,0.18)] py-0.5 px-2 font-bold text-[#7a5c12]">Nuevo</span>}
-                  </p>
-                  <p className="mt-1.5 mb-0 line-clamp-3 whitespace-pre-line text-[15px] leading-[1.5] text-[#44564f]">{item.message}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </StateNote>
+      <section className={`${PANEL} flex flex-wrap items-center justify-between gap-6`} aria-labelledby="admin-bandeja">
+        <div className="min-w-0">
+          <h2 id="admin-bandeja" className={`${H2} flex items-center gap-3`}><Icon name="inbox" className="size-6 text-river" /> Bandeja</h2>
+          <StateNote state={state}>
+            <p className="mt-2 mb-0 text-[15px] text-[#53645c]">
+              {parts.length ? `Tienes ${parts.join(' y ')} por atender.` : 'Nada por atender: mensajes de Nosotros y reportes al día.'}
+            </p>
+          </StateNote>
+        </div>
+        <a className={BTN_INK_OUTLINE_MD} href="#admin-dashboard/bandeja">Abrir la bandeja <Icon name="arrow-right" className="size-4" /></a>
       </section>
     </>
   );

@@ -1,7 +1,8 @@
 /**
  * TIMELINESECTION.JSX — El hilo del tiempo (landing)
  *
- * Cronologia horizontal de las publicaciones con fecha, en escritorio y en movil.
+ * Cronologia horizontal de hitos fijos (utils/timelineItems.js, se editan en el codigo),
+ * en escritorio y en movil.
  * El elemento memorable es la linea: un rio/camino organico y segmentado que fluye
  * despacio de dorado a menta y a rio (mismo lenguaje de movimiento que el rio de la
  * linea de tiempo del perfil de artista, pero horizontal y continuo).
@@ -16,6 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import { formatDateShort } from '../utils/dateUtils.js';
 import { KIND_LABELS } from '../utils/constants.js';
+import { TIMELINE_ITEMS } from '../utils/timelineItems.js';
 import { BADGE_LIGHT, SECTION_TITLE } from './uiStyles.js';
 
 const KIND_ICON = { EVENTO: 'calendar', HISTORIA: 'book', TALENTO: 'mic', OPORTUNIDAD: 'sprout', INICIATIVA: 'people' };
@@ -51,10 +53,8 @@ function buildRiverPath(count) {
   return d;
 }
 
-function sortByDate(publications) {
-  return [...publications]
-    .filter((pub) => pub.start_date)
-    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+function sortByDate(items) {
+  return [...items].filter((item) => item.date).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function toneFor(index, count) {
@@ -64,12 +64,12 @@ function toneFor(index, count) {
 
 const NAV_BTN = 'inline-flex size-11 cursor-pointer items-center justify-center rounded-full border border-[rgba(243,228,200,.25)] bg-transparent p-0 text-cream transition-colors duration-200 hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-default disabled:opacity-35 disabled:hover:border-[rgba(243,228,200,.25)] disabled:hover:text-cream';
 
-export default function TimelineSection({ publications = [] }) {
+export default function TimelineSection({ items = TIMELINE_ITEMS }) {
   const scrollRef = useRef(null);
   // Si la pista esta al inicio / al final (las flechas solo aparecen si hay desborde).
   const [edges, setEdges] = useState({ start: true, end: true });
 
-  const sorted = sortByDate(publications);
+  const sorted = sortByDate(items);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -133,32 +133,32 @@ export default function TimelineSection({ publications = [] }) {
           </svg>
 
           <ol className="relative m-0 flex list-none p-0">
-            {sorted.map((pub, index) => {
+            {sorted.map((item, index) => {
               const tone = toneFor(index, sorted.length);
               const y = NODE_Y[index % NODE_Y.length];
-              const [day, month, year] = formatDateShort(pub.start_date).split(' ');
+              const [day, month, year] = formatDateShort(item.date).split(' ');
               return (
-                <li key={pub.id} className="group relative w-[320px] shrink-0 snap-center px-6 max600:w-[78vw] max600:px-4">
+                <li key={item.id} className="group relative w-[320px] shrink-0 snap-center px-6 max600:w-[78vw] max600:px-4">
                   <div className="relative" style={{ height: BAND }} aria-hidden="true">
                     {/* Hilo que baja del nodo al texto */}
                     <span className="absolute left-1/2 -bottom-3 border-0 border-l border-dashed border-l-[rgba(243,228,200,.18)]" style={{ top: y + 22 }} />
                     <span className={`absolute left-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[1.5px] bg-ink-deep transition-[box-shadow] duration-300 ease-[ease] ${tone.text} ${tone.node}`} style={{ top: y }}>
-                      <Icon name={KIND_ICON[pub.kind] || 'circle'} className="size-5" />
+                      <Icon name={KIND_ICON[item.kind] || 'circle'} className="size-5" />
                     </span>
                   </div>
 
                   <div className="mt-5 text-center">
-                    <time dateTime={pub.start_date} className="block">
+                    <time dateTime={item.date} className="block">
                       <span className={`block font-display text-[40px] font-bold italic leading-none ${tone.text}`}>{year}</span>
                       <span className="mt-2 block text-[11px] font-bold uppercase tracking-[.16em] text-[rgba(243,228,200,.6)]">
-                        {day} {month} · {KIND_LABELS[pub.kind] || pub.kind}
+                        {day} {month} · {KIND_LABELS[item.kind] || item.kind}
                       </span>
                     </time>
-                    <h3 className="mt-3 mb-2 font-sans text-[20px] font-bold leading-[1.2] tracking-[-.02em] text-cream">{pub.title}</h3>
-                    <p className="m-0 line-clamp-3 text-[14px] leading-[1.55] text-[rgba(243,228,200,.72)]">{pub.summary}</p>
+                    <h3 className="mt-3 mb-2 font-sans text-[20px] font-bold leading-[1.2] tracking-[-.02em] text-cream">{item.title}</h3>
+                    <p className="m-0 line-clamp-3 text-[14px] leading-[1.55] text-[rgba(243,228,200,.72)]">{item.summary}</p>
                     <p className="mt-3 mb-0 inline-flex items-center gap-1.5 text-[12px] text-[rgba(243,228,200,.55)]">
                       <Icon name="pin" className="size-3.5" />
-                      {pub.location || 'Caucasia'}
+                      {item.location || 'Caucasia'}
                     </p>
                   </div>
                 </li>

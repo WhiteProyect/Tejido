@@ -41,7 +41,9 @@ Empezó como proyecto académico (ADSO) pero es ahora un proyecto real y profesi
 DATABASE_URL=postgresql+psycopg://neondb_owner:...@.../neondb?sslmode=require&channel_binding=require
 RESEND_API_KEY=re_...
 EMAIL_FROM=TEJIDO <tejido@tejido.com.co>
+SUPPORT_EMAIL=...          # avisos al equipo (una o varias, separadas por coma); vacía = no se envían
 FRONTEND_BASE_URL=http://localhost:5173
+CLOUDINARY_CLOUD_NAME=... / CLOUDINARY_API_KEY=... / CLOUDINARY_API_SECRET=...
 ```
 
 ---
@@ -51,15 +53,19 @@ FRONTEND_BASE_URL=http://localhost:5173
 | Rol | Descripción |
 |-----|-------------|
 | ADMIN | Publica directamente, modera todo, gestiona gestores e invitaciones |
-| GESTOR | Crea publicaciones (quedan en DRAFT hasta que admin apruebe), tiene dashboard propio |
+| GESTOR | Crea publicaciones solo en su rama (`organizations.branch`); quedan en DRAFT hasta que se aprueben; tiene dashboard propio. Puede ser **líder de su rama** (`organizations.is_leader`, no es un rol) |
 | CIUDADANO | Navega, guarda favoritos, edita su perfil |
 
 **Flujo de invitación gestor**: admin crea gestor → tabla `invite_tokens` → email Resend → `AcceptInviteScreen`.
+
+**Líder por rama (decisión 2026-10-24)**: máximo un líder por rama (lo fuerza la base); solo el ADMIN lo nombra/cambia/quita. El líder aprueba las solicitudes de ingreso a su rama (`branch_join_requests`: el ciudadano aprobado pasa a GESTOR participante) y modera lo que publican sus participantes; lo del líder lo modera el ADMIN; sin líder, todo lo gestiona el ADMIN. El ADMIN modera todo. Permisos siempre en el backend con la rama de la base (`services/branches.py`).
 
 **Admins reales (ya activaron su cuenta; los links de invitación ya se usaron)**:
 - id 4: Camilo (bryan.giraldo.0906@gmail.com)
 - id 5: Santi (MONEYSTACK999@gmail.com)
 - id 6: Daniel (danielopg1008@gmail.com)
+
+**Cuentas en la base real (2026-10-24)**: solo los 3 admins (ids 4-6), el gestor Eze kiel (id 7, organización "Pizza party", rama GASTRONOMIA_CULTURAL, **líder de su rama** desde el 2026-10-24 con `scripts/marcar_lider.py`) y el ciudadano ezequiel (id 8). Las cuentas demo del seed (ids 1-3) y sus publicaciones se eliminaron con `scripts/eliminar_cuentas_demo.py`; Og Mauro quedó sin dueño (`user_id` NULL). `seed_database()` ya no corre con `ENVIRONMENT=production`.
 
 ---
 
@@ -77,7 +83,7 @@ MUSICA, CINE_AUDIOVISUAL, DANZA, TEATRO, ARTES_VISUALES, LITERATURA, ARTESANIAS,
 ### Completado ✓
 - Migración completa SQLite/stdlib → FastAPI/PostgreSQL (Neon), Fases 0–6.1
 - Sistema de autenticación: login, signup ciudadano, invitación gestor/admin, 3 admins reales (ya activos). Cerrar sesión lleva al login; volver a entrar desde ahí lleva al perfil
-- Explorar: portadas de las 10 categorías culturales (`CategoryCoversGrid`, imágenes en `frontend/public/images/categorias/<slug>.jpg`, ya subidas) → `CategoryScreen` con gestores, buscador por título y tarjetas horizontales
+- Explorar: portadas de las 10 categorías culturales (`CategoryCoversGrid`) → `CategoryScreen` con gestores, buscador por título y tarjetas horizontales. Las portadas viven en Cloudinary (tabla `cultural_category_covers`, `GET /api/cultural-categories/covers`, hook `utils/categoryCovers.js`); `frontend/public/images/categorias/<slug>.jpg` queda como respaldo
 - Sistema de toast: `ToastContext.jsx`, `Toast.jsx`, 6 eventos cableados, 5 tonos (rio/menta/dorado/naranja/morado)
 - Perfiles por rol (3 fases, verificadas): nombre/foto editables para todos (`PATCH /api/me`); ciudadano solo con "Tus guardados"; gestor con biografía pública (`/api/me/organization`) y **Dashboard de Gestor** (`#gestor-dashboard`, CRUD de sus publicaciones); admin con **Dashboard de Admin** (`#admin-dashboard`: pulso, moderación aprobar/rechazar, CRUD de todas las publicaciones, panel de gestores)
 - Ciclo editorial completo en la UI: el gestor crea borradores y los envía; el admin aprueba o rechaza con motivo y puede publicar directo (`PublicationForm` compartido)
@@ -86,6 +92,14 @@ MUSICA, CINE_AUDIOVISUAL, DANZA, TEATRO, ARTES_VISUALES, LITERATURA, ARTESANIAS,
 - Botones unificados en `uiStyles.js`: `BTN_INK_LG/MD/SM`, `BTN_INK_OUTLINE_MD`, `BTN_GHOST`, `BTN_DANGER`, `BTN_QUIET_SM` (misma altura por talla: MD 49 px, SM 37 px)
 - VideoText en HomeScreen (efecto SVG mask + video sobre la palabra "TEJIDO")
 - EmptyNote como componente extraído y reutilizable
+- **Dashboard de gestor por categoría**: el gestor solo publica en su rama (validado en el backend), pestañas Mis publicaciones / Mi categoría; editar una PUBLISHED la devuelve a REVIEW
+- **Cuentas demo eliminadas** de Neon (2026-10-22) y `seed_database()` bloqueado en producción
+- **Bandeja del admin** (`#admin-dashboard/bandeja`): mensajes de Nosotros (`/api/admin/suggestions`, NEW/READ/ARCHIVED) y reportes de publicaciones (`/api/admin/reports`, OPEN/RESOLVED/DISMISSED con nota); los mosaicos del Pulso enlazan ahí
+- **Correos** (Resend): avisos al equipo (`SUPPORT_EMAIL`) por sugerencia, reporte y publicación en revisión; al gestor por aprobada/rechazada; invitación. HTML de marca + texto plano (`services/email_templates.py`, `services/notifications.py`, BackgroundTasks tras el commit; nunca rompen la acción). Vista previa sin enviar: `py scripts/preview_correos.py <carpeta>`. Formulario de Nosotros con límite de 3 mensajes cada 10 min por IP
+- **Migración a Cloudinary** de las fotos de Og Mauro y DJ Apolo y de las 10 portadas (`scripts/migrar_imagenes_a_cloudinary.py`, ya aplicado). Los archivos locales siguen en `frontend/public` (no borrados)
+- **Página de cada publicación** (`#publicacion/<id>`, `PublicationScreen`): galería con vista ampliada, detalles de evento/oportunidad, "Publicado por"; guardar/compartir en `PublicationActions` (compartido con la tarjeta)
+- **"El hilo del tiempo"** (landing) con hitos fijos editables en `frontend/src/utils/timelineItems.js` (los 3 actuales son de ejemplo)
+- **Cobertura de ramas** en el panel de Gestores del admin (`BranchCoverage.jsx`): 10 tarjetas con estado y botón "Crear gestor" con la rama preseleccionada
 - **Artistas — CRUD admin** (decisión 2026-10-20: la BD es la única fuente; ya no hay JSON ni scripts de carga): endpoints con permisos y validación de URLs (`/api/artists`, `/api/admin/artists[/{id}]`), pestaña Artistas del AdminDashboard (`#admin-dashboard/artistas`) con lista, alta y archivar/restaurar, y editor por pestañas (`#admin-dashboard/artistas/<id>/<pestaña>`: Datos, Música, Galería, Trayectoria, Redes, Conexiones, Métricas). Accesos solo para admin en Moneystack y en el perfil público. Solo admins crean/archivan; "eliminar" = archivar (`active=False`). DJ Apolo y Og Mauro tienen contenido de ejemplo (no real) que el admin reemplaza desde el editor
 
 ### Pendiente / En progreso
@@ -93,10 +107,10 @@ MUSICA, CINE_AUDIOVISUAL, DANZA, TEATRO, ARTES_VISUALES, LITERATURA, ARTESANIAS,
 - **Hero a 1024 px**: el sol del fondo queda a medias por el recorte de `object-cover`; opción: usar ahí el tratamiento de móvil
 - **"Quiero Participar" en móvil**: la fila del correo desborda a 390 px (input de 280 px fijo); propuesta: apilarla en ≤480 px
 - **"Crear mi primera publicación"** (dashboard de gestor vacío) se parte en dos líneas a ≤390 px; se resuelve con un texto más corto
-- **`cine-audiovisual.jpg`** pesa ~7.9 MB (las demás portadas 20–750 KB): comprimir
 - **Hero, "Volver" desde un municipio** vuelve directo al saludo, no a Historias (lógica de `goBack`)
-- **Cloudinary (Fases A y B hechas, 2026-10-21)**: subida firmada desde el backend (`POST /api/uploads/sign`, el navegador sube directo), `ImageField` único, subida múltiple en Galería y entrega optimizada. Claves `CLOUDINARY_*` solo en `.env`. Pendiente del user: re-subir las fotos locales de Apolo y Mauro desde el editor
-- **EN CURSO — Dashboard de gestores por categoría** (decisiones 2026-10-21): (1) el gestor solo publica en su rama (`organizations.branch`), validado en el BACKEND (hoy no lo está) y con la categoría fija en el formulario; (2) ve lo suyo + lo del resto de su categoría en solo lectura (de los demás solo PUBLISHED y REVIEW, nunca borradores ni rechazadas); (3) editar una publicación PUBLISHED la pasa a REVIEW y la oculta hasta que el admin la apruebe; el admin conserva el estado al editar y puede publicar en el mismo PUT. Fase 1 backend, Fase 2 dashboard (identidad de categoría, contadores, pestañas Mis publicaciones / Mi categoría)
+- **Cloudinary (Fases A y B hechas, 2026-10-21)**: subida firmada desde el backend (`POST /api/uploads/sign`, el navegador sube directo), `ImageField` único, subida múltiple en Galería y entrega optimizada. Claves `CLOUDINARY_*` solo en `.env`. Las fotos locales ya se migraron; falta decidir si se borran de `frontend/public`
+- **EN CURSO — Líder por rama (5 entregas)**: **Entrega 1 (backend) HECHA 2026-10-24**: `organizations.is_leader`, tabla `branch_join_requests`, `services/branches.py` (permisos), endpoints `/api/admin/branches[/{rama}/leader]`, `/api/branches/{rama}/requests|participants|review-queue`, `/api/branch-requests`, `/api/me/branch-request`; moderación del líder en `PATCH /api/publications/{id}/status`; `GET /api/me` agrega `branch` e `is_leader`; `GET /api/gestores` agrega `is_leader` (líder primero); avisos al líder/equipo/solicitante. Entregas 2–5 (frontend y resto) pendientes
+- **Migraciones aplicadas en Neon hasta `d4e9b2c7f1a3`** (líder de rama y solicitudes)
 - **Decisión de producto (2026-10-20)**: los artistas del apartado Moneystack (tabla `artists`, administrados solo por admin) son APARTE de los artistas de la sección Música de TEJIDO (los subirán/administrarán los gestores de la rama MUSICA; modelo por analizar, puede haber artistas en ambos). El contenido de la pantalla Moneystack (textos, chips, logo) se queda fijo en el código; solo la lista de artistas es administrable. El dashboard propio del artista (`ArtistDashboard`) NO aplica a Moneystack y queda diferido para los artistas de TEJIDO
 - **Tailwind**: migración incremental en curso (Moneystack + Artista migrados); resto de pantallas pendiente
 
@@ -159,6 +173,12 @@ MUSICA, CINE_AUDIOVISUAL, DANZA, TEATRO, ARTES_VISUALES, LITERATURA, ARTESANIAS,
 | `frontend/src/utils/constants.js` | KIND_COLORS, KIND_LABELS, CULTURAL_CATEGORIES, TOAST_TONES |
 | `backend/service/schemas/cultural_categories.py` | Claves y labels de categorías (backend) |
 | `backend/service/api/routes/auth.py` | Auth: login, signup, me, accept-invite |
-| `backend/service/seed.py` | Datos semilla (roles, usuarios demo, admins reales) |
+| `backend/service/seed.py` | Datos semilla para tests (roles, usuarios demo, admins reales); bloqueado en producción |
 | `scripts/INICIAR_TEJIDO.ps1` | Arrancar frontend + backend |
 | `scripts/links_invitacion_admins.py` | Genera links de invitación para admins ids 4-6 |
+| `backend/service/services/branches.py` | Líder por rama, participantes, solicitudes y permisos de moderación |
+| `backend/service/services/notifications.py` + `email_templates.py` | Avisos por correo (HTML de marca + texto) |
+| `backend/service/api/routes/admin_inbox.py` | Bandeja del admin (mensajes y reportes) |
+| `frontend/src/screens/PublicationScreen.jsx` | Página de cada publicación (`#publicacion/<id>`) |
+| `frontend/src/components/admin/BandejaPanel.jsx` / `BranchCoverage.jsx` | Bandeja del admin / cobertura de ramas |
+| `scripts/marcar_lider.py` | Nombra líder de una rama (dry-run por defecto, `--aplicar`) |

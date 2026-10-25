@@ -12,7 +12,7 @@ una ventana fija de 5 minutos. Al superarlo, la ventana sigue contando hasta
 que expira (bloqueo de hasta unos minutos), sin necesitar un temporizador de
 lockout aparte.
 """
-from limits import RateLimitItemPerMinute
+from limits import RateLimitItemPerHour, RateLimitItemPerMinute
 from limits.storage import MemoryStorage
 from limits.strategies import FixedWindowRateLimiter
 
@@ -81,3 +81,29 @@ UPLOAD_SIGN_LIMIT = RateLimitItemPerMinute(30)
 def allow_upload_signature(user_id: int) -> bool:
     """Cuenta el intento y dice si todavia esta dentro del limite."""
     return _limiter.hit(UPLOAD_SIGN_LIMIT, f"upload-sign:user:{user_id}")
+
+
+# ---------------------------------------------------------------------------
+# Formulario publico de Nosotros (/api/suggestions): por IP, todos los intentos cuentan.
+# Frena el spam y protege la cuota de Resend (cada mensaje dispara un aviso al equipo).
+# ---------------------------------------------------------------------------
+
+SUGGESTION_LIMIT = RateLimitItemPerMinute(3, 10)
+
+
+def allow_suggestion(ip: str) -> bool:
+    """Cuenta el intento y dice si todavia esta dentro del limite."""
+    return _limiter.hit(SUGGESTION_LIMIT, f"suggestion:ip:{ip}")
+
+
+# ---------------------------------------------------------------------------
+# Solicitudes para participar en una rama (/api/branch-requests): por usuario, todas cuentan.
+# Cada solicitud avisa por correo al lider o al equipo.
+# ---------------------------------------------------------------------------
+
+BRANCH_REQUEST_LIMIT = RateLimitItemPerHour(5)
+
+
+def allow_branch_request(user_id: int) -> bool:
+    """Cuenta el intento y dice si todavia esta dentro del limite."""
+    return _limiter.hit(BRANCH_REQUEST_LIMIT, f"branch-request:user:{user_id}")

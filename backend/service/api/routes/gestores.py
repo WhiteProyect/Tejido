@@ -15,7 +15,8 @@ router = APIRouter()
 def list_public_gestores(branch: Optional[str] = Query(default=None), db: Session = Depends(get_db)):
     """Publico: organizaciones activas de gestores para las pantallas de categoria.
 
-    Solo datos publicos ({id, name, branch, photo_url}): nada de contacto ni del usuario.
+    Solo datos publicos ({id, name, branch, photo_url, is_leader}): nada de contacto ni del
+    usuario. El lider de cada rama va primero.
     Se excluyen las de gestores que aun no aceptan su invitacion o que un admin desactivo
     (User.active = false); las organizaciones sin usuario dependen solo de su propio active.
     """
@@ -23,9 +24,9 @@ def list_public_gestores(branch: Optional[str] = Query(default=None), db: Sessio
     if branch:
         conditions.append(Organization.branch == branch.strip().upper())
     rows = db.execute(
-        select(Organization.id, Organization.name, Organization.branch, Organization.photo_url)
+        select(Organization.id, Organization.name, Organization.branch, Organization.photo_url, Organization.is_leader)
         .join(User, User.id == Organization.user_id, isouter=True)
         .where(*conditions)
-        .order_by(Organization.name.asc(), Organization.id.asc())
+        .order_by(Organization.is_leader.desc(), Organization.name.asc(), Organization.id.asc())
     ).all()
     return rows_to_dicts(rows)

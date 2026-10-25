@@ -3,6 +3,7 @@ import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import PublicationForm from '../components/PublicationForm.jsx';
 import ArtistasPanel from '../components/admin/ArtistasPanel.jsx';
+import BandejaPanel from '../components/admin/BandejaPanel.jsx';
 import GestoresPanel from '../components/admin/GestoresPanel.jsx';
 import PillTabs from '../components/admin/PillTabs.jsx';
 import { confirmDiscard } from '../components/admin/artist/unsavedChanges.js';
@@ -13,8 +14,9 @@ import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
 import { formatDateShort } from '../utils/dateUtils.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
-// Dashboard del Admin (#admin-dashboard[/publicaciones|gestores|artistas[/<id>[/<pestana>]]]):
-// - Pulso: GET /api/admin/stats (incluye gestores_activos), visible en todas las pestanas.
+// Dashboard del Admin (#admin-dashboard[/publicaciones[/<id>]|gestores|artistas[/<id>[/<pestana>]]|bandeja]):
+// - Pulso: GET /api/admin/stats (incluye gestores_activos), visible en todas las pestanas. Los
+//   mosaicos de reportes y mensajes enlazan a la Bandeja.
 // - Pestanas: solo se monta el panel activo. La pestana va en la URL con replaceState (sin
 //   hashchange: App subiria la pagina y cada cambio llenaria el historial).
 // - Gestores: components/admin/GestoresPanel.jsx, tal cual vivia en el perfil.
@@ -24,6 +26,8 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 //   REVIEW: Aprobar / Rechazar (motivo de 5+ caracteres) -> PATCH .../status
 //   cualquier estado: Editar (PublicationForm con allowPublish) / Eliminar (DELETE).
 // - Nueva publicacion: PublicationForm con allowPublish (puede publicar directo).
+// - publicaciones/<id> (enlace desde un reporte de la Bandeja) abre el editor de esa publicacion.
+// - Bandeja: components/admin/BandejaPanel.jsx (mensajes de Nosotros y reportes).
 const STATUSES = ['REVIEW', 'DRAFT', 'REJECTED', 'PUBLISHED'];
 const CATEGORY_LABELS = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
 const MIN_NOTE = 5; // mismo minimo que PATCH /api/publications/{id}/status
@@ -32,6 +36,7 @@ const TABS = [
   ['publicaciones', 'Publicaciones', 'book'],
   ['gestores', 'Gestores', 'people'],
   ['artistas', 'Artistas', 'music'],
+  ['bandeja', 'Bandeja', 'inbox'],
 ];
 const TAB_IDS = TABS.map(([id]) => id);
 // La seccion es "<pestana>[/<resto>]": el resto lo interpreta el panel (p. ej. artistas/2/galeria).
@@ -44,22 +49,30 @@ const sectionFromHash = () => parseSection(window.location.hash.replace(/^#admin
 const byPriority = (a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status)
   || String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at));
 
+const INBOX_HREF = '#admin-dashboard/bandeja';
+
 function StatsPanel({ stats }) {
   const tiles = [
     ['Publicadas', stats?.published],
     ['En revisión', stats?.pending],
     ['Gestores activos', stats?.gestores_activos],
     ['Usuarios activos', stats?.users],
-    ['Reportes abiertos', stats?.reports],
-    ['Mensajes nuevos', stats?.suggestions],
+    ['Reportes abiertos', stats?.reports, INBOX_HREF],
+    ['Mensajes nuevos', stats?.suggestions, INBOX_HREF],
   ];
   return (
     <section className={PANEL} aria-labelledby="admin-pulso">
       <h2 id="admin-pulso" className={PANEL_TITLE}>Pulso de la plataforma</h2>
       <dl className="mt-6 mb-0 grid grid-cols-[repeat(6,1fr)] gap-4 max1200:grid-cols-[repeat(3,1fr)] max600:grid-cols-[repeat(2,1fr)]">
-        {tiles.map(([label, value]) => (
-          <div key={label} className="flex flex-col-reverse border-l-2 border-l-[rgba(29,143,163,0.35)] pl-4">
-            <dt className="mt-2 text-[12px] font-bold uppercase tracking-[.1em] text-muted">{label}</dt>
+        {tiles.map(([label, value, href]) => (
+          <div key={label} className="relative flex flex-col-reverse border-l-2 border-l-[rgba(29,143,163,0.35)] pl-4">
+            <dt className="mt-2 text-[12px] font-bold uppercase tracking-[.1em] text-muted">
+              {href ? (
+                <a className="inline-flex items-center gap-1 text-river no-underline after:absolute after:inset-0 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink" href={href}>
+                  {label} <Icon name="arrow-right" className="size-3" />
+                </a>
+              ) : label}
+            </dt>
             <dd className="m-0 text-[40px] font-extrabold leading-none tracking-[-0.04em] text-ink">{value ?? '–'}</dd>
           </div>
         ))}
@@ -152,6 +165,18 @@ export default function AdminDashboard({ section }) {
 
   useEffect(() => { load(); }, [load]);
 
+  const loadStats = useCallback(() => apiRequest('/api/admin/stats').then(setStats).catch(() => {}), []);
+
+  // publicaciones/<id>: abre el editor de esa publicacion en cuanto esta la lista.
+  useEffect(() => {
+    if (tab !== 'publicaciones' || !/^\d+$/.test(subpath) || state.loading) return;
+    const target = state.publications.find((item) => String(item.id) === subpath);
+    setSection({ tab, subpath: '' });
+    window.history.replaceState(window.history.state, '', '#admin-dashboard/publicaciones');
+    if (target) openEditor(target);
+    else setActionError('Esa publicación ya no está en la lista: puede que la hayan eliminado.');
+  }, [tab, subpath, state.loading, state.publications]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Enlaces a #admin-dashboard/<seccion> (desde fuera o abrir/cerrar el editor de un artista)
   // llegan por hashchange.
   useEffect(() => {
@@ -197,6 +222,7 @@ export default function AdminDashboard({ section }) {
 
   const { publications } = state;
   const pending = publications.filter((item) => item.status === 'REVIEW').length;
+  const inboxPending = (stats?.reports || 0) + (stats?.suggestions || 0);
 
   return (
     <section className={`${SECTION} min-h-[62vh]`}>
@@ -220,6 +246,7 @@ export default function AdminDashboard({ section }) {
           tabs={TABS.map(([id, label, icon]) => ({
             id, label, icon,
             ...(id === 'publicaciones' && pending > 0 ? { badge: pending, badgeLabel: 'en revisión', badgeTone: 'alert' } : {}),
+            ...(id === 'bandeja' && inboxPending > 0 ? { badge: inboxPending, badgeLabel: 'pendientes', badgeTone: 'alert' } : {}),
           }))}
         />
 
@@ -264,6 +291,7 @@ export default function AdminDashboard({ section }) {
           )}
           {tab === 'gestores' && <GestoresPanel />}
           {tab === 'artistas' && <ArtistasPanel subpath={subpath} />}
+          {tab === 'bandeja' && <BandejaPanel onChange={loadStats} />}
         </div>
       </div>
     </section>

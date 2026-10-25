@@ -36,7 +36,7 @@ const WHISPER_MS = 5000;
 const COMPASS = [
   ['mapa', 'Recorrer Caucasia', 'El mapa vivo', 'mapa', 'compass', 'var(--river)', 'hilo-senala.png'],
   ['plan', 'Encontrar un plan', 'Eventos y agenda', 'agenda', 'calendar', 'var(--orange)', 'hilo-descubre.png'],
-  ['gente', 'Conocer gente y talento', 'Quiénes mueven el territorio', 'talento', 'people', '#276749', 'hilo-saluda.png'],
+  ['gente', 'Conocer gente y talento', 'Quiénes mueven el territorio', 'talento', 'people', '#276749', 'hilo-lee.png'],
   ['oportunidades', 'Convocatorias', 'Oportunidades abiertas', 'oportunidades', 'seal', '#b8860b', 'hilo-celebra.png'],
 ];
 // Acciones secundarias, más discretas que la Brújula. [etiqueta, hash, icono, pose]

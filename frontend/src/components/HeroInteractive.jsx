@@ -49,7 +49,7 @@ const SCENES = {
     ],
   },
   gente: {
-    pose: 'hilo-saluda.png',
+    pose: 'hilo-lee.png',
     message: 'El Bajo Cauca está vivo por su gente. Los gestores son los hilos que tejen la comunidad.',
     background: 'people',
     options: [

@@ -20,6 +20,9 @@ cd C:\Users\Bryan\Tejido\tejido
 scripts\INICIAR_TEJIDO.bat
 ```
 
+### `eliminar_cuentas_demo.py`
+Elimina definitivamente las cuentas demo del seed (admin/gestor/ciudadano@tejido.co) con sus publicaciones; a los artistas solo les suelta el vínculo. Dry-run por defecto, `py scripts/eliminar_cuentas_demo.py --aplicar` para aplicar.
+
 ## 🚀 Ejecución Rápida
 
 **Opción 1:** PowerShell (Recomendado -- levanta backend + frontend y abre el navegador)

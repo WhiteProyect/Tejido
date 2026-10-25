@@ -30,14 +30,22 @@ export default function PillTabs({ tabs, active, onChange, idPrefix, label, size
   const ids = tabs.map((tab) => tab.id);
 
   // La pestana activa queda a la vista si la fila se desplaza. Solo se mueve la fila:
-  // scrollIntoView tambien desplazaria la pagina en vertical.
+  // scrollIntoView tambien desplazaria la pagina en vertical. Los contadores y la fuente web
+  // llegan despues y cambian el ancho de las pestanas: se recalcula con ellos.
+  const badges = tabs.map((tab) => tab.badge ?? '').join('|');
   useEffect(() => {
-    const row = rowRef.current;
-    const tab = document.getElementById(`${idPrefix}-tab-${active}`);
-    if (!row || !tab) return;
-    if (tab.offsetLeft < row.scrollLeft) row.scrollLeft = tab.offsetLeft;
-    else if (tab.offsetLeft + tab.offsetWidth > row.scrollLeft + row.clientWidth) row.scrollLeft = tab.offsetLeft + tab.offsetWidth - row.clientWidth;
-  }, [active, idPrefix]);
+    let alive = true;
+    function reveal() {
+      const row = rowRef.current;
+      const tab = document.getElementById(`${idPrefix}-tab-${active}`);
+      if (!alive || !row || !tab) return;
+      if (tab.offsetLeft < row.scrollLeft) row.scrollLeft = tab.offsetLeft;
+      else if (tab.offsetLeft + tab.offsetWidth > row.scrollLeft + row.clientWidth) row.scrollLeft = tab.offsetLeft + tab.offsetWidth - row.clientWidth;
+    }
+    reveal();
+    document.fonts?.ready.then(reveal);
+    return () => { alive = false; };
+  }, [active, idPrefix, badges]);
 
   function handleKeyDown(event) {
     const index = ids.indexOf(active);

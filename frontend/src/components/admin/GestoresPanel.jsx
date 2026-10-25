@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import EmptyNote from '../EmptyNote.jsx';
+import BranchCoverage from './BranchCoverage.jsx';
 import Icon from '../Icon.jsx';
 import { BTN_GHOST, BTN_INK_MD, BTN_INK_OUTLINE_MD } from '../uiStyles.js';
 import { BRANCH_LABELS, CULTURAL_BRANCHES } from '../../utils/constants.js';
@@ -69,11 +70,17 @@ function InviteNotice({ notice, onClose }) {
   );
 }
 
-function AddGestorForm({ onCreated, onCancel }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+// preset: { branch, nonce } desde una tarjeta de Cobertura de ramas. Cambia solo la rama (lo ya
+// escrito se conserva); el nonce hace que repetir la misma rama vuelva a aplicarla.
+function AddGestorForm({ preset, onCreated, onCancel }) {
+  const [form, setForm] = useState(() => ({ ...EMPTY_FORM, branch: preset?.branch || EMPTY_FORM.branch }));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const set = (field) => (event) => setForm({ ...form, [field]: event.target.value });
+
+  useEffect(() => {
+    if (preset?.branch) setForm((current) => ({ ...current, branch: preset.branch }));
+  }, [preset]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -91,12 +98,12 @@ function AddGestorForm({ onCreated, onCancel }) {
   }
 
   return (
-    <form className="mt-6 grid grid-cols-[1fr_1fr] gap-4 rounded-[20px] border border-line bg-white/60 p-5 max600:grid-cols-[1fr]" onSubmit={handleSubmit}>
-      <label className={LABEL}>Nombre<input className={FIELD} value={form.name} onChange={set('name')} required autoComplete="off" /></label>
+    <form id="gestor-form" className="mt-6 grid scroll-mt-24 grid-cols-[1fr_1fr] gap-4 rounded-[20px] border border-line bg-white/60 p-5 max600:grid-cols-[1fr]" onSubmit={handleSubmit} aria-label="Nuevo gestor">
+      <label className={LABEL}>Nombre<input name="name" className={FIELD} value={form.name} onChange={set('name')} required autoComplete="off" /></label>
       <label className={LABEL}>Correo<input className={FIELD} type="email" value={form.email} onChange={set('email')} required autoComplete="off" /></label>
       <label className={LABEL}>Organización<input className={FIELD} value={form.organization_name} onChange={set('organization_name')} required /></label>
       <label className={LABEL}>Rama cultural
-        <select className={FIELD} value={form.branch} onChange={set('branch')} required>
+        <select name="branch" className={FIELD} value={form.branch} onChange={set('branch')} required>
           {CULTURAL_BRANCHES.map((key) => <option key={key} value={key}>{BRANCH_LABELS[key]}</option>)}
         </select>
       </label>
@@ -115,6 +122,7 @@ function AddGestorForm({ onCreated, onCancel }) {
 export default function GestoresPanel() {
   const [state, setState] = useState({ loading: true, gestores: [], error: '' });
   const [showForm, setShowForm] = useState(false);
+  const [preset, setPreset] = useState(null); // { branch, nonce } elegido desde la cobertura
   const [notice, setNotice] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [rowError, setRowError] = useState('');
@@ -130,8 +138,24 @@ export default function GestoresPanel() {
 
   useEffect(() => { load(); }, []);
 
+  // Desde una tarjeta de cobertura: abre (o reutiliza) el formulario con esa rama y lo lleva a la vista.
+  function openFormFor(branch) {
+    setNotice(null);
+    setShowForm(true);
+    setPreset({ branch, nonce: Date.now() });
+    requestAnimationFrame(() => {
+      const form = document.getElementById('gestor-form');
+      if (!form) return;
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      form.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      const name = form.elements.name;
+      (name && !name.value ? name : form.elements.branch)?.focus({ preventScroll: true });
+    });
+  }
+
   function handleCreated(form, result) {
     setShowForm(false);
+    setPreset(null);
     setNotice({ title: `Cuenta de gestor creada para ${form.name}.`, email: form.email, link: result.invite_link, emailSent: result.email_sent });
     load();
   }
@@ -168,12 +192,13 @@ export default function GestoresPanel() {
         )}
       </div>
 
-      {showForm && <AddGestorForm onCreated={handleCreated} onCancel={() => setShowForm(false)} />}
+      {showForm && <AddGestorForm preset={preset} onCreated={handleCreated} onCancel={() => { setShowForm(false); setPreset(null); }} />}
       {notice && <InviteNotice notice={notice} onClose={() => setNotice(null)} />}
       {rowError && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{rowError}</p>}
 
       {state.loading && <p className="m-0 py-6 text-[14px] text-muted" aria-busy="true">Cargando...</p>}
       {state.error && <p className="mt-6 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{state.error}</p>}
+      {!state.loading && !state.error && <BranchCoverage gestores={state.gestores} onAdd={openFormFor} />}
       {!state.loading && !state.error && state.gestores.length === 0 && (
         <div className="mt-6"><EmptyNote icon="people" title="Aún no hay gestores" text="Agrega el primero para enviarle su invitación." /></div>
       )}
