@@ -13,7 +13,7 @@ import pytest
 from backend.tests_fastapi.test_gestores_invites import GOOD_PASSWORD, create_gestor, sent_emails  # noqa: F401
 from backend.tests_fastapi.test_parity import auth_header, hit, tokens  # noqa: F401
 
-PUBLIC_GESTOR_KEYS = {"id", "name", "branch", "photo_url", "is_leader"}
+PUBLIC_GESTOR_KEYS = {"id", "name", "branch", "photo_url", "is_leader", "slug"}
 
 
 @pytest.fixture(scope="module")
@@ -86,7 +86,8 @@ def test_public_gestores_lists_active_only_without_private_data(client, tokens, 
     resp = hit(client, "gestores", "list_public", "GET", "/api/gestores?branch=TEATRO")
     gestores = resp.json()
     mine = next(g for g in gestores if g["id"] == created["organization_id"])
-    assert mine == {"id": created["organization_id"], "name": "Teatro del Rio", "branch": "TEATRO", "photo_url": None, "is_leader": False}
+    assert mine["slug"]  # el slug del perfil publico (#gestor/<slug>)
+    assert {k: v for k, v in mine.items() if k != "slug"} == {"id": created["organization_id"], "name": "Teatro del Rio", "branch": "TEATRO", "photo_url": None, "is_leader": False}
     for g in gestores:
         assert set(g) == PUBLIC_GESTOR_KEYS
         assert g["branch"] == "TEATRO"

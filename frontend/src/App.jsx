@@ -14,6 +14,7 @@ import ArtistScreen from './screens/ArtistScreen.jsx';
 import ArtistDashboard from './screens/ArtistDashboard.jsx';
 import ArtistMediaKit from './screens/ArtistMediaKit.jsx';
 import ExploreScreen from './screens/ExploreScreen.jsx';
+import GestorProfileScreen from './screens/GestorProfileScreen.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import MapScreen from './screens/MapScreen.jsx';
 import MoneystackScreen from './screens/MoneystackScreen.jsx';
@@ -63,6 +64,11 @@ function getRoute() {
   // Dashboard de gestor con pestana: #gestor-dashboard/<mis-publicaciones|mi-categoria>.
   if (hash.startsWith('gestor-dashboard/')) {
     return { screen: 'gestor-dashboard', slug: hash.slice('gestor-dashboard/'.length) };
+  }
+
+  // Perfil publico de un gestor (lider o participante): #gestor/<slug>.
+  if (hash.startsWith('gestor/')) {
+    return { screen: 'gestor', slug: hash.slice('gestor/'.length) };
   }
 
   // Pagina de una publicacion (enlaces compartidos y "Ver detalles"): #publicacion/<id>.
@@ -180,6 +186,9 @@ export default function App() {
       break;
     case 'explorar':
       content = <ExploreScreen />;
+      break;
+    case 'gestor':
+      content = <GestorProfileScreen slug={route.slug} user={user} />;
       break;
     case 'publicacion':
       content = <PublicationScreen id={route.slug} user={user} canGoBack={hasNavigated} />;

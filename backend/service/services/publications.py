@@ -8,6 +8,7 @@ from backend.service.errors import AppError
 from backend.service.models.tables import Category, Event, Favorite, Opportunity, Organization, Publication, Role, User
 from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS
 from backend.service.schemas.publications import PublicationInput
+from backend.service.services.org_profiles import visible_slug
 from backend.service.services.serialization import row_to_dict, rows_to_dicts
 
 
@@ -108,6 +109,8 @@ def get_publication_detail(db: Session, user: Optional[dict], publication_id: in
         .limit(1)
     ).first()
     row["author_organization"] = row_to_dict(organization)
+    # Enlace al perfil publico del autor (#gestor/<slug>) si es un gestor con perfil visible.
+    row["author_slug"] = visible_slug(db, row["author_id"])
     row["images"] = list_publication_images(db, publication_id)
     return row
 

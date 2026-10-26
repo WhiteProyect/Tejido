@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import EmptyNote from '../EmptyNote.jsx';
 import BranchCoverage from './BranchCoverage.jsx';
+import { Switch } from '../gestor/edit/common.jsx';
 import Icon from '../Icon.jsx';
 import { BTN_GHOST, BTN_INK_MD, BTN_INK_OUTLINE_MD } from '../uiStyles.js';
+import { useToast } from '../../context/ToastContext.jsx';
 import { BRANCH_LABELS, CULTURAL_BRANCHES } from '../../utils/constants.js';
 
 // Panel de administracion de gestores (dentro de AdminModule, ProfileScreen).
@@ -72,22 +74,31 @@ function InviteNotice({ notice, onClose }) {
 
 // preset: { branch, nonce } desde una tarjeta de Cobertura de ramas. Cambia solo la rama (lo ya
 // escrito se conserva); el nonce hace que repetir la misma rama vuelva a aplicarla.
-function AddGestorForm({ preset, onCreated, onCancel }) {
-  const [form, setForm] = useState(() => ({ ...EMPTY_FORM, branch: preset?.branch || EMPTY_FORM.branch }));
+// overview: GET /api/admin/branches por clave. El interruptor "Sera el lider de esta rama" se
+// enciende solo si la rama no tiene lider, y se desactiva (con la razon) si ya lo tiene; al cambiar
+// la rama se recalcula.
+function AddGestorForm({ preset, overview, onCreated, onCancel }) {
+  const [form, setForm] = useState(() => {
+    const branch = preset?.branch || EMPTY_FORM.branch;
+    return { ...EMPTY_FORM, branch, is_leader: !overview[branch]?.leader };
+  });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const set = (field) => (event) => setForm({ ...form, [field]: event.target.value });
+  const leaderOf = (branch) => overview[branch]?.leader || null;
+  const changeBranch = (branch) => setForm((current) => ({ ...current, branch, is_leader: !leaderOf(branch) }));
+  const currentLeader = leaderOf(form.branch);
 
   useEffect(() => {
-    if (preset?.branch) setForm((current) => ({ ...current, branch: preset.branch }));
-  }, [preset]);
+    if (preset?.branch) changeBranch(preset.branch);
+  }, [preset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
     setSaving(true);
     try {
-      const result = await api('/api/admin/gestores', { method: 'POST', body: form });
+      const result = await api('/api/admin/gestores', { method: 'POST', body: { ...form, is_leader: Boolean(form.is_leader && !currentLeader) } });
       onCreated(form, result);
       setForm(EMPTY_FORM);
     } catch (createError) {
@@ -103,10 +114,21 @@ function AddGestorForm({ preset, onCreated, onCancel }) {
       <label className={LABEL}>Correo<input className={FIELD} type="email" value={form.email} onChange={set('email')} required autoComplete="off" /></label>
       <label className={LABEL}>Organización<input className={FIELD} value={form.organization_name} onChange={set('organization_name')} required /></label>
       <label className={LABEL}>Rama cultural
-        <select name="branch" className={FIELD} value={form.branch} onChange={set('branch')} required>
+        <select name="branch" className={FIELD} value={form.branch} onChange={(event) => changeBranch(event.target.value)} required>
           {CULTURAL_BRANCHES.map((key) => <option key={key} value={key}>{BRANCH_LABELS[key]}</option>)}
         </select>
       </label>
+      <div className="col-span-2 max600:col-span-1">
+        <Switch
+          checked={Boolean(form.is_leader && !currentLeader)}
+          onChange={(value) => setForm({ ...form, is_leader: value })}
+          disabled={Boolean(currentLeader)}
+          label="Será el líder de esta rama"
+          description={currentLeader
+            ? `${BRANCH_LABELS[form.branch]} ya tiene líder (${currentLeader.name}). Para cambiarlo, usa “Nombrar líder” en sus participantes.`
+            : 'Revisará lo que publiquen los participantes de la rama y aprobará quién se suma. Le avisaremos por correo.'}
+        />
+      </div>
       <label className={`${LABEL} col-span-2 max600:col-span-1`}>Contacto <span className="normal-case tracking-normal font-medium">(opcional: teléfono, red social o sitio)</span>
         <input className={FIELD} value={form.contact} onChange={set('contact')} />
       </label>
@@ -120,19 +142,21 @@ function AddGestorForm({ preset, onCreated, onCancel }) {
 }
 
 export default function GestoresPanel() {
-  const [state, setState] = useState({ loading: true, gestores: [], error: '' });
+  const [state, setState] = useState({ loading: true, gestores: [], overview: {}, error: '' });
   const [showForm, setShowForm] = useState(false);
   const [preset, setPreset] = useState(null); // { branch, nonce } elegido desde la cobertura
   const [notice, setNotice] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [rowError, setRowError] = useState('');
+  const [confirmHide, setConfirmHide] = useState(null); // id del gestor a confirmar
+  const { showToast } = useToast();
 
   async function load() {
     try {
-      const gestores = await api('/api/admin/gestores');
-      setState({ loading: false, gestores, error: '' });
+      const [gestores, branches] = await Promise.all([api('/api/admin/gestores'), api('/api/admin/branches')]);
+      setState({ loading: false, gestores, overview: Object.fromEntries(branches.map((item) => [item.branch, item])), error: '' });
     } catch (loadError) {
-      setState({ loading: false, gestores: [], error: loadError.message });
+      setState({ loading: false, gestores: [], overview: {}, error: loadError.message });
     }
   }
 
@@ -164,7 +188,14 @@ export default function GestoresPanel() {
     setBusyId(gestor.id);
     setRowError('');
     try {
-      if (action === 'resend') {
+      if (action === 'visibility') {
+        const hide = !gestor.profile_hidden;
+        await api(`/api/admin/gestores/${gestor.id}`, { method: 'PATCH', body: { profile_hidden: hide } });
+        setConfirmHide(null);
+        showToast(hide
+          ? { tone: 'menta', title: 'Perfil oculto', text: `El perfil de ${gestor.organization_name || gestor.name} ya no es público.` }
+          : { tone: 'menta', title: 'Perfil visible', text: `El perfil de ${gestor.organization_name || gestor.name} vuelve a ser público.` });
+      } else if (action === 'resend') {
         const result = await api(`/api/admin/gestores/${gestor.id}/resend-invite`, { method: 'POST' });
         setNotice({ title: `Nueva invitación para ${gestor.name}.`, email: gestor.email, link: result.invite_link, emailSent: result.email_sent });
       } else {
@@ -192,13 +223,13 @@ export default function GestoresPanel() {
         )}
       </div>
 
-      {showForm && <AddGestorForm preset={preset} onCreated={handleCreated} onCancel={() => { setShowForm(false); setPreset(null); }} />}
+      {showForm && <AddGestorForm key={Object.keys(state.overview).length ? 'listo' : 'cargando'} preset={preset} overview={state.overview} onCreated={handleCreated} onCancel={() => { setShowForm(false); setPreset(null); }} />}
       {notice && <InviteNotice notice={notice} onClose={() => setNotice(null)} />}
       {rowError && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{rowError}</p>}
 
       {state.loading && <p className="m-0 py-6 text-[14px] text-muted" aria-busy="true">Cargando...</p>}
       {state.error && <p className="mt-6 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{state.error}</p>}
-      {!state.loading && !state.error && <BranchCoverage gestores={state.gestores} onAdd={openFormFor} />}
+      {!state.loading && !state.error && <BranchCoverage gestores={state.gestores} overview={state.overview} onAdd={openFormFor} onChanged={load} />}
       {!state.loading && !state.error && state.gestores.length === 0 && (
         <div className="mt-6"><EmptyNote icon="people" title="Aún no hay gestores" text="Agrega el primero para enviarle su invitación." /></div>
       )}
@@ -226,7 +257,10 @@ export default function GestoresPanel() {
                     <td className="py-4 pr-4 font-bold text-ink">{gestor.name}</td>
                     <td className="py-4 pr-4 text-[#44564f]">{gestor.email}</td>
                     <td className="py-4 pr-4 text-[#44564f]">{gestor.organization_name || '–'}</td>
-                    <td className="py-4 pr-4 text-[#44564f]">{BRANCH_LABELS[gestor.branch] || '–'}</td>
+                    <td className="py-4 pr-4 text-[#44564f]">
+                      {BRANCH_LABELS[gestor.branch] || '–'}
+                      {gestor.is_leader && <span className="ml-2 whitespace-nowrap rounded-full bg-[rgba(212,168,67,0.2)] py-0.5 px-2 text-[11px] font-bold text-[#6b500f]">Líder</span>}
+                    </td>
                     <td className="py-4 pr-4"><span className={`whitespace-nowrap rounded-full py-1 px-3 text-[12px] font-bold ${statusTone}`}>{statusLabel}</span></td>
                     <td className="py-4">
                       <div className="flex justify-end gap-2">
@@ -238,6 +272,19 @@ export default function GestoresPanel() {
                         <button type="button" className={`${BTN_GHOST} whitespace-nowrap`} disabled={busy} onClick={() => runRowAction(gestor, 'toggle')}>
                           {gestor.active ? 'Desactivar' : 'Activar'}
                         </button>
+                        {gestor.organization_id && (confirmHide === gestor.id ? (
+                          <>
+                            <button type="button" className={`${BTN_GHOST} whitespace-nowrap`} disabled={busy} onClick={() => runRowAction(gestor, 'visibility')}>
+                              {gestor.profile_hidden ? 'Sí, mostrar' : 'Sí, ocultar'}
+                            </button>
+                            <button type="button" className={`${BTN_GHOST} whitespace-nowrap`} disabled={busy} onClick={() => setConfirmHide(null)}>No</button>
+                          </>
+                        ) : (
+                          <button type="button" className={`${BTN_GHOST} whitespace-nowrap`} disabled={busy} onClick={() => setConfirmHide(gestor.id)}
+                            aria-label={`${gestor.profile_hidden ? 'Mostrar' : 'Ocultar'} el perfil público de ${gestor.organization_name || gestor.name}`}>
+                            {gestor.profile_hidden ? 'Mostrar perfil' : 'Ocultar perfil'}
+                          </button>
+                        ))}
                       </div>
                     </td>
                   </tr>

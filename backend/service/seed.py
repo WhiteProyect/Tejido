@@ -113,7 +113,7 @@ def seed_database(db: Session):
     ], ["name"])
 
     _upsert_ignore(db, Organization, [{
-        "id": 1, "user_id": 2, "name": "Colectivo Rio Vivo",
+        "id": 1, "user_id": 2, "name": "Colectivo Rio Vivo", "slug": "colectivo-rio-vivo",
         "description": "Gestion cultural y ambiental desde Caucasia.", "contact": "hola@riovivo.co",
     }], ["id"])
     db.flush()

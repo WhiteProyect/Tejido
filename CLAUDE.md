@@ -53,19 +53,19 @@ CLOUDINARY_CLOUD_NAME=... / CLOUDINARY_API_KEY=... / CLOUDINARY_API_SECRET=...
 | Rol | Descripción |
 |-----|-------------|
 | ADMIN | Publica directamente, modera todo, gestiona gestores e invitaciones |
-| GESTOR | Crea publicaciones solo en su rama (`organizations.branch`); quedan en DRAFT hasta que se aprueben; tiene dashboard propio. Puede ser **líder de su rama** (`organizations.is_leader`, no es un rol) |
-| CIUDADANO | Navega, guarda favoritos, edita su perfil |
+| GESTOR | Crea publicaciones solo en su rama (`organizations.branch`); quedan en DRAFT hasta que se aprueben; tiene dashboard propio y un **perfil público** (`#gestor/<slug>`). Puede ser **líder de su rama** (`organizations.is_leader`, no es un rol) |
+| CIUDADANO | Navega, guarda favoritos, edita su perfil y puede **pedir participar en una rama** ("Quiero participar") |
 
 **Flujo de invitación gestor**: admin crea gestor → tabla `invite_tokens` → email Resend → `AcceptInviteScreen`.
 
-**Líder por rama (decisión 2026-10-24)**: máximo un líder por rama (lo fuerza la base); solo el ADMIN lo nombra/cambia/quita. El líder aprueba las solicitudes de ingreso a su rama (`branch_join_requests`: el ciudadano aprobado pasa a GESTOR participante) y modera lo que publican sus participantes; lo del líder lo modera el ADMIN; sin líder, todo lo gestiona el ADMIN. El ADMIN modera todo. Permisos siempre en el backend con la rama de la base (`services/branches.py`).
+**Líder por rama (decisión 2026-10-24, bloque cerrado el 2026-10-25)**: máximo un líder por rama (lo fuerza la base); solo el ADMIN lo nombra/cambia/quita (cobertura de ramas en el panel de Gestores, o `scripts/marcar_lider.py`). El líder aprueba las solicitudes de ingreso a su rama (`branch_join_requests`: el ciudadano aprobado pasa a GESTOR participante) y modera lo que publican sus participantes; lo del líder lo modera el ADMIN; sin líder, todo lo gestiona el ADMIN. El ADMIN modera todo. Permisos siempre en el backend con la rama de la base (`services/branches.py`).
 
 **Admins reales (ya activaron su cuenta; los links de invitación ya se usaron)**:
 - id 4: Camilo (bryan.giraldo.0906@gmail.com)
 - id 5: Santi (MONEYSTACK999@gmail.com)
 - id 6: Daniel (danielopg1008@gmail.com)
 
-**Cuentas en la base real (2026-10-24)**: solo los 3 admins (ids 4-6), el gestor Eze kiel (id 7, organización "Pizza party", rama GASTRONOMIA_CULTURAL, **líder de su rama** desde el 2026-10-24 con `scripts/marcar_lider.py`) y el ciudadano ezequiel (id 8). Las cuentas demo del seed (ids 1-3) y sus publicaciones se eliminaron con `scripts/eliminar_cuentas_demo.py`; Og Mauro quedó sin dueño (`user_id` NULL). `seed_database()` ya no corre con `ENVIRONMENT=production`.
+**Cuentas en la base real (2026-10-25)**: solo los 3 admins (ids 4-6), el gestor Eze kiel (id 7, organización "Pizza party", rama GASTRONOMIA_CULTURAL, **líder de su rama** desde el 2026-10-24 con `scripts/marcar_lider.py`) y el ciudadano ezequiel (id 8). Las cuentas demo del seed (ids 1-3) y sus publicaciones se eliminaron con `scripts/eliminar_cuentas_demo.py`; Og Mauro quedó sin dueño (`user_id` NULL). `seed_database()` ya no corre con `ENVIRONMENT=production`.
 
 ---
 
@@ -99,7 +99,13 @@ MUSICA, CINE_AUDIOVISUAL, DANZA, TEATRO, ARTES_VISUALES, LITERATURA, ARTESANIAS,
 - **Migración a Cloudinary** de las fotos de Og Mauro y DJ Apolo y de las 10 portadas (`scripts/migrar_imagenes_a_cloudinary.py`, ya aplicado). Los archivos locales siguen en `frontend/public` (no borrados)
 - **Página de cada publicación** (`#publicacion/<id>`, `PublicationScreen`): galería con vista ampliada, detalles de evento/oportunidad, "Publicado por"; guardar/compartir en `PublicationActions` (compartido con la tarjeta)
 - **"El hilo del tiempo"** (landing) con hitos fijos editables en `frontend/src/utils/timelineItems.js` (los 3 actuales son de ejemplo)
-- **Cobertura de ramas** en el panel de Gestores del admin (`BranchCoverage.jsx`): 10 tarjetas con estado y botón "Crear gestor" con la rama preseleccionada
+- **Cobertura de ramas** en el panel de Gestores del admin (`BranchCoverage.jsx`): 10 tarjetas con estado, líder, participantes y solicitudes pendientes; "Crear gestor" con la rama preseleccionada (interruptor "Será el líder de esta rama"); desplegable de participantes con Nombrar líder / Quitar liderazgo / Sacar de la rama (`BranchParticipants.jsx`)
+- **BLOQUE LÍDER POR RAMA (5 entregas, cerrado 2026-10-25)**:
+  1. Backend: `organizations.is_leader`, `branch_join_requests`, `services/branches.py` (permisos siempre con la rama de la base), `/api/admin/branches[/{rama}/leader]`, `/api/branches/{rama}/requests|participants|review-queue`, `/api/branch-requests`, `/api/me/branch-request`; el líder modera lo de sus participantes; `GET /api/me` trae `branch` e `is_leader`
+  2. **Perfil público del gestor** `#gestor/<slug>` (`GestorProfileScreen`, `components/gestor/`): slug único (`ensure_slug`, no cambia al renombrar), lema, portada, sede, contacto público con `show_*` (privado por defecto; `organizations.contact` nunca es público), redes, manifestaciones con fotos, galería, reconocimientos, publicaciones, equipo/líder. Admin puede ocultarlo (`profile_hidden`). `GET /api/gestores` trae `slug` (null si oculto)
+  3. **Editor del perfil** dentro de Mi perfil del gestor ("Tu perfil público", `components/gestor/edit/`): vista previa con los mismos componentes públicos (`GET /api/me/profile/preview`), lápiz por sección, cambios en vivo al guardar, `MultiImageField` (subida múltiple a Cloudinary)
+  4. **Dashboard del líder**: pestañas Por revisar / Solicitudes / Participantes con contadores (`components/gestor/leader/`); moderación compartida con el admin (`components/Moderation.jsx`); "Solicitudes de ingreso" en la Bandeja del admin (`GET /api/admin/branch-requests`, `join_requests` en `/api/admin/stats`)
+  5. **"Quiero participar"** (`components/branch/`, `utils/useBranchRequest.js`): en la categoría, en el perfil del líder y en Mi perfil del ciudadano; al aprobarse pasa a gestor sin cerrar sesión. Aviso por correo "Te nombraron líder de {rama}"
 - **Artistas — CRUD admin** (decisión 2026-10-20: la BD es la única fuente; ya no hay JSON ni scripts de carga): endpoints con permisos y validación de URLs (`/api/artists`, `/api/admin/artists[/{id}]`), pestaña Artistas del AdminDashboard (`#admin-dashboard/artistas`) con lista, alta y archivar/restaurar, y editor por pestañas (`#admin-dashboard/artistas/<id>/<pestaña>`: Datos, Música, Galería, Trayectoria, Redes, Conexiones, Métricas). Accesos solo para admin en Moneystack y en el perfil público. Solo admins crean/archivan; "eliminar" = archivar (`active=False`). DJ Apolo y Og Mauro tienen contenido de ejemplo (no real) que el admin reemplaza desde el editor
 
 ### Pendiente / En progreso
@@ -109,8 +115,8 @@ MUSICA, CINE_AUDIOVISUAL, DANZA, TEATRO, ARTES_VISUALES, LITERATURA, ARTESANIAS,
 - **"Crear mi primera publicación"** (dashboard de gestor vacío) se parte en dos líneas a ≤390 px; se resuelve con un texto más corto
 - **Hero, "Volver" desde un municipio** vuelve directo al saludo, no a Historias (lógica de `goBack`)
 - **Cloudinary (Fases A y B hechas, 2026-10-21)**: subida firmada desde el backend (`POST /api/uploads/sign`, el navegador sube directo), `ImageField` único, subida múltiple en Galería y entrega optimizada. Claves `CLOUDINARY_*` solo en `.env`. Las fotos locales ya se migraron; falta decidir si se borran de `frontend/public`
-- **EN CURSO — Líder por rama (5 entregas)**: **Entrega 1 (backend) HECHA 2026-10-24**: `organizations.is_leader`, tabla `branch_join_requests`, `services/branches.py` (permisos), endpoints `/api/admin/branches[/{rama}/leader]`, `/api/branches/{rama}/requests|participants|review-queue`, `/api/branch-requests`, `/api/me/branch-request`; moderación del líder en `PATCH /api/publications/{id}/status`; `GET /api/me` agrega `branch` e `is_leader`; `GET /api/gestores` agrega `is_leader` (líder primero); avisos al líder/equipo/solicitante. Entregas 2–5 (frontend y resto) pendientes
-- **Migraciones aplicadas en Neon hasta `d4e9b2c7f1a3`** (líder de rama y solicitudes)
+- **Migraciones aplicadas en Neon hasta `e6a1c4f8d2b5`** (perfil público de gestores)
+- **Pruebas en el navegador que escriben en Neon o envían correos**: backend TEMPORAL en otro puerto con `RESEND_API_KEY` y `SUPPORT_EMAIL` vacías + Vite de prueba en 5174 apuntando a él; cuentas "[PRUEBA]" con correo `@tejido-test.invalid` creadas y borradas por un script fuera del repo, con conteos de la base antes/después. Siempre con autorización del user
 - **Decisión de producto (2026-10-20)**: los artistas del apartado Moneystack (tabla `artists`, administrados solo por admin) son APARTE de los artistas de la sección Música de TEJIDO (los subirán/administrarán los gestores de la rama MUSICA; modelo por analizar, puede haber artistas en ambos). El contenido de la pantalla Moneystack (textos, chips, logo) se queda fijo en el código; solo la lista de artistas es administrable. El dashboard propio del artista (`ArtistDashboard`) NO aplica a Moneystack y queda diferido para los artistas de TEJIDO
 - **Tailwind**: migración incremental en curso (Moneystack + Artista migrados); resto de pantallas pendiente
 
@@ -182,3 +188,7 @@ MUSICA, CINE_AUDIOVISUAL, DANZA, TEATRO, ARTES_VISUALES, LITERATURA, ARTESANIAS,
 | `frontend/src/screens/PublicationScreen.jsx` | Página de cada publicación (`#publicacion/<id>`) |
 | `frontend/src/components/admin/BandejaPanel.jsx` / `BranchCoverage.jsx` | Bandeja del admin / cobertura de ramas |
 | `scripts/marcar_lider.py` | Nombra líder de una rama (dry-run por defecto, `--aplicar`) |
+| `backend/service/services/org_profiles.py` + `api/routes/profiles.py` | Perfil público del gestor: slug, lectura pública sin fugas, edición propia (`/api/me/profile`) |
+| `frontend/src/screens/GestorProfileScreen.jsx` + `components/gestor/` | Página `#gestor/<slug>` (cabecera y secciones), editor en `gestor/edit/`, dashboard del líder en `gestor/leader/` |
+| `frontend/src/components/branch/` + `utils/useBranchRequest.js` | Flujo "Quiero participar" (bloque, diálogo y tarjeta del ciudadano) |
+| `frontend/src/components/admin/BranchParticipants.jsx` | Participantes de una rama con acciones del admin (líder, sacar) |

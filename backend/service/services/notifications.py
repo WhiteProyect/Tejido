@@ -101,7 +101,7 @@ def build_review_for_leader(publication_title: str, gestor_name: str, leader_nam
                     f"{clip(gestor_name, 120)}, de tu rama, envió una publicación a revisión. Apruébala o devuélvela con un motivo desde tu dashboard."],
         details=[("Publicación", publication_title), ("Enviada por", gestor_name)],
         cta_label="Revisar publicaciones",
-        cta_url=_link("gestor-dashboard"),
+        cta_url=_link("gestor-dashboard/por-revisar"),
         preheader=f"{clip(gestor_name, 60)} envió «{clip(publication_title, 60)}» a revisión en {branch_label}.",
         footer_note=leader_note(branch_label),
     )
@@ -120,7 +120,7 @@ def build_join_request(applicant_name: str, branch_label: str, message: str | No
         details=[("Persona", applicant_name), ("Rama", branch_label)],
         quote=message or "No dejó un mensaje.",
         cta_label="Revisar la solicitud",
-        cta_url=_link("gestor-dashboard" if for_leader else "admin-dashboard/bandeja"),
+        cta_url=_link("gestor-dashboard/solicitudes" if for_leader else "admin-dashboard/bandeja"),
         preheader=f"{clip(applicant_name, 60)} quiere participar en {branch_label}.",
         footer_note=leader_note(branch_label) if for_leader else TEAM_NOTE,
     )
@@ -157,6 +157,27 @@ def build_join_decision(applicant_name: str, branch_label: str, approved: bool, 
         footer_note=footer,
     )
     return f"Respuesta a tu solicitud para {branch_label}", html, body
+
+
+def build_leader_appointed(gestor_name: str, branch_label: str):
+    html, body = render_email(
+        kicker=f"Liderazgo · {branch_label}",
+        accent="gold",
+        title="Ahora lideras",
+        title_accent=f"{branch_label}.",
+        paragraphs=[
+            f"Hola, {clip(gestor_name, 120)}:" if gestor_name else "Hola:",
+            f"El equipo de TEJIDO te nombró líder de la rama {branch_label}. Desde tu dashboard revisarás lo que "
+            "publican los participantes de tu rama y decidirás quién se suma a ella.",
+            "Lo que tú publiques lo seguirá revisando el equipo de TEJIDO.",
+        ],
+        details=[("Rama", branch_label)],
+        cta_label="Ir a Por revisar",
+        cta_url=_link("gestor-dashboard/por-revisar"),
+        preheader=f"Te nombraron líder de {branch_label} en TEJIDO.",
+        footer_note=GESTOR_NOTE,
+    )
+    return f"Te nombraron líder de {branch_label}", html, body
 
 
 def build_moderation(to_name: str, publication_id: int | None, publication_title: str, status: str, note: str | None):
@@ -211,6 +232,11 @@ def notify_review(publication_title: str, gestor_name: str, leader: dict | None 
         return
     subject, html, text = build_review(publication_title, gestor_name)
     _safely(f"revision de '{publication_title}'", email_service.send_team_notification, subject, text, html=html)
+
+
+def notify_leader_appointed(to_email: str, gestor_name: str, branch_label: str) -> None:
+    subject, html, text = build_leader_appointed(gestor_name, branch_label)
+    _safely(f"lider nombrado {gestor_name}", email_service.send_gestor_notification, to_email, subject, text, html=html)
 
 
 def notify_join_request(applicant_name: str, branch_label: str, message: str | None, leader: dict | None) -> None:

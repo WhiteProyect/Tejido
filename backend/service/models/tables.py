@@ -84,6 +84,8 @@ class Organization(Base):
         # Un lider por rama, forzado por la base (indice unico parcial).
         Index("uq_organizations_branch_leader", "branch", unique=True, postgresql_where=text("is_leader")),
         CheckConstraint("is_leader = false OR branch IS NOT NULL", name="ck_organizations_leader_has_branch"),
+        # Slug del perfil publico (#gestor/<slug>), unico sin distinguir mayusculas.
+        Index("uq_organizations_slug_lower", func.lower(text("slug")), unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -100,6 +102,29 @@ class Organization(Base):
     # Lider de su rama (no es un rol: lo nombra el admin). Modera lo que publican los
     # participantes de la rama y aprueba sus solicitudes de ingreso (services/branches.py).
     is_leader: Mapped[bool] = mapped_column(default=False, server_default=text("false"), nullable=False)
+
+    # Perfil publico (#gestor/<slug>, services/org_profiles.py). El slug se asigna al crear la
+    # organizacion (ensure_slug) y no cambia si cambia el nombre. contact sigue siendo PRIVADO.
+    slug: Mapped[str] = mapped_column(String, nullable=False)
+    tagline: Mapped[str | None] = mapped_column(String)
+    cover_url: Mapped[str | None] = mapped_column(String)
+    founded_year: Mapped[int | None] = mapped_column(Integer)
+    municipality: Mapped[str | None] = mapped_column(String)
+    has_venue: Mapped[bool] = mapped_column(default=False, server_default=text("false"), nullable=False)
+    address: Mapped[str | None] = mapped_column(String)
+    opening_hours: Mapped[str | None] = mapped_column(String)
+    map_url: Mapped[str | None] = mapped_column(String)
+    whatsapp: Mapped[str | None] = mapped_column(String)
+    public_email: Mapped[str | None] = mapped_column(String)
+    website: Mapped[str | None] = mapped_column(String)
+    # Privacidad por defecto: cada dato de contacto solo se muestra si el gestor lo activa.
+    show_whatsapp: Mapped[bool] = mapped_column(default=False, server_default=text("false"), nullable=False)
+    show_public_email: Mapped[bool] = mapped_column(default=False, server_default=text("false"), nullable=False)
+    show_website: Mapped[bool] = mapped_column(default=False, server_default=text("false"), nullable=False)
+    seeking_text: Mapped[str | None] = mapped_column(String)  # solo lideres
+    achievements: Mapped[str | None] = mapped_column(Text)  # una por linea
+    # Solo lo cambia el admin: oculta el perfil publico (404) sin desactivar la cuenta.
+    profile_hidden: Mapped[bool] = mapped_column(default=False, server_default=text("false"), nullable=False)
 
 
 class InviteToken(Base):
@@ -442,3 +467,39 @@ class BranchJoinRequest(Base):
     decision_note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class OrganizationSocialLink(Base):
+    __tablename__ = "organization_social_links"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    platform: Mapped[str] = mapped_column(String, nullable=False)
+    url: Mapped[str] = mapped_column(String, nullable=False)
+    label: Mapped[str | None] = mapped_column(String)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+
+class OrganizationHighlight(Base):
+    """Manifestacion cultural del perfil del gestor ("Lo que hacemos")."""
+    __tablename__ = "organization_highlights"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    when_text: Mapped[str | None] = mapped_column(String)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+
+class OrganizationImage(Base):
+    """Foto del perfil: de una manifestacion (highlight_id) o de la galeria general (highlight_id NULL)."""
+    __tablename__ = "organization_images"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
+    highlight_id: Mapped[int | None] = mapped_column(ForeignKey("organization_highlights.id", ondelete="CASCADE"), index=True)
+    url: Mapped[str] = mapped_column(String, nullable=False)
+    alt_text: Mapped[str | None] = mapped_column(String)
+    caption: Mapped[str | None] = mapped_column(String)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

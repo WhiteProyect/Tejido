@@ -65,7 +65,11 @@ def get_publication_images(publication_id: int, user: Optional[dict] = Depends(g
     if not pub:
         raise AppError(404, "NOT_FOUND", "Publicacion no encontrada")
     if pub["status"] != "PUBLISHED" and (not user or (user["role"] != "ADMIN" and pub["author_id"] != user["id"])):
-        raise AppError(403, "FORBIDDEN", "No tienes acceso a este contenido")
+        # Igual que el detalle: el lider ve lo que esta en revision de sus participantes.
+        category = db.execute(select(Publication.cultural_category).where(Publication.id == publication_id)).scalar_one()
+        if not (pub["status"] == "REVIEW" and branch_service.can_moderate(
+                db, user, {"author_id": pub["author_id"], "cultural_category": category})):
+            raise AppError(403, "FORBIDDEN", "No tienes acceso a este contenido")
     return svc.list_publication_images(db, publication_id)
 
 

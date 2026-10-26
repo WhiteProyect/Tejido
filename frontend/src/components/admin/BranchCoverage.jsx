@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import BranchParticipants from './BranchParticipants.jsx';
 import { BTN_GHOST, BTN_INK_SM } from '../uiStyles.js';
 import { coverSources, useCategoryCovers } from '../../utils/categoryCovers.js';
 import { CULTURAL_CATEGORIES } from '../../utils/constants.js';
@@ -8,6 +9,9 @@ import { CULTURAL_CATEGORIES } from '../../utils/constants.js';
 // (ninguno activo, alguno PENDIENTE; un gestor desactivado tambien figura como PENDIENTE, igual
 // que en el backend) o Sin gestor. Gestores sin rama o con una rama invalida no cuentan en
 // ninguna tarjeta: se resumen en una nota. onAdd(rama) abre el formulario con esa rama elegida.
+// overview (GET /api/admin/branches, por clave): lider, participantes y solicitudes pendientes de
+// cada rama. "Participantes" despliega la lista con las acciones del admin (BranchParticipants);
+// onChanged recarga la cobertura y la tabla tras una accion.
 const STATES = {
   covered: { label: 'Cubierta', tone: 'bg-[rgba(117,183,155,0.2)] text-[#2f6b52]', dot: 'bg-mint' },
   pending: { label: 'Invitación pendiente', tone: 'bg-[rgba(212,168,67,0.18)] text-[#7a5c12]', dot: 'bg-gold' },
@@ -39,7 +43,8 @@ function Thumb({ covers, branch }) {
   return <img src={sources[attempt]} alt="" className="size-12 shrink-0 rounded-[12px] object-cover" onError={() => setAttempt(attempt + 1)} />;
 }
 
-export default function BranchCoverage({ gestores, onAdd }) {
+export default function BranchCoverage({ gestores, overview = {}, onAdd, onChanged }) {
+  const [openBranch, setOpenBranch] = useState(null);
   const covers = useCategoryCovers();
   const { branches, unassigned } = branchCoverage(gestores);
   const count = (state) => branches.filter((b) => b.state === state).length;
@@ -71,6 +76,27 @@ export default function BranchCoverage({ gestores, onAdd }) {
                   </span>
                 </div>
               </div>
+              {overview[branch.key] && (
+                <div className="grid gap-1 text-[14px] leading-[1.4]">
+                  {overview[branch.key].leader ? (
+                    <p className="m-0 text-ink [overflow-wrap:anywhere]">
+                      <strong>Líder:</strong> {overview[branch.key].leader.name}
+                      {overview[branch.key].leader.organization && ` · ${overview[branch.key].leader.organization}`}
+                    </p>
+                  ) : (
+                    <p className="m-0 font-semibold text-[#a8431f]">Sin líder: el equipo gestiona esta rama</p>
+                  )}
+                  <p className="m-0 text-[#53645c]">
+                    {overview[branch.key].participants} {overview[branch.key].participants === 1 ? 'participante' : 'participantes'}
+                    {' · '}
+                    {overview[branch.key].pending_requests > 0 ? (
+                      <a className={`font-bold text-river no-underline hover:underline ${FOCUS}`} href="#admin-dashboard/bandeja">
+                        {overview[branch.key].pending_requests} {overview[branch.key].pending_requests === 1 ? 'solicitud pendiente' : 'solicitudes pendientes'}
+                      </a>
+                    ) : 'sin solicitudes pendientes'}
+                  </p>
+                </div>
+              )}
               {branch.gestores.length > 0 && (
                 <ul className="m-0 grid list-none gap-1 p-0 text-[14px] leading-[1.4]" aria-label={`Gestores de ${branch.label}`}>
                   {branch.gestores.map((gestor) => (
@@ -82,7 +108,12 @@ export default function BranchCoverage({ gestores, onAdd }) {
                   ))}
                 </ul>
               )}
-              <div className="mt-auto">
+              {openBranch === branch.key && (
+                <div id={`participantes-${branch.key}`}>
+                  <BranchParticipants branch={branch.key} branchLabel={branch.label} onChanged={onChanged} />
+                </div>
+              )}
+              <div className="mt-auto flex flex-wrap gap-2 max480:grid max480:grid-cols-1">
                 <button
                   type="button"
                   className={`${isEmpty ? BTN_INK_SM : BTN_GHOST} ${FOCUS}`}
@@ -91,6 +122,13 @@ export default function BranchCoverage({ gestores, onAdd }) {
                 >
                   {isEmpty ? 'Crear gestor' : 'Agregar otro gestor'}
                 </button>
+                {!isEmpty && (
+                  <button type="button" className={`${BTN_GHOST} ${FOCUS}`} aria-expanded={openBranch === branch.key}
+                    aria-controls={`participantes-${branch.key}`} onClick={() => setOpenBranch(openBranch === branch.key ? null : branch.key)}
+                    aria-label={`${openBranch === branch.key ? 'Ocultar' : 'Ver'} los participantes de ${branch.label}`}>
+                    {openBranch === branch.key ? 'Ocultar participantes' : 'Participantes'}
+                  </button>
+                )}
               </div>
             </li>
           );

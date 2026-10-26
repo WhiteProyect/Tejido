@@ -4,6 +4,10 @@ import Icon from '../components/Icon.jsx';
 import PublicationCard from '../components/PublicationCard.jsx';
 import PublicationForm from '../components/PublicationForm.jsx';
 import PillTabs from '../components/admin/PillTabs.jsx';
+import { LeaderBadge } from '../components/gestor/GestorHeader.jsx';
+import ParticipantsPanel from '../components/gestor/leader/ParticipantsPanel.jsx';
+import RequestsPanel from '../components/gestor/leader/RequestsPanel.jsx';
+import ReviewQueuePanel from '../components/gestor/leader/ReviewQueuePanel.jsx';
 import { BTN_DANGER, BTN_GHOST, BTN_INK_MD, BTN_INK_SM, EYEBROW, H1, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
@@ -24,12 +28,20 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 // - "Mi categoria": colegas y publicaciones de otros autores de su rama, en solo lectura.
 // - Crear/editar: PublicationForm sin allowPublish y con su rama fija. Enviar/Reenviar: POST
 //   .../submit. Borrar/Archivar: DELETE (borrado logico).
+// - Lider de su rama (user.is_leader): ademas Por revisar (moderar lo de sus participantes),
+//   Solicitudes (aprobar o rechazar ingresos) y Participantes (components/gestor/leader/), con
+//   sus contadores en el encabezado; se cargan al entrar y se refrescan tras cada accion.
 // La pestana va en la URL con replaceState (sin hashchange: App subiria la pagina).
 
 const CATEGORY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label, slug]) => [key, { label, slug }]));
 const TABS = [['mis-publicaciones', 'Mis publicaciones', 'book'], ['mi-categoria', 'Mi categoría', 'people']];
-const TAB_IDS = TABS.map(([id]) => id);
-const tabFrom = (section) => (TAB_IDS.includes(section) ? section : 'mis-publicaciones');
+// El lider de la rama suma Por revisar, Solicitudes y Participantes (en este orden).
+const LEADER_TABS = [
+  TABS[0], ['por-revisar', 'Por revisar', 'seal'], ['solicitudes', 'Solicitudes', 'inbox'], ['participantes', 'Participantes', 'people'], TABS[1],
+];
+const tabsFor = (isLeader) => (isLeader ? LEADER_TABS : TABS);
+// Una pestana de lider pedida por URL sin ser lider cae a Mis publicaciones.
+const tabFrom = (section, isLeader) => (tabsFor(isLeader).some(([id]) => id === section) ? section : 'mis-publicaciones');
 const STATUS_ORDER = ['DRAFT', 'REVIEW', 'REJECTED', 'PUBLISHED'];
 const COUNT_LABELS = { DRAFT: 'Borradores', REVIEW: 'En revisión', REJECTED: 'Rechazadas', PUBLISHED: 'Publicadas' };
 const ALERT = 'mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]';
@@ -217,9 +229,30 @@ function MyCategory({ category }) {
   );
 }
 
+// Cifras del lider en el encabezado: cada una lleva a su pestana.
+function LeaderSummary({ branchLabel, counts, onOpen }) {
+  const tiles = [['por-revisar', 'Por revisar', counts.review], ['solicitudes', 'Solicitudes pendientes', counts.requests], ['participantes', 'Participantes', counts.participants]];
+  return (
+    <div className="grid gap-3">
+      <div><LeaderBadge branchLabel={branchLabel} /></div>
+      <div className="grid grid-cols-3 gap-3 max480:grid-cols-1" role="group" aria-label="Tu rama en cifras">
+        {tiles.map(([id, label, value]) => (
+          <button key={id} type="button" onClick={() => onOpen(id)} aria-label={`${label}: ${value ?? 'cargando'}. Abrir la pestaña`}
+            className="flex cursor-pointer flex-col-reverse rounded-[16px] border border-[rgba(212,168,67,0.45)] bg-[rgba(212,168,67,0.08)] py-3 pr-3 pl-4 text-left text-ink transition-colors duration-200 hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">
+            <span className="mt-1.5 text-[12px] font-bold uppercase tracking-[.1em] text-[#6b500f]">{label}</span>
+            <span className="text-[32px] font-extrabold leading-none tracking-[-0.04em]">{value ?? '–'}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function GestorDashboard({ user, section }) {
   const { showToast } = useToast();
-  const [tab, setTab] = useState(() => tabFrom(section));
+  const isLeader = Boolean(user?.is_leader);
+  const [tab, setTab] = useState(() => tabFrom(section, isLeader));
+  const [leader, setLeader] = useState({ loaded: false, error: '', queue: [], requests: [], participants: [] });
   const [filter, setFilter] = useState('ALL');
   const [state, setState] = useState({ loading: true, error: '', publications: [], categories: [], category: null });
   const [editor, setEditor] = useState(null); // null | { publication: null | objeto }
@@ -239,12 +272,30 @@ export default function GestorDashboard({ user, section }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Datos del lider (cola, solicitudes pendientes y participantes) para pestanas y contadores.
+  const branchKey = state.category?.branch || null;
+  const loadLeader = useCallback(async () => {
+    if (!isLeader || !branchKey) return;
+    try {
+      const [queue, requests, participants] = await Promise.all([
+        apiRequest(`/api/branches/${branchKey}/review-queue`),
+        apiRequest(`/api/branches/${branchKey}/requests?status=PENDING`),
+        apiRequest(`/api/branches/${branchKey}/participants`),
+      ]);
+      setLeader({ loaded: true, error: '', queue, requests, participants });
+    } catch (error) {
+      setLeader((current) => ({ ...current, loaded: true, error: error.message }));
+    }
+  }, [isLeader, branchKey]);
+
+  useEffect(() => { loadLeader(); }, [loadLeader]);
+
   // Enlaces a #gestor-dashboard/<seccion> desde fuera (hashchange) mueven la pestana.
   useEffect(() => {
-    const sync = () => setTab(tabFrom(window.location.hash.replace(/^#gestor-dashboard\/?/, '')));
+    const sync = () => setTab(tabFrom(window.location.hash.replace(/^#gestor-dashboard\/?/, ''), isLeader));
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
-  }, []);
+  }, [isLeader]);
 
   function changeTab(id) {
     setTab(id);
@@ -284,6 +335,16 @@ export default function GestorDashboard({ user, section }) {
   const info = branch ? { label: category.label || CATEGORY[branch]?.label, slug: CATEGORY[branch]?.slug } : null;
   const visible = filter === 'ALL' ? publications : publications.filter((publication) => publication.status === filter);
   const ready = !state.loading && !state.error && category;
+  const showLeader = isLeader && ready && branch;
+  const leaderCounts = leader.loaded && !leader.error
+    ? { review: leader.queue.length, requests: leader.requests.length, participants: leader.participants.filter((p) => !p.is_leader).length }
+    : {};
+  const tabBadges = {
+    'por-revisar': leaderCounts.review ? { badge: leaderCounts.review, badgeLabel: 'por revisar', badgeTone: 'alert' } : {},
+    solicitudes: leaderCounts.requests ? { badge: leaderCounts.requests, badgeLabel: 'pendientes', badgeTone: 'alert' } : {},
+    participantes: leaderCounts.participants !== undefined ? { badge: leaderCounts.participants, badgeLabel: 'participantes', badgeTone: 'neutral' } : {},
+  };
+  const refreshLeader = async () => { await Promise.all([loadLeader(), load()]); };
 
   return (
     <section className={`${SECTION} min-h-[62vh]`}>
@@ -307,6 +368,7 @@ export default function GestorDashboard({ user, section }) {
           </div>
         </div>
         {ready && branch && !editor && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}><Icon name="pen" className="size-4" /> Nueva publicación</button>}
+        {showLeader && <div className="w-full"><LeaderSummary branchLabel={info.label} counts={leaderCounts} onOpen={changeTab} /></div>}
       </header>
 
       {state.loading && <p className="m-0 py-6 text-[14px] text-muted" aria-busy="true">Cargando...</p>}
@@ -324,7 +386,9 @@ export default function GestorDashboard({ user, section }) {
       {ready && branch && (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
           <StatusCounters counts={category.counts} filter={filter} onFilter={(value) => { setFilter(value); if (tab !== 'mis-publicaciones') changeTab('mis-publicaciones'); }} />
-          <PillTabs idPrefix="gestor" label="Qué ver" active={tab} onChange={changeTab} tabs={TABS.map(([id, label, icon]) => ({ id, label, icon }))} />
+          <PillTabs idPrefix="gestor" label="Qué ver" active={tab} onChange={changeTab}
+            tabs={tabsFor(isLeader).map(([id, label, icon]) => ({ id, label, icon, ...(tabBadges[id] || {}) }))} />
+          {showLeader && leader.error && <p className={ALERT} role="alert">{leader.error}</p>}
 
           <div id={`gestor-panel-${tab}`} role="tabpanel" aria-labelledby={`gestor-tab-${tab}`} className="grid grid-cols-[minmax(0,1fr)] gap-6">
             {tab === 'mis-publicaciones' && (
@@ -371,6 +435,16 @@ export default function GestorDashboard({ user, section }) {
               </>
             )}
             {tab === 'mi-categoria' && <MyCategory category={category} />}
+            {showLeader && !leader.loaded && ['por-revisar', 'solicitudes', 'participantes'].includes(tab) && (
+              <p className="m-0 py-6 text-[14px] text-muted" aria-busy="true">Cargando...</p>
+            )}
+            {showLeader && leader.loaded && tab === 'por-revisar' && <ReviewQueuePanel queue={leader.queue} branchLabel={info.label} onChanged={refreshLeader} />}
+            {showLeader && leader.loaded && tab === 'solicitudes' && (
+              <RequestsPanel branch={branch} branchLabel={info.label} pending={leader.requests} onChanged={refreshLeader} />
+            )}
+            {showLeader && leader.loaded && tab === 'participantes' && (
+              <ParticipantsPanel branch={branch} branchLabel={info.label} participants={leader.participants} userId={user.id} onChanged={refreshLeader} />
+            )}
           </div>
         </div>
       )}

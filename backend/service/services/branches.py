@@ -10,11 +10,12 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from backend.service.errors import AppError
 from backend.service.models.tables import BranchJoinRequest, Organization, Publication, Role, User
 from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS
+from backend.service.services.org_profiles import ensure_slug
 from backend.service.services.serialization import rows_to_dicts
 
 
@@ -196,22 +197,45 @@ def _request_dict(row) -> dict:
     return {
         "id": row.id, "user_id": row.user_id, "name": row.name, "email": row.email, "branch": row.branch,
         "message": row.message, "status": row.status, "decision_note": row.decision_note,
-        "created_at": row.created_at, "decided_at": row.decided_at,
+        "decided_by_name": row.decided_by_name, "created_at": row.created_at, "decided_at": row.decided_at,
     }
 
 
-def list_requests(db: Session, branch: str, status: str) -> list[dict]:
+def _requests(db: Session, status: str, branch: Optional[str] = None) -> list[dict]:
+    """Solicitudes (de una rama o de todas). Las pendientes, de la mas antigua a la mas nueva (se
+    atienden en orden de llegada); el resto, la mas reciente primero."""
+    decider = aliased(User)
     query = (
         select(BranchJoinRequest.id, BranchJoinRequest.user_id, User.name, User.email, BranchJoinRequest.branch,
                BranchJoinRequest.message, BranchJoinRequest.status, BranchJoinRequest.decision_note,
-               BranchJoinRequest.created_at, BranchJoinRequest.decided_at)
+               decider.name.label("decided_by_name"), BranchJoinRequest.created_at, BranchJoinRequest.decided_at)
         .join(User, User.id == BranchJoinRequest.user_id)
-        .where(BranchJoinRequest.branch == branch)
-        .order_by(BranchJoinRequest.created_at.desc(), BranchJoinRequest.id.desc())
+        .join(decider, decider.id == BranchJoinRequest.decided_by, isouter=True)
     )
+    if branch is not None:
+        query = query.where(BranchJoinRequest.branch == branch)
     if status != "ALL":
         query = query.where(BranchJoinRequest.status == status)
+    if status == "PENDING":
+        query = query.order_by(BranchJoinRequest.created_at.asc(), BranchJoinRequest.id.asc())
+    else:
+        query = query.order_by(BranchJoinRequest.created_at.desc(), BranchJoinRequest.id.desc())
     return [_request_dict(row) for row in db.execute(query).all()]
+
+
+def list_requests(db: Session, branch: str, status: str) -> list[dict]:
+    return _requests(db, status, branch)
+
+
+def list_all_requests(db: Session, status: str) -> list[dict]:
+    """Bandeja del admin: solicitudes de todas las ramas, con la etiqueta de la rama y si tiene
+    lider activo (si no lo tiene, le toca al admin)."""
+    rows = _requests(db, status)
+    leaders = {branch: branch_leader(db, branch) is not None for branch in {row["branch"] for row in rows}}
+    for row in rows:
+        row["branch_label"] = CULTURAL_CATEGORY_LABELS.get(row["branch"], row["branch"])
+        row["branch_has_leader"] = leaders[row["branch"]]
+    return rows
 
 
 def create_request(db: Session, user: dict, branch: str, message: Optional[str]) -> BranchJoinRequest:
@@ -271,7 +295,9 @@ def approve_request(db: Session, branch: str, request_id: int, decided_by: int) 
     applicant.role_id = _role_id(db, "GESTOR")
     org = _organization(db, applicant.id)
     if org is None:
-        db.add(Organization(user_id=applicant.id, name=applicant.name, branch=branch, is_leader=False, active=True))
+        org = Organization(user_id=applicant.id, name=applicant.name, branch=branch, is_leader=False, active=True)
+        ensure_slug(db, org)
+        db.add(org)
     else:
         org.branch, org.is_leader, org.active = branch, False, True
     request.status, request.decided_by, request.decided_at = "APPROVED", decided_by, now_utc()
@@ -302,7 +328,7 @@ def list_participants(db: Session, branch: str) -> list[dict]:
         .group_by(Publication.author_id).subquery()
     )
     rows = db.execute(
-        select(User.id, User.name, User.active, Organization.name.label("organization"), Organization.photo_url,
+        select(User.id, User.name, User.active, Organization.name.label("organization"), Organization.photo_url, Organization.slug,
                Organization.is_leader, joined.c.joined_at,
                func.coalesce(counts.c.published, 0).label("published"), func.coalesce(counts.c.in_review, 0).label("in_review"))
         .join(Organization, Organization.user_id == User.id)

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
+import Lightbox from '../components/Lightbox.jsx';
 import PublicationActions from '../components/PublicationActions.jsx';
 import { BTN_INK_OUTLINE_MD, SECTION } from '../components/uiStyles.js';
 import { apiRequest } from '../utils/api.js';
@@ -30,67 +31,6 @@ function formatDateTime(iso) {
   if (!time || (time[1] === '00' && time[2] === '00')) return text;
   const hours = Number(time[1]);
   return `${text} · ${hours % 12 || 12}:${time[2]} ${hours < 12 ? 'a. m.' : 'p. m.'}`;
-}
-
-function Lightbox({ photos, index, onClose, onMove }) {
-  const closeRef = useRef(null);
-  const photo = photos[index];
-
-  useEffect(() => {
-    const previous = document.activeElement;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    closeRef.current?.focus();
-    return () => {
-      document.body.style.overflow = overflow;
-      previous?.focus?.();
-    };
-  }, []);
-
-  useEffect(() => {
-    function handleKey(event) {
-      if (event.key === 'Escape') onClose();
-      else if (event.key === 'ArrowRight') onMove(1);
-      else if (event.key === 'ArrowLeft') onMove(-1);
-      else if (event.key === 'Tab') {
-        // Foco atrapado dentro de la vista ampliada.
-        const focusable = [...document.querySelectorAll('[data-lightbox] button')];
-        const position = focusable.indexOf(document.activeElement);
-        if (event.shiftKey && position <= 0) { event.preventDefault(); focusable[focusable.length - 1]?.focus(); }
-        else if (!event.shiftKey && position === focusable.length - 1) { event.preventDefault(); focusable[0]?.focus(); }
-      }
-    }
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [onClose, onMove]);
-
-  const navButton = `inline-flex size-12 shrink-0 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/40 text-white transition-colors duration-200 hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white max600:size-10`;
-
-  return (
-    <div
-      data-lightbox
-      className="fixed inset-0 z-[200] flex flex-col bg-[rgba(8,20,16,.92)] p-4 text-white max600:p-2"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Galería de fotos: ${index + 1} de ${photos.length}`}
-      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
-    >
-      <div className="flex items-center justify-between gap-4 px-2 py-1">
-        <p className="m-0 text-[14px] font-bold" aria-live="polite">{index + 1} / {photos.length}</p>
-        <button ref={closeRef} type="button" className={navButton} onClick={onClose} aria-label="Cerrar galería">
-          <Icon name="close" className="size-5" />
-        </button>
-      </div>
-      <div className="flex min-h-0 flex-1 items-center justify-center gap-3" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-        <button type="button" className={navButton} onClick={() => onMove(-1)} aria-label="Foto anterior"><Icon name="arrow-left" className="size-5" /></button>
-        <figure className="m-0 flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center">
-          <img src={cdnImage(photo.url, { width: 1600 })} alt={photo.alt} className="max-h-[78vh] max-w-full rounded-[12px] object-contain" />
-          {photo.caption && <figcaption className="mt-3 max-w-[720px] text-center text-[14px] leading-[1.5] text-white/80">{photo.caption}</figcaption>}
-        </figure>
-        <button type="button" className={navButton} onClick={() => onMove(1)} aria-label="Foto siguiente"><Icon name="arrow-right" className="size-5" /></button>
-      </div>
-    </div>
-  );
 }
 
 function Detail({ label, children }) {
@@ -196,7 +136,9 @@ export default function PublicationScreen({ id, user, canGoBack }) {
         {pub.status !== 'PUBLISHED' && (
           <p className="mt-0 mb-6 flex flex-wrap items-center gap-2 rounded-[14px] border border-line bg-[#fffaf2] py-3 px-4 text-[14px] text-[#53645c]" role="note">
             <span className={`rounded-full py-0.5 px-2.5 text-[12px] font-bold ${statusTone}`}>{statusLabel}</span>
-            Solo tú y el equipo de TEJIDO pueden ver esta página mientras no esté publicada.
+            {user && pub.author_id !== user.id && user.role !== 'ADMIN'
+              ? 'La ves porque lideras esta rama: está esperando tu revisión. Apruébala o recházala desde tu dashboard, en «Por revisar».'
+              : 'Solo tú y el equipo de TEJIDO pueden ver esta página mientras no esté publicada.'}
             {pub.status === 'REJECTED' && pub.moderation_note && <span className="basis-full text-[#a8431f]"><strong>Motivo:</strong> {pub.moderation_note}</span>}
           </p>
         )}
@@ -275,7 +217,9 @@ export default function PublicationScreen({ id, user, canGoBack }) {
                   <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[rgba(29,143,163,0.14)] text-[15px] font-extrabold text-[#146f80]" aria-hidden="true">{getInitials(authorName)}</span>
                 )}
                 <span className="min-w-0">
-                  <strong className="block [overflow-wrap:anywhere]">{authorName}</strong>
+                  {pub.author_slug ? (
+                    <a href={`#gestor/${pub.author_slug}`} className={`block font-bold text-river no-underline [overflow-wrap:anywhere] hover:underline ${FOCUS}`}>{authorName}</a>
+                  ) : <strong className="block [overflow-wrap:anywhere]">{authorName}</strong>}
                   {branch && <span className="block text-[13px] text-muted">{branch}</span>}
                 </span>
               </span>

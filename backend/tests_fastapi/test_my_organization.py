@@ -46,7 +46,8 @@ def test_gestor_reads_and_updates_own_organization(client, tokens, sent_emails):
     # La foto nueva sale en el listado publico de su categoria.
     public = client.get("/api/gestores", params={"branch": "CINE_AUDIOVISUAL"}).json()
     assert {"id": created["organization_id"], "name": "Cine al Barrio Caucasia", "branch": "CINE_AUDIOVISUAL",
-            "photo_url": "https://cdn.tejido.co/cine.jpg", "is_leader": False} in public
+            "photo_url": "https://cdn.tejido.co/cine.jpg", "is_leader": False} in [
+                {k: v for k, v in g.items() if k != "slug"} for g in public]
 
     # Solo lo enviado cambia; vacio quita los opcionales.
     resp = client.patch("/api/me/organization", headers=auth, json={"description": "", "photo_url": ""})

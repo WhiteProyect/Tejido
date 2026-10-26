@@ -1,19 +1,22 @@
 import logging
-from typing import Optional
+from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.service.api.deps import get_current_user, require_roles
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
-from backend.service.models.tables import Organization, Publication, Report, Role, Suggestion, User
+from backend.service.models.tables import BranchJoinRequest, Organization, Publication, Report, Role, Suggestion, User
 from backend.service.schemas.branches import LeaderInput
+from backend.service.schemas.cultural_categories import CULTURAL_CATEGORY_LABELS
 from backend.service.schemas.organizations import GestorCreateInput, GestorUpdateInput
 from backend.service.services import artists as artists_service
 from backend.service.services import branches as branch_service
 from backend.service.services import email as email_service
+from backend.service.services import notifications
+from backend.service.services import org_profiles
 from backend.service.services.auth import now_utc
 from backend.service.services.invites import create_invite, invite_link, unusable_password_hash
 from backend.service.services.serialization import rows_to_dicts
@@ -40,8 +43,11 @@ def stats(user: Optional[dict] = Depends(get_current_user), db: Session = Depend
     ).scalar_one()
     reports = db.execute(select(func.count()).select_from(Report).where(Report.status == "OPEN")).scalar_one()
     suggestions = db.execute(select(func.count()).select_from(Suggestion).where(Suggestion.status == "NEW")).scalar_one()
+    join_requests = db.execute(
+        select(func.count()).select_from(BranchJoinRequest).where(BranchJoinRequest.status == "PENDING")
+    ).scalar_one()
     return {"published": published, "pending": pending, "users": users, "gestores_activos": gestores_activos,
-            "reports": reports, "suggestions": suggestions}
+            "reports": reports, "suggestions": suggestions, "join_requests": join_requests}
 
 
 # ---------------------------------------------------------------------------
@@ -79,8 +85,8 @@ def _status(active: bool) -> str:
 
 
 @router.post("/gestores")
-def create_gestor(payload: GestorCreateInput, user: Optional[dict] = Depends(get_current_user),
-                  db: Session = Depends(get_db)):
+def create_gestor(payload: GestorCreateInput, background_tasks: BackgroundTasks,
+                  user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
     require_roles(user, ("ADMIN",), ADMIN_ONLY)
     if db.execute(select(User.id).where(func.lower(User.email) == payload.email)).first():
         raise AppError(409, "EMAIL_IN_USE", "Ya existe una cuenta con ese correo")
@@ -97,6 +103,7 @@ def create_gestor(payload: GestorCreateInput, user: Optional[dict] = Depends(get
         user_id=gestor.id, name=payload.organization_name, branch=payload.branch, contact=payload.contact,
         is_leader=payload.is_leader,
     )
+    org_profiles.ensure_slug(db, organization)
     db.add(organization)
     db.flush()
     token = create_invite(db, gestor.id)
@@ -104,6 +111,9 @@ def create_gestor(payload: GestorCreateInput, user: Optional[dict] = Depends(get
     db.commit()
 
     link, email_sent = _send_invite(gestor, token)
+    if payload.is_leader:
+        background_tasks.add_task(notifications.notify_leader_appointed, gestor.email, gestor.name,
+                                  CULTURAL_CATEGORY_LABELS[payload.branch])
     return {"user_id": gestor.id, "organization_id": organization.id, "invite_link": link, "email_sent": email_sent}
 
 
@@ -113,7 +123,8 @@ def list_gestores(user: Optional[dict] = Depends(get_current_user), db: Session 
     rows = db.execute(
         select(User.id, User.name, User.email, User.active, User.created_at,
                Organization.id.label("organization_id"), Organization.name.label("organization_name"),
-               Organization.branch, Organization.contact, Organization.photo_url)
+               Organization.branch, Organization.contact, Organization.photo_url, Organization.is_leader,
+               Organization.slug, Organization.profile_hidden)
         .join(Role, Role.id == User.role_id)
         .join(Organization, Organization.user_id == User.id, isouter=True)
         .where(Role.name == "GESTOR")
@@ -141,6 +152,7 @@ def update_gestor(gestor_id: int, payload: GestorUpdateInput, user: Optional[dic
             if not org_fields.get("organization_name"):
                 raise AppError(400, "VALIDATION", "El gestor no tiene organizacion: envia organization_name para crearla")
             organization = Organization(user_id=gestor.id, name=org_fields["organization_name"])
+            org_profiles.ensure_slug(db, organization)
             db.add(organization)
         if org_fields.get("organization_name"):
             organization.name = org_fields["organization_name"]
@@ -152,6 +164,11 @@ def update_gestor(gestor_id: int, payload: GestorUpdateInput, user: Optional[dic
             organization.contact = org_fields["contact"] or None
         if "photo_url" in org_fields:
             organization.photo_url = org_fields["photo_url"] or None
+    if "profile_hidden" in sent and payload.profile_hidden is not None:
+        organization = db.execute(select(Organization).where(Organization.user_id == gestor.id)).scalars().first()
+        if organization is None:
+            raise AppError(409, "NO_ORGANIZATION", "Este gestor no tiene organización ni perfil público")
+        organization.profile_hidden = payload.profile_hidden
     db.flush()
     return {"ok": True, "id": gestor.id, "active": gestor.active, "status": _status(gestor.active)}
 
@@ -196,11 +213,26 @@ def list_branches(user: Optional[dict] = Depends(get_current_user), db: Session 
     return branch_service.branches_overview(db)
 
 
-@router.put("/branches/{branch}/leader")
-def put_branch_leader(branch: str, payload: LeaderInput, user: Optional[dict] = Depends(get_current_user),
-                      db: Session = Depends(get_db)):
+@router.get("/branch-requests")
+def list_branch_requests(status: Literal["PENDING", "ALL"] = "PENDING", user: Optional[dict] = Depends(get_current_user),
+                         db: Session = Depends(get_db)):
+    """Bandeja: solicitudes de ingreso de todas las ramas (con branch_label y branch_has_leader)."""
     require_roles(user, ("ADMIN",), ADMIN_ONLY)
-    return branch_service.set_leader(db, branch, payload.gestor_id)
+    return branch_service.list_all_requests(db, status)
+
+
+@router.put("/branches/{branch}/leader")
+def put_branch_leader(branch: str, payload: LeaderInput, background_tasks: BackgroundTasks,
+                      user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    result = branch_service.set_leader(db, branch, payload.gestor_id)
+    if result["changed"]:
+        # Aviso al nombrado (no al reconfirmar a quien ya era lider). Commit antes del aviso.
+        db.commit()
+        gestor = db.get(User, payload.gestor_id)
+        background_tasks.add_task(notifications.notify_leader_appointed, gestor.email, gestor.name,
+                                  CULTURAL_CATEGORY_LABELS[result["branch"]])
+    return result
 
 
 @router.delete("/branches/{branch}/leader")

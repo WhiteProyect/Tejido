@@ -5,9 +5,10 @@ import PublicationForm from '../components/PublicationForm.jsx';
 import ArtistasPanel from '../components/admin/ArtistasPanel.jsx';
 import BandejaPanel from '../components/admin/BandejaPanel.jsx';
 import GestoresPanel from '../components/admin/GestoresPanel.jsx';
+import { MODERATION_TOASTS, ModerationButtons, RejectForm, moderatePublication } from '../components/Moderation.jsx';
 import PillTabs from '../components/admin/PillTabs.jsx';
 import { confirmDiscard } from '../components/admin/artist/unsavedChanges.js';
-import { BTN_DANGER, BTN_GHOST, BTN_INK_MD, BTN_INK_SM, EYEBROW, FORM_INPUT, H1, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
+import { BTN_DANGER, BTN_GHOST, BTN_INK_MD, EYEBROW, H1, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
 import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
@@ -30,7 +31,6 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 // - Bandeja: components/admin/BandejaPanel.jsx (mensajes de Nosotros y reportes).
 const STATUSES = ['REVIEW', 'DRAFT', 'REJECTED', 'PUBLISHED'];
 const CATEGORY_LABELS = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
-const MIN_NOTE = 5; // mismo minimo que PATCH /api/publications/{id}/status
 
 const TABS = [
   ['publicaciones', 'Publicaciones', 'book'],
@@ -59,11 +59,12 @@ function StatsPanel({ stats }) {
     ['Usuarios activos', stats?.users],
     ['Reportes abiertos', stats?.reports, INBOX_HREF],
     ['Mensajes nuevos', stats?.suggestions, INBOX_HREF],
+    ['Solicitudes de ingreso', stats?.join_requests, INBOX_HREF],
   ];
   return (
     <section className={PANEL} aria-labelledby="admin-pulso">
       <h2 id="admin-pulso" className={PANEL_TITLE}>Pulso de la plataforma</h2>
-      <dl className="mt-6 mb-0 grid grid-cols-[repeat(6,1fr)] gap-4 max1200:grid-cols-[repeat(3,1fr)] max600:grid-cols-[repeat(2,1fr)]">
+      <dl className="mt-6 mb-0 grid grid-cols-[repeat(7,minmax(0,1fr))] gap-4 max1200:grid-cols-[repeat(4,1fr)] max800:grid-cols-[repeat(3,1fr)] max600:grid-cols-[repeat(2,1fr)]">
         {tiles.map(([label, value, href]) => (
           <div key={label} className="relative flex flex-col-reverse border-l-2 border-l-[rgba(29,143,163,0.35)] pl-4">
             <dt className="mt-2 text-[12px] font-bold uppercase tracking-[.1em] text-muted">
@@ -83,7 +84,6 @@ function StatsPanel({ stats }) {
 
 function AdminPublicationItem({ publication, busy, onEdit, onAction }) {
   const [mode, setMode] = useState(null); // null | 'reject' | 'delete'
-  const [note, setNote] = useState('');
   const [statusLabel, statusTone] = STATUS_LABELS[publication.status] || [publication.status, STATUS_LABELS.DRAFT[1]];
   const date = formatDateShort(publication.start_date || publication.created_at);
   const inReview = publication.status === 'REVIEW';
@@ -107,10 +107,8 @@ function AdminPublicationItem({ publication, busy, onEdit, onAction }) {
         <div className="flex flex-wrap items-center justify-end gap-2 max600:justify-start">
           <span className={`rounded-full py-1 px-3 text-[12px] font-bold ${statusTone}`}>{statusLabel}</span>
           {inReview && (
-            <>
-              <button type="button" className={BTN_INK_SM} disabled={busy} onClick={() => onAction(publication, 'approve')}><Icon name="check" className="size-3.5" /> Aprobar</button>
-              <button type="button" className={BTN_GHOST} disabled={busy} aria-expanded={mode === 'reject'} onClick={() => { setMode(mode === 'reject' ? null : 'reject'); setNote(''); }}>Rechazar</button>
-            </>
+            <ModerationButtons title={publication.title} busy={busy} rejecting={mode === 'reject'}
+              onApprove={() => onAction(publication, 'approve')} onToggleReject={() => setMode(mode === 'reject' ? null : 'reject')} />
           )}
           <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => onEdit(publication)}><Icon name="pen" className="size-3.5" /> Editar</button>
           {mode === 'delete' ? (
@@ -123,19 +121,7 @@ function AdminPublicationItem({ publication, busy, onEdit, onAction }) {
           )}
         </div>
       </div>
-      {mode === 'reject' && (
-        <form
-          className="mt-4 flex flex-wrap items-end gap-3"
-          onSubmit={(event) => { event.preventDefault(); onAction(publication, 'reject', note.trim()); }}
-        >
-          <label className="grid min-w-[240px] flex-1 gap-1.5 text-[12px] font-bold uppercase tracking-[.12em] text-muted">
-            Motivo para el gestor
-            <input className={FORM_INPUT} value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Qué debe ajustar para publicarla" disabled={busy} autoFocus />
-          </label>
-          <button type="submit" className={BTN_DANGER} disabled={busy || note.trim().length < MIN_NOTE}>Rechazar con este motivo</button>
-          <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => setMode(null)}>Cancelar</button>
-        </form>
-      )}
+      {mode === 'reject' && <RejectForm busy={busy} onSubmit={(note) => onAction(publication, 'reject', note)} onCancel={() => setMode(null)} />}
     </li>
   );
 }
@@ -202,12 +188,9 @@ export default function AdminDashboard({ section }) {
     setBusyId(publication.id);
     setActionError('');
     try {
-      if (action === 'approve') {
-        await apiRequest(`/api/publications/${publication.id}/status`, { method: 'PATCH', body: { status: 'PUBLISHED', note: '' } });
-        showToast({ tone: 'menta', eyebrow: 'Sello puesto', title: 'Publicación aprobada', text: 'Ya está visible en TEJIDO.' });
-      } else if (action === 'reject') {
-        await apiRequest(`/api/publications/${publication.id}/status`, { method: 'PATCH', body: { status: 'REJECTED', note } });
-        showToast({ tone: 'menta', eyebrow: 'Hilo devuelto', title: 'Publicación rechazada', text: 'El gestor verá el motivo para ajustarla.' });
+      if (action === 'approve' || action === 'reject') {
+        await moderatePublication(publication.id, action, note);
+        showToast(MODERATION_TOASTS[action]);
       } else {
         await apiRequest(`/api/publications/${publication.id}`, { method: 'DELETE' });
         showToast({ tone: 'menta', title: 'Publicación eliminada' });
@@ -222,7 +205,7 @@ export default function AdminDashboard({ section }) {
 
   const { publications } = state;
   const pending = publications.filter((item) => item.status === 'REVIEW').length;
-  const inboxPending = (stats?.reports || 0) + (stats?.suggestions || 0);
+  const inboxPending = (stats?.reports || 0) + (stats?.suggestions || 0) + (stats?.join_requests || 0);
 
   return (
     <section className={`${SECTION} min-h-[62vh]`}>

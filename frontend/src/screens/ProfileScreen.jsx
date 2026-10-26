@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
-import ImageField from '../components/ImageField.jsx';
 import ProfileHeader from '../components/ProfileHeader.jsx';
-import { BTN_INK_MD, BTN_INK_OUTLINE_MD, EYEBROW, FORM_INPUT, FORM_LABEL, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
-import { useToast } from '../context/ToastContext.jsx';
-import { apiRequest } from '../utils/api.js';
+import ParticipateCard from '../components/branch/ParticipateCard.jsx';
+import ProfilePreviewPanel from '../components/gestor/edit/ProfilePreviewPanel.jsx';
+import { BTN_INK_MD, BTN_INK_OUTLINE_MD, EYEBROW, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
 import { formatDateShort } from '../utils/dateUtils.js';
 import { KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
@@ -15,15 +14,17 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 // Cada modulo solo usa endpoints existentes; no hay datos simulados:
 // - ADMIN: el acceso a #admin-dashboard y un resumen de la bandeja (GET /api/admin/stats:
 //   mensajes nuevos y reportes abiertos); la bandeja en si vive en #admin-dashboard/bandeja.
-// - GESTOR: GET /api/publications?mine=1, GET /api/artists (artista asociado por user_id), su
-//   biografia publica (GET/PATCH /api/me/organization) y el acceso a #gestor-dashboard.
-// - CIUDADANO: GET /api/publications con sesion (campo `favorite`): sus guardados.
+// - GESTOR: arriba lo administrativo (acceso a #gestor-dashboard, GET /api/publications?mine=1 y su
+//   artista asociado por user_id en GET /api/artists); debajo "Tu perfil publico", la vista previa
+//   editable de #gestor/<slug> (components/gestor/edit/ProfilePreviewPanel.jsx).
+// - CIUDADANO: "Participa en una rama" (components/branch/ParticipateCard.jsx: su solicitud para
+//   unirse a una rama) y GET /api/publications con sesion (campo `favorite`): sus guardados.
 // La cabecera (nombre y foto editables, PATCH /api/me) es components/ProfileHeader.jsx.
 
 const ROLES = {
   ADMIN: { label: 'Administración', mark: 'bg-ink text-paper', intro: 'Tu acceso al centro de la red y lo que la comunidad le está diciendo al equipo.' },
   GESTOR: { label: 'Gestor cultural', mark: 'bg-river text-white', intro: 'Tus publicaciones y las herramientas de tu espacio en TEJIDO.' },
-  CIUDADANO: { label: 'Ciudadanía', mark: 'bg-orange text-white', intro: 'Lo que guardas para volver a ello cuando quieras.' },
+  CIUDADANO: { label: 'Ciudadanía', mark: 'bg-orange text-white', intro: 'Lo que guardas para volver a ello y, si haces cultura, tu puerta para participar en una rama.' },
 };
 
 const H2 = PANEL_TITLE;
@@ -77,9 +78,11 @@ function AdminModule({ user }) {
   const state = useProfileData(() => getJson('/api/admin/stats'));
   const messages = state.data?.suggestions || 0;
   const reports = state.data?.reports || 0;
+  const requests = state.data?.join_requests || 0;
   const parts = [
     messages && `${messages} ${messages === 1 ? 'mensaje nuevo' : 'mensajes nuevos'}`,
     reports && `${reports} ${reports === 1 ? 'reporte abierto' : 'reportes abiertos'}`,
+    requests && `${requests} ${requests === 1 ? 'solicitud de ingreso' : 'solicitudes de ingreso'}`,
   ].filter(Boolean);
   return (
     <>
@@ -95,7 +98,7 @@ function AdminModule({ user }) {
           <h2 id="admin-bandeja" className={`${H2} flex items-center gap-3`}><Icon name="inbox" className="size-6 text-river" /> Bandeja</h2>
           <StateNote state={state}>
             <p className="mt-2 mb-0 text-[15px] text-[#53645c]">
-              {parts.length ? `Tienes ${parts.join(' y ')} por atender.` : 'Nada por atender: mensajes de Nosotros y reportes al día.'}
+              {parts.length ? `Tienes ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} y ${parts.at(-1)}` : parts[0]} por atender.` : 'Nada por atender: mensajes, reportes y solicitudes al día.'}
             </p>
           </StateNote>
         </div>
@@ -106,71 +109,6 @@ function AdminModule({ user }) {
 }
 
 // ── GESTOR ───────────────────────────────────────────────────────────────────
-const BIO_FIELDS = ['name', 'description', 'photo_url', 'contact'];
-
-// Biografia publica de la organizacion del gestor. La rama cultural no aparece: la decide el admin.
-function GestorBio() {
-  const { showToast } = useToast();
-  const [state, setState] = useState({ loading: true, error: '' });
-  const [form, setForm] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-
-  useEffect(() => {
-    let alive = true;
-    apiRequest('/api/me/organization')
-      .then((org) => {
-        if (!alive) return;
-        setForm(Object.fromEntries(BIO_FIELDS.map((key) => [key, org[key] || ''])));
-        setState({ loading: false, error: '' });
-      })
-      .catch((error) => alive && setState({ loading: false, error: error.message }));
-    return () => { alive = false; };
-  }, []);
-
-  const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setSaving(true);
-    setSaveError('');
-    try {
-      const org = await apiRequest('/api/me/organization', { method: 'PATCH', body: form });
-      setForm(Object.fromEntries(BIO_FIELDS.map((key) => [key, org[key] || ''])));
-      showToast({ tone: 'menta', eyebrow: 'Hilo actualizado', title: 'Biografía guardada', text: 'Así te verán en tu categoría.' });
-    } catch (error) {
-      setSaveError(error.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <section className={PANEL} aria-labelledby="gestor-bio">
-      <h2 id="gestor-bio" className={`${H2} flex items-center gap-3`}><Icon name="people" className="size-6 text-river" /> Biografía pública</h2>
-      <p className="mt-3 mb-0 max-w-[620px] text-[15px] leading-[1.55] text-[#53645c]">Lo que la gente ve de tu organización en TEJIDO. Tu rama cultural la asigna el equipo.</p>
-      <StateNote state={state}>
-        {form && (
-          <form className="mt-6 grid max-w-[720px] gap-5" onSubmit={handleSubmit}>
-            <label className={FORM_LABEL}>Nombre de la organización
-              <input className={FORM_INPUT} value={form.name} onChange={(event) => set('name')(event.target.value)} maxLength={120} required disabled={saving} />
-            </label>
-            <label className={FORM_LABEL}>Biografía
-              <textarea className={`${FORM_INPUT} min-h-[140px] resize-y leading-[1.55]`} value={form.description} onChange={(event) => set('description')(event.target.value)} maxLength={2000} placeholder="Qué hacen, desde cuándo, dónde los encuentran..." disabled={saving} />
-            </label>
-            <ImageField label="Foto" value={form.photo_url} onChange={set('photo_url')} scope="organization" disabled={saving} round hint="Aparece en la página de tu categoría." />
-            <label className={FORM_LABEL}>Contacto (opcional)
-              <input className={FORM_INPUT} value={form.contact} onChange={(event) => set('contact')(event.target.value)} maxLength={200} placeholder="Correo, teléfono o red social" disabled={saving} />
-            </label>
-            {saveError && <p className="m-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{saveError}</p>}
-            <div><button type="submit" className={BTN_INK_MD} disabled={saving}>{saving ? 'Guardando...' : 'Guardar cambios de biografía'}</button></div>
-          </form>
-        )}
-      </StateNote>
-    </section>
-  );
-}
-
 // Tarjeta oscura de acceso a un dashboard (gestor y admin).
 function DashboardCard({ href, eyebrow, title, text, cta }) {
   return (
@@ -216,7 +154,7 @@ function GestorModule({ user }) {
           )}
         </StateNote>
       </section>
-      <GestorBio />
+      <ProfilePreviewPanel />
       {!state.loading && !state.error && artist && (
         <section className={`${PANEL} flex flex-wrap items-center justify-between gap-6`} aria-labelledby="gestor-artista">
           <div>
@@ -234,11 +172,12 @@ function GestorModule({ user }) {
 }
 
 // ── CIUDADANO ────────────────────────────────────────────────────────────────
-function CitizenModule() {
+function CitizenModule({ user, onUserUpdate }) {
   const state = useProfileData(() => getJson('/api/publications'));
   const saved = (state.data || []).filter((item) => item.favorite);
   return (
     <>
+      <ParticipateCard user={user} onUserUpdate={onUserUpdate} />
       <section className={PANEL} aria-labelledby="ciudadano-guardados">
         <h2 id="ciudadano-guardados" className={`${H2} flex items-center gap-3`}><Icon name="bookmark" className="size-6 text-river" /> Tus guardados</h2>
         <StateNote state={state}>
@@ -280,7 +219,7 @@ export default function ProfileScreen({ user, onLogout, onUserUpdate }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
-        <Module user={user} />
+        <Module user={user} onUserUpdate={onUserUpdate} />
       </motion.div>
     </section>
   );

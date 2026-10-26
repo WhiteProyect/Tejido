@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import PublicationCard from '../components/PublicationCard.jsx';
+import ParticipateBlock from '../components/branch/ParticipateBlock.jsx';
 import ScreenIntro from '../components/ScreenIntro.jsx';
 import { SCREEN_SECTION, STATUS, STATUS_ERROR } from '../components/uiStyles.js';
 import { CULTURAL_CATEGORIES } from '../utils/constants.js';
@@ -14,17 +15,30 @@ import { cdnImage } from '../utils/cloudinaryUrl.js';
 // buscador de la pantalla (titulo).
 const SUBTITLE = 'm-0 text-[11px] font-extrabold uppercase tracking-[.18em] text-[#6a7c75]';
 
+// Cada gestor enlaza a su perfil (#gestor/<slug>); sin slug (perfil oculto) queda sin enlace.
+// El lider de la rama llega primero desde la API y lleva una insignia.
 function GestorAvatar({ gestor }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const showPhoto = gestor.photo_url && !photoFailed;
-  return (
-    <li className="flex w-[112px] flex-col items-center gap-2.5 text-center">
+  const content = (
+    <>
       <span className="grid size-[76px] place-items-center overflow-hidden rounded-full border-2 border-[#e2d9ca] bg-cream text-[22px] font-extrabold tracking-[.02em] text-ink" aria-hidden="true">
         {showPhoto
           ? <img src={cdnImage(gestor.photo_url, { width: 152, fit: 'fill' })} alt="" className="size-full object-cover" loading="lazy" decoding="async" onError={() => setPhotoFailed(true)} />
           : getInitials(gestor.name)}
       </span>
       <span className="text-[14px] font-bold leading-[1.25] text-ink">{gestor.name}</span>
+      {gestor.is_leader && <span className="rounded-full bg-[rgba(212,168,67,0.2)] py-0.5 px-2 text-[11px] font-bold text-[#6b500f]">Líder</span>}
+    </>
+  );
+  return (
+    <li className="w-[112px] text-center">
+      {gestor.slug ? (
+        <a href={`#gestor/${gestor.slug}`} aria-label={`Ver el perfil de ${gestor.name}${gestor.is_leader ? ', líder de la rama' : ''}`}
+          className="flex flex-col items-center gap-2.5 rounded-[16px] p-1 no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">
+          {content}
+        </a>
+      ) : <div className="flex flex-col items-center gap-2.5 p-1">{content}</div>}
     </li>
   );
 }
@@ -47,7 +61,7 @@ function useGestores(categoryKey) {
 }
 
 export default function CategoryScreen({ categoryKey, publications = [], loading = false, error = '', user }) {
-  const label = CULTURAL_CATEGORIES.find(([key]) => key === categoryKey)?.[1] || categoryKey;
+  const [, label = categoryKey, slug] = CULTURAL_CATEGORIES.find(([key]) => key === categoryKey) || [];
   const gestores = useGestores(categoryKey);
   const [search, setSearch] = useState('');
   const term = search.trim().toLocaleLowerCase('es');
@@ -89,6 +103,20 @@ export default function CategoryScreen({ categoryKey, publications = [], loading
           </div>
         ))}
       </section>
+
+      {/* "Quiero participar": se oculta a gestores y admins (ParticipateBlock). */}
+      {!gestores.loading && (!user || user.role === 'CIUDADANO') && (
+        <section className="mx-auto mb-14 max-w-[760px] rounded-[24px] border border-[#e2d9ca] bg-[#fffaf2] p-8 max600:p-6" aria-label={`Participar en ${label}`}>
+          <ParticipateBlock
+            user={user}
+            branch={categoryKey}
+            hasLeader={gestores.gestores.some((gestor) => gestor.is_leader)}
+            returnTo={`categoria/${slug}`}
+            title={`¿Haces cultura en ${label.toLocaleLowerCase('es')}?`}
+            text="Si eres artista, colectivo o gestor de esta rama, pide unirte: con la aprobación de su líder podrás publicar en TEJIDO."
+          />
+        </section>
+      )}
 
       <section aria-labelledby="categoria-publicaciones">
         <div className="mb-5 flex items-end justify-between gap-6 max800:flex-col max800:items-stretch">

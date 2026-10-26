@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import EmptyNote from '../EmptyNote.jsx';
+import FilterToggle from '../FilterToggle.jsx';
 import Icon from '../Icon.jsx';
 import { BTN_DANGER, BTN_GHOST, BTN_INK_SM, BTN_QUIET_SM, FORM_INPUT, PANEL, PANEL_TITLE } from '../uiStyles.js';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -7,10 +8,14 @@ import { apiRequest } from '../../utils/api.js';
 import { KIND_LABELS } from '../../utils/constants.js';
 import { formatDateShort } from '../../utils/dateUtils.js';
 import { STATUS_LABELS } from '../../utils/publicationStatus.js';
+import JoinRequestItem from '../gestor/leader/JoinRequestItem.jsx';
+import { DECISION_TOASTS, decideRequest } from '../gestor/leader/RequestsPanel.jsx';
 
-// Bandeja del admin (#admin-dashboard/bandeja), dos secciones con filtro Pendientes / Todos:
+// Bandeja del admin (#admin-dashboard/bandeja), tres secciones con filtro Pendientes / Todos:
 // - Mensajes de Nosotros: GET /api/admin/suggestions?status=NEW|ALL, PATCH .../{id} {status}.
 //   El backend separa nombre y contacto de la cabecera que agrega el formulario.
+// - Solicitudes de ingreso a las ramas: GET /api/admin/branch-requests?status=PENDING|ALL; se
+//   aprueban o rechazan con los endpoints de la rama de cada una.
 // - Reportes de publicaciones: GET /api/admin/reports?status=OPEN|ALL, PATCH .../{id} {status, note}.
 //   Atender un reporte no despublica: la publicacion se abre en la pestana Publicaciones.
 // onChange avisa al dashboard para refrescar el Pulso y el contador de la pestana.
@@ -67,25 +72,7 @@ function useInbox(url, pendingStatus) {
   return { filter, setFilter, state, reload: () => load(Math.max(state.items.length, LIMIT)), loadMore };
 }
 
-function FilterToggle({ value, onChange, label }) {
-  return (
-    <div className="inline-flex gap-1 rounded-full bg-cream p-1" role="group" aria-label={label}>
-      {[['pending', 'Pendientes'], ['all', 'Todos']].map(([id, text]) => (
-        <button
-          key={id}
-          type="button"
-          aria-pressed={value === id}
-          className={`cursor-pointer rounded-full border-0 py-1.5 px-3.5 text-[13px] font-bold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${value === id ? 'bg-ink text-white' : 'bg-transparent text-ink hover:bg-[rgba(23,63,54,.08)]'}`}
-          onClick={() => onChange(id)}
-        >
-          {text}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function SectionHeader({ id, icon, title, pending, pendingLabel, filter, onFilter }) {
+function SectionHeader({ id, icon, title, pending, pendingLabel, filter, onFilter, options }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -95,7 +82,7 @@ function SectionHeader({ id, icon, title, pending, pendingLabel, filter, onFilte
         </h2>
         <p className="mt-2 mb-0 text-[14px] text-muted">{pending ? `${pending} ${pendingLabel}.` : 'Todo atendido.'}</p>
       </div>
-      <FilterToggle value={filter} onChange={onFilter} label={`Filtrar ${title.toLowerCase()}`} />
+      <FilterToggle value={filter} onChange={onFilter} label={`Filtrar ${title.toLowerCase()}`} options={options} />
     </div>
   );
 }
@@ -222,6 +209,64 @@ const TOASTS = {
   DISMISSED: { eyebrow: 'Hilo atendido', title: 'Reporte descartado' },
 };
 
+// Solicitudes de ingreso de todas las ramas (GET /api/admin/branch-requests): el admin decide con
+// los endpoints de la rama de cada solicitud. Las de ramas sin lider le tocan al equipo.
+function JoinRequestsSection({ onChange }) {
+  const { showToast } = useToast();
+  const [filter, setFilter] = useState('pending');
+  const [state, setState] = useState({ loading: true, error: '', items: [] });
+  const [busy, setBusy] = useState(null);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const items = await apiRequest(`/api/admin/branch-requests?status=${filter === 'pending' ? 'PENDING' : 'ALL'}`);
+      setState({ loading: false, error: '', items });
+    } catch (loadError) {
+      setState((current) => ({ ...current, loading: false, error: loadError.message }));
+    }
+  }, [filter]);
+
+  useEffect(() => { setState((current) => ({ ...current, loading: true })); load(); }, [load]);
+
+  async function decide(request, action, note) {
+    setBusy(request.id);
+    setError('');
+    try {
+      await decideRequest(request.branch, request, action, note);
+      showToast(DECISION_TOASTS[action](request));
+      await load();
+      onChange?.();
+    } catch (decideError) {
+      setError(decideError.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const pending = state.items.filter((item) => item.status === 'PENDING').length;
+  return (
+    <section className={PANEL} aria-labelledby="bandeja-solicitudes">
+      <SectionHeader
+        id="bandeja-solicitudes" icon="people" title="Solicitudes de ingreso" pendingLabel={pending === 1 ? 'pendiente' : 'pendientes'}
+        pending={state.loading ? 0 : pending} filter={filter} onFilter={setFilter} options={[['pending', 'Pendientes'], ['all', 'Todas']]}
+      />
+      {error && <p className={ERROR_BOX} role="alert">{error}</p>}
+      <SectionBody
+        state={{ ...state, total: state.items.length }}
+        onMore={() => {}}
+        empty={filter === 'pending'
+          ? <EmptyNote icon="people" title="Ninguna solicitud pendiente" text="Cuando alguien pida participar en una rama, aparecerá aquí. Las de ramas con líder también las puede atender su líder." />
+          : <EmptyNote icon="people" title="Aún no hay solicitudes" text="Las solicitudes para participar en las ramas culturales aparecerán aquí." />}
+      >
+        {state.items.map((request) => (
+          <JoinRequestItem key={request.id} request={request} branchLabel={request.branch_label} showBranch busy={busy === request.id} onDecide={decide} />
+        ))}
+      </SectionBody>
+    </section>
+  );
+}
+
 export default function BandejaPanel({ onChange }) {
   const { showToast } = useToast();
   const messages = useInbox('/api/admin/suggestions', 'NEW');
@@ -249,6 +294,8 @@ export default function BandejaPanel({ onChange }) {
 
   return (
     <>
+      <JoinRequestsSection onChange={onChange} />
+
       <section className={PANEL} aria-labelledby="bandeja-mensajes">
         <SectionHeader
           id="bandeja-mensajes" icon="inbox" title="Mensajes" pendingLabel="sin leer"

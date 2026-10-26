@@ -68,6 +68,8 @@ class GestorCreateInput(BaseModel):
 class GestorUpdateInput(BaseModel):
     """PATCH parcial: solo se aplican los campos enviados."""
     active: Optional[bool] = None
+    # Oculta el perfil publico (#gestor/<slug>) sin desactivar la cuenta. Solo el admin.
+    profile_hidden: Optional[bool] = None
     organization_name: Optional[str] = None
     branch: Optional[str] = None
     contact: Optional[str] = None
