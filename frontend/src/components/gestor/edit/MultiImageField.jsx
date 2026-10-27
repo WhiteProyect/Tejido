@@ -8,7 +8,7 @@ import { HINT, LIMITS } from './common.jsx';
 // Varias fotos del perfil (manifestaciones y galeria). value: [{ url, alt_text, caption }] y
 // onChange(lista) con la lista nueva; se guarda despues, con el boton del editor.
 // - Elegir o soltar varios archivos: cada uno se valida (los invalidos se listan sin frenar al
-//   resto) y sube a Cloudinary (scope "organization") con 3 a la vez. Solo caben `max` en total y
+//   resto) y sube a Cloudinary (scope "organization" salvo que se pida otro) con 3 a la vez. Solo caben `max` en total y
 //   como mucho 12 por tanda (el backend firma 30 por minuto).
 // - Cada subida muestra su estado (en cola, subiendo con %, error con reintento); una que falla no
 //   impide guardar las demas. Cerrar el editor cancela las subidas en curso.
@@ -20,7 +20,7 @@ const STATUS = { queued: 'En cola', uploading: 'Subiendo', error: 'Error' };
 
 let sequence = 0;
 
-export default function MultiImageField({ label, value, onChange, max, withCaption = false, onBusyChange }) {
+export default function MultiImageField({ label, value, onChange, max, withCaption = false, onBusyChange, scope = 'organization' }) {
   const id = useId();
   const fileRef = useRef(null);
   const valueRef = useRef(value);
@@ -50,7 +50,7 @@ export default function MultiImageField({ label, value, onChange, max, withCapti
     const controller = new AbortController();
     controllers.current.set(item.key, controller);
     try {
-      const url = await uploadImage(item.file, 'organization', undefined, {
+      const url = await uploadImage(item.file, scope, undefined, {
         signal: controller.signal,
         onProgress: (progress) => patch(item.key, { progress }),
       });

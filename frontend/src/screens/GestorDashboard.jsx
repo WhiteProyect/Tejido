@@ -8,6 +8,8 @@ import { LeaderBadge } from '../components/gestor/GestorHeader.jsx';
 import ParticipantsPanel from '../components/gestor/leader/ParticipantsPanel.jsx';
 import RequestsPanel from '../components/gestor/leader/RequestsPanel.jsx';
 import ReviewQueuePanel from '../components/gestor/leader/ReviewQueuePanel.jsx';
+import { confirmDiscard } from '../components/admin/artist/unsavedChanges.js';
+import TalentManager from '../components/talent/manage/TalentManager.jsx';
 import { BTN_DANGER, BTN_GHOST, BTN_INK_MD, BTN_INK_SM, EYEBROW, H1, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
@@ -30,18 +32,29 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 //   .../submit. Borrar/Archivar: DELETE (borrado logico).
 // - Lider de su rama (user.is_leader): ademas Por revisar (moderar lo de sus participantes),
 //   Solicitudes (aprobar o rechazar ingresos) y Participantes (components/gestor/leader/), con
-//   sus contadores en el encabezado; se cargan al entrar y se refrescan tras cada accion.
+//   sus contadores en el encabezado; se cargan al entrar y se refrescan tras cada accion. Y
+//   Talento (#gestor-dashboard/talento[/<id>[/<pestana>]]): el talento contratable de su rama
+//   (components/talent/manage/TalentManager.jsx).
 // La pestana va en la URL con replaceState (sin hashchange: App subiria la pagina).
 
 const CATEGORY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label, slug]) => [key, { label, slug }]));
 const TABS = [['mis-publicaciones', 'Mis publicaciones', 'book'], ['mi-categoria', 'Mi categoría', 'people']];
-// El lider de la rama suma Por revisar, Solicitudes y Participantes (en este orden).
+// El lider de la rama suma Por revisar, Solicitudes, Participantes y Talento (en este orden).
 const LEADER_TABS = [
-  TABS[0], ['por-revisar', 'Por revisar', 'seal'], ['solicitudes', 'Solicitudes', 'inbox'], ['participantes', 'Participantes', 'people'], TABS[1],
+  TABS[0], ['por-revisar', 'Por revisar', 'seal'], ['solicitudes', 'Solicitudes', 'inbox'], ['participantes', 'Participantes', 'people'],
+  ['talento', 'Talento', 'mic'], TABS[1],
 ];
 const tabsFor = (isLeader) => (isLeader ? LEADER_TABS : TABS);
-// Una pestana de lider pedida por URL sin ser lider cae a Mis publicaciones.
-const tabFrom = (section, isLeader) => (tabsFor(isLeader).some(([id]) => id === section) ? section : 'mis-publicaciones');
+// La seccion es "<pestana>[/<resto>]" (talento/<id>/<pestana-del-editor>). Una pestana de lider
+// pedida por URL sin ser lider cae a Mis publicaciones.
+const tabFrom = (section, isLeader) => {
+  const [first] = String(section || '').split('/');
+  return tabsFor(isLeader).some(([id]) => id === first) ? first : 'mis-publicaciones';
+};
+const subpathFrom = (section) => {
+  const [first, ...rest] = String(section || '').split('/');
+  return first === 'talento' ? rest.join('/') : '';
+};
 const STATUS_ORDER = ['DRAFT', 'REVIEW', 'REJECTED', 'PUBLISHED'];
 const COUNT_LABELS = { DRAFT: 'Borradores', REVIEW: 'En revisión', REJECTED: 'Rechazadas', PUBLISHED: 'Publicadas' };
 const ALERT = 'mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]';
@@ -252,6 +265,7 @@ export default function GestorDashboard({ user, section }) {
   const { showToast } = useToast();
   const isLeader = Boolean(user?.is_leader);
   const [tab, setTab] = useState(() => tabFrom(section, isLeader));
+  const [subpath, setSubpath] = useState(() => subpathFrom(section));
   const [leader, setLeader] = useState({ loaded: false, error: '', queue: [], requests: [], participants: [] });
   const [filter, setFilter] = useState('ALL');
   const [state, setState] = useState({ loading: true, error: '', publications: [], categories: [], category: null });
@@ -292,13 +306,19 @@ export default function GestorDashboard({ user, section }) {
 
   // Enlaces a #gestor-dashboard/<seccion> desde fuera (hashchange) mueven la pestana.
   useEffect(() => {
-    const sync = () => setTab(tabFrom(window.location.hash.replace(/^#gestor-dashboard\/?/, ''), isLeader));
+    const sync = () => {
+      const current = window.location.hash.replace(/^#gestor-dashboard\/?/, '');
+      setTab(tabFrom(current, isLeader));
+      setSubpath(subpathFrom(current));
+    };
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
   }, [isLeader]);
 
   function changeTab(id) {
+    if (!confirmDiscard()) return;
     setTab(id);
+    setSubpath('');
     window.history.replaceState(window.history.state, '', `#gestor-dashboard/${id}`);
   }
 
@@ -442,6 +462,7 @@ export default function GestorDashboard({ user, section }) {
             {showLeader && leader.loaded && tab === 'solicitudes' && (
               <RequestsPanel branch={branch} branchLabel={info.label} pending={leader.requests} onChanged={refreshLeader} />
             )}
+            {showLeader && tab === 'talento' && <TalentManager role="LEADER" branch={branch} subpath={subpath} />}
             {showLeader && leader.loaded && tab === 'participantes' && (
               <ParticipantsPanel branch={branch} branchLabel={info.label} participants={leader.participants} userId={user.id} onChanged={refreshLeader} />
             )}

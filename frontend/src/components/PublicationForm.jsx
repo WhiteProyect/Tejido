@@ -19,7 +19,10 @@ const EMPTY_FORM = {
   kind: 'HISTORIA', title: '', summary: '', content: '', location: 'Caucasia',
   start_date: '', end_date: '', link: '', image: '', cultural_category: '',
 };
+// El tipo TALENTO ya no se ofrece al crear: el talento contratable tiene su propio flujo (pestaña
+// Talento de los dashboards). Las publicaciones TALENTO que ya existen se siguen editando con su tipo.
 const KINDS = Object.entries(KIND_LABELS);
+const kindsFor = (publication) => KINDS.filter(([key]) => key !== 'TALENTO' || publication?.kind === 'TALENTO');
 
 const isImageUrl = (value) => /^(https?:\/\/|\/)/.test(value || '');
 
@@ -138,7 +141,7 @@ export default function PublicationForm({ publication, categories, allowPublish 
         <div className="grid grid-cols-2 gap-5 max600:grid-cols-1">
           <label className={FORM_LABEL}>Tipo
             <select className={FORM_INPUT} {...field('kind')}>
-              {KINDS.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              {kindsFor(publication).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </select>
           </label>
           {fixedCategory ? (

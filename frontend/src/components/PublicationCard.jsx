@@ -14,7 +14,7 @@ import { cdnImage } from '../utils/cloudinaryUrl.js';
 // con la ilustracion de Hilo en vez de un color decorativo.
 const EASE = 'ease-[cubic-bezier(.22,1,.36,1)]';
 
-export default function PublicationCard({ publication, user }) {
+export default function PublicationCard({ publication, user, returnTo, onFavoriteChange }) {
   const image = publication.image || '';
   const hasRealImage = Boolean(image) && !image.startsWith('linear-gradient(');
 
@@ -56,7 +56,7 @@ export default function PublicationCard({ publication, user }) {
             Ver detalles
             <Icon name="arrow-right" className="size-4" />
           </a>
-          <PublicationActions publication={publication} user={user} />
+          <PublicationActions publication={publication} user={user} returnTo={returnTo} onFavoriteChange={onFavoriteChange} />
         </div>
       </div>
     </article>

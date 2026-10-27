@@ -392,7 +392,8 @@ export default function HiloAssistant({ publications = [], screen = '' }) {
 
   return (
     <section
-      className="fixed bottom-3 right-[18px] z-70 font-sans max600:bottom-2 max600:right-2"
+      // En el perfil de talento, en movil, sube por encima de su barra fija de "Contratar".
+      className={`fixed bottom-3 right-[18px] z-70 font-sans max600:right-2 ${screen === 'talento-perfil' ? 'max768:bottom-[96px]' : 'max600:bottom-2'}`}
       aria-label="Asistente virtual de TEJIDO"
     >
       {/* Lanzador: cápsula + Hilo a su derecha, y el susurro a la izquierda de ambos */}

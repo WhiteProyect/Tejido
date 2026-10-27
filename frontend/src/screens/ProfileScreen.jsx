@@ -18,7 +18,7 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 //   artista asociado por user_id en GET /api/artists); debajo "Tu perfil publico", la vista previa
 //   editable de #gestor/<slug> (components/gestor/edit/ProfilePreviewPanel.jsx).
 // - CIUDADANO: "Participa en una rama" (components/branch/ParticipateCard.jsx: su solicitud para
-//   unirse a una rama) y GET /api/publications con sesion (campo `favorite`): sus guardados.
+//   unirse a una rama) y el acceso a #guardadas con el total de lo que guardo (GET /api/me/saved).
 // La cabecera (nombre y foto editables, PATCH /api/me) es components/ProfileHeader.jsx.
 
 const ROLES = {
@@ -172,30 +172,29 @@ function GestorModule({ user }) {
 }
 
 // ── CIUDADANO ────────────────────────────────────────────────────────────────
+function plural(count, one, many) {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
 function CitizenModule({ user, onUserUpdate }) {
-  const state = useProfileData(() => getJson('/api/publications'));
-  const saved = (state.data || []).filter((item) => item.favorite);
+  const state = useProfileData(() => getJson('/api/me/saved'));
+  const publications = state.data?.publications.length || 0;
+  const talent = state.data?.talent.length || 0;
+  const total = publications + talent;
+  const parts = [publications && plural(publications, 'publicación', 'publicaciones'), talent && plural(talent, 'talento', 'talentos')].filter(Boolean);
   return (
     <>
       <ParticipateCard user={user} onUserUpdate={onUserUpdate} />
-      <section className={PANEL} aria-labelledby="ciudadano-guardados">
-        <h2 id="ciudadano-guardados" className={`${H2} flex items-center gap-3`}><Icon name="bookmark" className="size-6 text-river" /> Tus guardados</h2>
-        <StateNote state={state}>
-          {saved.length === 0 ? (
-            <div className="mt-6">
-              <EmptyNote
-                icon="bookmark"
-                title="Sin guardados aún"
-                text="Guarda sabores locales desde Explorar."
-                action={<a className={BTN_INK_OUTLINE_MD} href="#explorar">Explorar publicaciones <Icon name="arrow-right" className="size-4" /></a>}
-              />
-            </div>
-          ) : (
-            <ul className="mt-3 mb-0 list-none p-0">
-              {saved.map((item) => <PublicationRow key={item.id} publication={item} />)}
-            </ul>
-          )}
-        </StateNote>
+      <section className={`${PANEL} flex flex-wrap items-center justify-between gap-6`} aria-labelledby="ciudadano-guardados">
+        <div className="min-w-0">
+          <h2 id="ciudadano-guardados" className={`${H2} flex items-center gap-3`}><Icon name="bookmark" className="size-6 text-river" /> Tus guardados</h2>
+          <StateNote state={state}>
+            <p className="mt-2 mb-0 text-[15px] text-[#53645c]">
+              {total === 0 ? 'Aún no has guardado nada: guarda historias, eventos y talento para volver a ellos.' : `Tienes ${plural(total, 'guardado', 'guardados')}: ${parts.join(' y ')}.`}
+            </p>
+          </StateNote>
+        </div>
+        <a className={BTN_INK_OUTLINE_MD} href="#guardadas">Ver mis guardados <Icon name="arrow-right" className="size-4" /></a>
       </section>
     </>
   );

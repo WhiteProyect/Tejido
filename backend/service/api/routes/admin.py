@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from backend.service.api.deps import get_current_user, require_roles
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
-from backend.service.models.tables import BranchJoinRequest, Organization, Publication, Report, Role, Suggestion, User
+from backend.service.models.tables import BranchJoinRequest, Organization, Publication, Report, Role, Suggestion, TalentProfile, User
 from backend.service.schemas.branches import LeaderInput
 from backend.service.schemas.cultural_categories import CULTURAL_CATEGORY_LABELS
 from backend.service.schemas.organizations import GestorCreateInput, GestorUpdateInput
@@ -46,8 +46,11 @@ def stats(user: Optional[dict] = Depends(get_current_user), db: Session = Depend
     join_requests = db.execute(
         select(func.count()).select_from(BranchJoinRequest).where(BranchJoinRequest.status == "PENDING")
     ).scalar_one()
+    talent_review = db.execute(
+        select(func.count()).select_from(TalentProfile).where(TalentProfile.status == "REVIEW", TalentProfile.deleted.is_(False))
+    ).scalar_one()
     return {"published": published, "pending": pending, "users": users, "gestores_activos": gestores_activos,
-            "reports": reports, "suggestions": suggestions, "join_requests": join_requests}
+            "reports": reports, "suggestions": suggestions, "join_requests": join_requests, "talent_review": talent_review}
 
 
 # ---------------------------------------------------------------------------

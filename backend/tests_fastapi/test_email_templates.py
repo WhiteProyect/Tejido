@@ -40,6 +40,12 @@ CASES = [
      f"{BASE}/#gestor-dashboard/por-revisar", "Ahora lideras"),
     ("solicitud-rechazada", notifications.build_join_decision("Ana", "Artesanías", False, "Escríbenos en un mes"),
      f"{BASE}/#perfil", "tejer con nosotros."),
+    ("talento-revision", notifications.build_talent_review("Grupo Bullerengue", "Eze", "Danza"),
+     f"{BASE}/#admin-dashboard/talento", "esperando tu mirada."),
+    ("talento-aprobado", notifications.build_talent_decision("Eze", "Grupo Bullerengue", "PUBLISHED", None),
+     f"{BASE}/#gestor-dashboard/talento", "ya está en TEJIDO."),
+    ("talento-rechazado", notifications.build_talent_decision("Eze", "Grupo Bullerengue", "REJECTED", "Falta la portada"),
+     f"{BASE}/#gestor-dashboard/talento", "a un paso."),
 ]
 
 

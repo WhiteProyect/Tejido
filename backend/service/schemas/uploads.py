@@ -3,7 +3,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, StrictInt
 
-UploadScope = Literal["artist", "publication", "organization", "avatar"]
+UploadScope = Literal["artist", "publication", "organization", "avatar", "talent"]
 
 
 class UploadSignInput(BaseModel):

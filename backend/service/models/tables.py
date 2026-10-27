@@ -503,3 +503,128 @@ class OrganizationImage(Base):
     alt_text: Mapped[str | None] = mapped_column(String)
     caption: Mapped[str | None] = mapped_column(String)
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+
+class TalentProfile(Base):
+    """Portafolio de talento contratable (services/talent.py). Lo crean el admin o el lider de la
+    rama (category); el ciclo DRAFT -> REVIEW -> PUBLISHED|REJECTED lo cierra solo el admin."""
+    __tablename__ = "talent_profiles"
+    __table_args__ = (
+        Index("uq_talent_profiles_slug_lower", func.lower(text("slug")), unique=True),
+        Index("ix_talent_profiles_status_deleted", "status", "deleted"),
+        # El sello "verificado" exige el numero del acta que lo respalda.
+        CheckConstraint("verified = false OR act_number IS NOT NULL", name="ck_talent_profiles_verified_has_act"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    category: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    origin: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    tagline: Mapped[str | None] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text)
+    cover_url: Mapped[str | None] = mapped_column(String)
+    representative_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    # DRAFT | REVIEW | REJECTED | PUBLISHED
+    status: Mapped[str] = mapped_column(String, default="DRAFT", server_default=text("'DRAFT'"), nullable=False)
+    moderation_note: Mapped[str | None] = mapped_column(Text)
+    verified: Mapped[bool] = mapped_column(default=False, server_default=text("false"), nullable=False)
+    act_number: Mapped[str | None] = mapped_column(String(30))
+    act_date: Mapped[date | None] = mapped_column(Date)
+    featured: Mapped[bool] = mapped_column(default=False, server_default=text("false"), nullable=False)
+    deleted: Mapped[bool] = mapped_column(default=False, server_default=text("false"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class TalentService(Base):
+    __tablename__ = "talent_services"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    talent_id: Mapped[int] = mapped_column(ForeignKey("talent_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    tag: Mapped[str | None] = mapped_column(String(20))
+    description: Mapped[str | None] = mapped_column(String(300))
+    price: Mapped[int | None] = mapped_column(Integer)  # pesos colombianos; NULL = a convenir
+    price_note: Mapped[str | None] = mapped_column(String(60))
+
+
+class TalentSpec(Base):
+    __tablename__ = "talent_specs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    talent_id: Mapped[int] = mapped_column(ForeignKey("talent_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    label: Mapped[str] = mapped_column(String(60), nullable=False)
+    value: Mapped[str] = mapped_column(String(200), nullable=False)
+
+
+class TalentAvailability(Base):
+    __tablename__ = "talent_availability"
+    __table_args__ = (UniqueConstraint("talent_id", "day", name="uq_talent_availability_day"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    talent_id: Mapped[int] = mapped_column(ForeignKey("talent_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    # AVAILABLE | BUSY (un dia sin fila = sin informacion)
+    state: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class TalentMedia(Base):
+    __tablename__ = "talent_media"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    talent_id: Mapped[int] = mapped_column(ForeignKey("talent_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    type: Mapped[str] = mapped_column(String, nullable=False)  # image | video
+    url: Mapped[str] = mapped_column(String, nullable=False)
+    thumbnail_url: Mapped[str | None] = mapped_column(String)
+    title: Mapped[str | None] = mapped_column(String(100))
+    caption: Mapped[str | None] = mapped_column(String(150))
+
+
+class TalentMilestone(Base):
+    __tablename__ = "talent_milestones"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    talent_id: Mapped[int] = mapped_column(ForeignKey("talent_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(400))
+
+
+class TalentEndorsement(Base):
+    """Reconocimiento o testimonio. Solo lo cargan el equipo o el lider (no hay reseñas publicas)."""
+    __tablename__ = "talent_endorsements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    talent_id: Mapped[int] = mapped_column(ForeignKey("talent_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    kind: Mapped[str] = mapped_column(String, nullable=False)  # RECOGNITION | TESTIMONIAL
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    text: Mapped[str | None] = mapped_column(String(400))
+    rating: Mapped[int | None] = mapped_column(Integer)  # 1..5, solo TESTIMONIAL
+
+
+class TalentVenue(Base):
+    """"Donde se ha presentado": lugar y, si se sabe, su municipio (schemas/municipalities.py)."""
+    __tablename__ = "talent_venues"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    talent_id: Mapped[int] = mapped_column(ForeignKey("talent_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    municipality: Mapped[str | None] = mapped_column(String)
+
+
+class TalentFavorite(Base):
+    """Talento guardado por un ciudadano (solo el CIUDADANO guarda)."""
+    __tablename__ = "talent_favorites"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    talent_id: Mapped[int] = mapped_column(ForeignKey("talent_profiles.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

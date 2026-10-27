@@ -18,6 +18,7 @@ import GestorProfileScreen from './screens/GestorProfileScreen.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import MapScreen from './screens/MapScreen.jsx';
 import MoneystackScreen from './screens/MoneystackScreen.jsx';
+import LegalScreen from './screens/LegalScreen.jsx';
 import LoginScreen from './screens/LoginScreen.jsx';
 import NosotrosScreen from './screens/NosotrosScreen.jsx';
 import NotFoundScreen from './screens/NotFoundScreen.jsx';
@@ -25,6 +26,8 @@ import OpportunitiesScreen from './screens/OpportunitiesScreen.jsx';
 import ProfileScreen from './screens/ProfileScreen.jsx';
 import PublicationScreen from './screens/PublicationScreen.jsx';
 import SavedScreen from './screens/SavedScreen.jsx';
+import TalentPreviewScreen from './screens/TalentPreviewScreen.jsx';
+import TalentProfileScreen from './screens/TalentProfileScreen.jsx';
 import TalentScreen from './screens/TalentScreen.jsx';
 
 async function getJson(url) {
@@ -79,6 +82,19 @@ function getRoute() {
   // Dashboard de admin con pestana: #admin-dashboard/<seccion> (la seccion viaja en `slug`).
   if (hash.startsWith('admin-dashboard/')) {
     return { screen: 'admin-dashboard', slug: hash.slice('admin-dashboard/'.length) };
+  }
+
+  // Talento contratable: #talento/<slug> (perfil) y #talento?cat=...&mun=...&q=...&disp=1 (listado
+  // con filtros; TalentScreen los lee del hash).
+  if (hash.startsWith('talento/')) {
+    return { screen: 'talento-perfil', slug: hash.slice('talento/'.length) };
+  }
+  if (hash.startsWith('talento?')) {
+    return { screen: 'talento', slug: null };
+  }
+  // Vista previa de un talento sin publicar (admin o lider de su rama): #talento-vista-previa/<id>.
+  if (hash.startsWith('talento-vista-previa/')) {
+    return { screen: 'talento-vista-previa', slug: hash.slice('talento-vista-previa/'.length) };
   }
 
   // Link de invitacion de cuenta: #invitacion/<token> (el token viaja en `slug`).
@@ -171,7 +187,6 @@ export default function App() {
 
   const events = publications.filter((publication) => publication.kind === 'EVENTO');
   const opportunities = publications.filter((publication) => publication.kind === 'OPORTUNIDAD');
-  const talents = publications.filter((publication) => publication.kind === 'TALENTO');
 
   let content;
   switch (route.screen) {
@@ -222,13 +237,24 @@ export default function App() {
       content = <OpportunitiesScreen opportunities={opportunities} />;
       break;
     case 'talento':
-      content = <TalentScreen talents={talents} />;
+      content = <TalentScreen user={user} />;
+      break;
+    case 'talento-perfil':
+      content = <TalentProfileScreen slug={route.slug} user={user} />;
+      break;
+    case 'talento-vista-previa':
+      content = <TalentPreviewScreen id={route.slug} user={user} authReady={authReady} />;
       break;
     case 'guardadas':
-      content = <SavedScreen />;
+      content = <SavedScreen user={user} authReady={authReady} />;
       break;
     case 'nosotros':
       content = <NosotrosScreen />;
+      break;
+    // Paginas legales (screens/LegalScreen.jsx): #terminos y #privacidad.
+    case 'terminos':
+    case 'privacidad':
+      content = <LegalScreen doc={route.screen} />;
       break;
     case 'perfil':
       // Mientras se valida la sesion (o se redirige a login) se reserva el espacio.

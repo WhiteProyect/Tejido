@@ -81,11 +81,16 @@ export default function Footer() {
         <b className={HEADING}>Proyecto</b>
         <a href="#nosotros" className={LINK}>Nosotros</a>
         <a href="#mapa" className={LINK}>Mapa vivo</a>
-        <a href="#guardadas" className={LINK}>Guardadas</a>
       </motion.div>
       <motion.div className={`${COL} text-[#aebdb8]`} variants={footerItem}>
         <span>Hecho con orgullo<br />en Caucasia, Antioquia.</span>
-        <span className="text-[11px] mt-auto">© 2026 TEJIDO</span>
+        <span className="text-[11px] mt-auto">© {new Date().getFullYear()} TEJIDO</span>
+      </motion.div>
+      {/* Linea final discreta con los textos legales, a todo el ancho bajo las columnas. div con role
+          y no <nav>: el CSS legado oculta la etiqueta nav en movil. */}
+      <motion.div role="navigation" className="relative z-2 col-span-full flex flex-wrap gap-x-6 gap-y-2 border-t border-t-white/10 pt-5 max600:col-span-1" variants={footerItem} aria-label="Legal">
+        <a href="#terminos" className={LINK}>Términos y condiciones</a>
+        <a href="#privacidad" className={LINK}>Política de privacidad</a>
       </motion.div>
     </motion.footer>
   );

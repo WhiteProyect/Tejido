@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import DateTime, cast, exists, func, or_, select
+from sqlalchemy import DateTime, and_, cast, exists, func, literal, or_, select
 from sqlalchemy.orm import Session
 
 from backend.service.errors import AppError
@@ -67,6 +67,21 @@ def list_publications(
             # compatibles (Postgres no mezcla timestamp con/sin tz directo).
             func.coalesce(Publication.start_date, cast(Publication.created_at, DateTime)).desc(),
         )
+    )
+    return rows_to_dicts(db.execute(stmt).all())
+
+
+def saved_publications(db: Session, user_id: int) -> list[dict]:
+    """Lo que guardo ese usuario y sigue publicado: el mismo shape que list_publications (favorite
+    siempre true) mas saved_at, del guardado mas reciente al mas antiguo."""
+    stmt = (
+        select(Publication.__table__, Category.name.label("category"), Category.color.label("color"),
+               User.name.label("author"), literal(True).label("favorite"), Favorite.created_at.label("saved_at"))
+        .join(Favorite, and_(Favorite.publication_id == Publication.id, Favorite.user_id == user_id))
+        .join(Category, Category.id == Publication.category_id)
+        .join(User, User.id == Publication.author_id)
+        .where(Publication.status == "PUBLISHED", Publication.deleted.is_(False))
+        .order_by(Favorite.created_at.desc(), Publication.id.desc())
     )
     return rows_to_dicts(db.execute(stmt).all())
 

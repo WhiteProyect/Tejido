@@ -6,3 +6,9 @@ export const STATUS_LABELS = {
   DRAFT: ['Borrador', 'bg-[rgba(102,116,111,0.12)] text-[#4d5a55]'],
   REJECTED: ['Por ajustar', 'bg-[rgba(216,91,54,0.12)] text-[#a8431f]'],
 };
+
+// Estado de un perfil de talento: los mismos colores, con la etiqueta en masculino ("el talento").
+export const TALENT_STATUS_LABELS = {
+  ...STATUS_LABELS,
+  PUBLISHED: ['Publicado', STATUS_LABELS.PUBLISHED[1]],
+};

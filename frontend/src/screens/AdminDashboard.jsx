@@ -5,6 +5,7 @@ import PublicationForm from '../components/PublicationForm.jsx';
 import ArtistasPanel from '../components/admin/ArtistasPanel.jsx';
 import BandejaPanel from '../components/admin/BandejaPanel.jsx';
 import GestoresPanel from '../components/admin/GestoresPanel.jsx';
+import TalentManager from '../components/talent/manage/TalentManager.jsx';
 import { MODERATION_TOASTS, ModerationButtons, RejectForm, moderatePublication } from '../components/Moderation.jsx';
 import PillTabs from '../components/admin/PillTabs.jsx';
 import { confirmDiscard } from '../components/admin/artist/unsavedChanges.js';
@@ -15,7 +16,7 @@ import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
 import { formatDateShort } from '../utils/dateUtils.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
-// Dashboard del Admin (#admin-dashboard[/publicaciones[/<id>]|gestores|artistas[/<id>[/<pestana>]]|bandeja]):
+// Dashboard del Admin (#admin-dashboard[/publicaciones[/<id>]|gestores|artistas[/<id>[/<pestana>]]|talento[/<id>[/<pestana>]]|bandeja]):
 // - Pulso: GET /api/admin/stats (incluye gestores_activos), visible en todas las pestanas. Los
 //   mosaicos de reportes y mensajes enlazan a la Bandeja.
 // - Pestanas: solo se monta el panel activo. La pestana va en la URL con replaceState (sin
@@ -28,6 +29,8 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 //   cualquier estado: Editar (PublicationForm con allowPublish) / Eliminar (DELETE).
 // - Nueva publicacion: PublicationForm con allowPublish (puede publicar directo).
 // - publicaciones/<id> (enlace desde un reporte de la Bandeja) abre el editor de esa publicacion.
+// - Talento: components/talent/manage/TalentManager.jsx (todas las ramas; lista y editor). Su
+//   contador es stats.talent_review.
 // - Bandeja: components/admin/BandejaPanel.jsx (mensajes de Nosotros y reportes).
 const STATUSES = ['REVIEW', 'DRAFT', 'REJECTED', 'PUBLISHED'];
 const CATEGORY_LABELS = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
@@ -36,6 +39,7 @@ const TABS = [
   ['publicaciones', 'Publicaciones', 'book'],
   ['gestores', 'Gestores', 'people'],
   ['artistas', 'Artistas', 'music'],
+  ['talento', 'Talento', 'mic'],
   ['bandeja', 'Bandeja', 'inbox'],
 ];
 const TAB_IDS = TABS.map(([id]) => id);
@@ -60,11 +64,12 @@ function StatsPanel({ stats }) {
     ['Reportes abiertos', stats?.reports, INBOX_HREF],
     ['Mensajes nuevos', stats?.suggestions, INBOX_HREF],
     ['Solicitudes de ingreso', stats?.join_requests, INBOX_HREF],
+    ['Talento por revisar', stats?.talent_review, '#admin-dashboard/talento'],
   ];
   return (
     <section className={PANEL} aria-labelledby="admin-pulso">
       <h2 id="admin-pulso" className={PANEL_TITLE}>Pulso de la plataforma</h2>
-      <dl className="mt-6 mb-0 grid grid-cols-[repeat(7,minmax(0,1fr))] gap-4 max1200:grid-cols-[repeat(4,1fr)] max800:grid-cols-[repeat(3,1fr)] max600:grid-cols-[repeat(2,1fr)]">
+      <dl className="mt-6 mb-0 grid grid-cols-[repeat(8,minmax(0,1fr))] gap-4 max1200:grid-cols-[repeat(4,1fr)] max800:grid-cols-[repeat(3,1fr)] max600:grid-cols-[repeat(2,1fr)]">
         {tiles.map(([label, value, href]) => (
           <div key={label} className="relative flex flex-col-reverse border-l-2 border-l-[rgba(29,143,163,0.35)] pl-4">
             <dt className="mt-2 text-[12px] font-bold uppercase tracking-[.1em] text-muted">
@@ -230,6 +235,7 @@ export default function AdminDashboard({ section }) {
             id, label, icon,
             ...(id === 'publicaciones' && pending > 0 ? { badge: pending, badgeLabel: 'en revisión', badgeTone: 'alert' } : {}),
             ...(id === 'bandeja' && inboxPending > 0 ? { badge: inboxPending, badgeLabel: 'pendientes', badgeTone: 'alert' } : {}),
+            ...(id === 'talento' && stats?.talent_review > 0 ? { badge: stats.talent_review, badgeLabel: 'en revisión', badgeTone: 'alert' } : {}),
           }))}
         />
 
@@ -274,6 +280,7 @@ export default function AdminDashboard({ section }) {
           )}
           {tab === 'gestores' && <GestoresPanel />}
           {tab === 'artistas' && <ArtistasPanel subpath={subpath} />}
+          {tab === 'talento' && <TalentManager role="ADMIN" subpath={subpath} onChanged={loadStats} />}
           {tab === 'bandeja' && <BandejaPanel onChange={loadStats} />}
         </div>
       </div>

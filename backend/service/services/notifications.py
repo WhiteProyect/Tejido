@@ -213,6 +213,55 @@ def build_moderation(to_name: str, publication_id: int | None, publication_title
     return f"Tu publicación necesita ajustes: {clip(publication_title, 80)}", html, body
 
 
+def build_talent_review(talent_name: str, leader_name: str, branch_label: str):
+    html, body = render_email(
+        kicker=f"Talento en revisión · {branch_label}",
+        accent="gold",
+        title="Hay un talento",
+        title_accent="esperando tu mirada.",
+        paragraphs=[f"{clip(leader_name, 120)}, líder de {branch_label}, envió un perfil de talento a revisión. Apruébalo o devuélvelo con un motivo desde el dashboard."],
+        details=[("Talento", talent_name), ("Rama", branch_label), ("Enviado por", leader_name)],
+        cta_label="Revisar talento",
+        cta_url=_link("admin-dashboard/talento"),
+        preheader=f"{clip(leader_name, 60)} envió «{clip(talent_name, 60)}» a revisión.",
+        footer_note=TEAM_NOTE,
+    )
+    return f"Talento en revisión: {clip(talent_name, 80)}", html, body
+
+
+def build_talent_decision(to_name: str, talent_name: str, status: str, note: str | None):
+    greeting = f"Hola, {clip(to_name, 120)}:" if to_name else "Hola:"
+    if status == "PUBLISHED":
+        html, body = render_email(
+            kicker="Talento aprobado",
+            accent="mint",
+            title="El perfil de talento",
+            title_accent="ya está en TEJIDO.",
+            paragraphs=[greeting, "El equipo revisó el perfil de talento y ya está visible para quienes buscan contratar."],
+            details=[("Talento", talent_name)],
+            cta_label="Ver mis talentos",
+            cta_url=_link("gestor-dashboard/talento"),
+            preheader=f"«{clip(talent_name, 80)}» ya se puede ver en TEJIDO.",
+            footer_note=GESTOR_NOTE,
+        )
+        return f"Talento aprobado: {clip(talent_name, 80)}", html, body
+    html, body = render_email(
+        kicker="Necesita ajustes",
+        accent="purple",
+        title="El perfil de talento está",
+        title_accent="a un paso.",
+        paragraphs=[greeting, "El equipo revisó el perfil de talento y, antes de publicarlo, te sugiere unos ajustes."],
+        details=[("Talento", talent_name),
+                 ("Lo que te sugieren", note or "El equipo no dejó un detalle. Si tienes dudas, escríbenos.")],
+        closing=["Cuando lo ajustes, vuelve a enviarlo a revisión desde tu dashboard."],
+        cta_label="Ajustar el talento",
+        cta_url=_link("gestor-dashboard/talento"),
+        preheader=f"Un último ajuste para «{clip(talent_name, 70)}».",
+        footer_note=GESTOR_NOTE,
+    )
+    return f"El talento necesita ajustes: {clip(talent_name, 80)}", html, body
+
+
 def notify_suggestion(ticket: str, message: str) -> None:
     subject, html, text, reply_to = build_suggestion(ticket, message)
     _safely(f"sugerencia {ticket}", email_service.send_team_notification, subject, text, html=html, reply_to=reply_to)
@@ -257,3 +306,13 @@ def notify_moderation(to_email: str, to_name: str, publication_id: int | None, p
                       status: str, note: str | None) -> None:
     subject, html, text = build_moderation(to_name, publication_id, publication_title, status, note)
     _safely(f"moderacion de '{publication_title}'", email_service.send_gestor_notification, to_email, subject, text, html=html)
+
+
+def notify_talent_review(talent_name: str, leader_name: str, branch_label: str) -> None:
+    subject, html, text = build_talent_review(talent_name, leader_name, branch_label)
+    _safely(f"revision del talento '{talent_name}'", email_service.send_team_notification, subject, text, html=html)
+
+
+def notify_talent_decision(to_email: str, to_name: str, talent_name: str, status: str, note: str | None) -> None:
+    subject, html, text = build_talent_decision(to_name, talent_name, status, note)
+    _safely(f"decision del talento '{talent_name}'", email_service.send_gestor_notification, to_email, subject, text, html=html)

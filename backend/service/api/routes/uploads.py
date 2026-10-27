@@ -9,6 +9,7 @@ from backend.service.db.session import get_db
 from backend.service.errors import AppError
 from backend.service.schemas.uploads import UploadSignInput
 from backend.service.services import artists as artists_service
+from backend.service.services.branches import leader_of
 from backend.service.services import uploads as svc
 
 router = APIRouter(prefix="/api/uploads")
@@ -19,11 +20,14 @@ SCOPE_ROLES = {
     "publication": {"ADMIN", "GESTOR"},
     "organization": {"GESTOR"},
     "avatar": {"ADMIN", "GESTOR", "CIUDADANO"},
+    # GESTOR solo si es lider de su rama (se revisa abajo con la base).
+    "talent": {"ADMIN", "GESTOR"},
 }
 SCOPE_FOLDERS = {
     "publication": "tejido/publicaciones",
     "organization": "tejido/gestores",
     "avatar": "tejido/perfiles",
+    "talent": "tejido/talento",
 }
 
 
@@ -44,6 +48,8 @@ def sign_upload(payload: UploadSignInput, user: Optional[dict] = Depends(get_cur
     require_login(user, "Inicia sesión para subir imágenes")
     if user["role"] not in SCOPE_ROLES[payload.scope]:
         raise AppError(403, "FORBIDDEN", "No puedes subir imágenes aquí")
+    if payload.scope == "talent" and user["role"] == "GESTOR" and leader_of(db, user["id"]) is None:
+        raise AppError(403, "FORBIDDEN", "Solo el líder de una rama o un administrador pueden subir fotos de talento")
     folder = _folder(db, payload)
     if not svc.is_configured():
         raise AppError(503, "UPLOADS_DISABLED", "La subida de imágenes no está configurada. Por ahora pega un enlace.")

@@ -180,9 +180,16 @@ def submit_publication(publication_id: int, background_tasks: BackgroundTasks,
     return {"message": "Enviado a revision"}
 
 
+def _require_citizen(user: Optional[dict]) -> None:
+    # Regla de producto: solo el CIUDADANO guarda (gestores y admins no tienen "Guardadas").
+    require_login(user, "Inicia sesion para guardar")
+    if user["role"] != "CIUDADANO":
+        raise AppError(403, "FORBIDDEN", "Guardar es para las cuentas de ciudadano")
+
+
 @router.post("/api/publications/{publication_id}/favorite")
 def add_favorite(publication_id: int, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_login(user, "Inicia sesion para guardar")
+    _require_citizen(user)
     exists = db.execute(
         select(Publication.id).where(
             Publication.id == publication_id, Publication.status == "PUBLISHED", Publication.deleted.is_(False)
@@ -200,7 +207,7 @@ def add_favorite(publication_id: int, user: Optional[dict] = Depends(get_current
 
 @router.delete("/api/publications/{publication_id}/favorite")
 def remove_favorite(publication_id: int, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_login(user)
+    _require_citizen(user)
     db.query(Favorite).filter(
         Favorite.user_id == user["id"], Favorite.publication_id == publication_id
     ).delete()

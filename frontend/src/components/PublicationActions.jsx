@@ -5,8 +5,9 @@ import { useToast } from '../context/ToastContext.jsx';
 
 // Guardar y compartir una publicacion: la misma logica en la tarjeta (PublicationCard) y en su
 // pagina (PublicationScreen).
-// - Guardar: sin sesion lleva a login y vuelve a `returnTo`; con sesion, POST/DELETE
-//   /api/publications/{id}/favorite con toast.
+// - Guardar: sin sesion lleva a login y vuelve a `returnTo`; con sesion de ciudadano, POST/DELETE
+//   /api/publications/{id}/favorite con toast (onFavoriteChange avisa al padre: Guardadas). Solo
+//   el ciudadano guarda: a gestores y admins no se les muestra el boton.
 // - Compartir: WhatsApp, Facebook o copiar el enlace #publicacion/<id>; con sesion suma los
 //   +10 pts de colaborador (POST /api/collaborators/share).
 // withLabels: botones con texto (pagina) en vez de solo icono (tarjeta). menuUp: el menu de
@@ -16,7 +17,7 @@ export function publicationShareUrl(id) {
   return `${window.location.origin}/#publicacion/${id}`;
 }
 
-export default function PublicationActions({ publication, user, returnTo = 'explorar', withLabels = false, menuUp = true }) {
+export default function PublicationActions({ publication, user, returnTo = 'explorar', withLabels = false, menuUp = true, onFavoriteChange }) {
   const { showToast } = useToast();
   const [points, setPoints] = useState(false);
   const [favorite, setFavorite] = useState(!!publication.favorite);
@@ -58,6 +59,7 @@ export default function PublicationActions({ publication, user, returnTo = 'expl
       showToast(next
         ? { tone: 'menta', eyebrow: 'Hilo guardado', title: 'Sumaste este hilo a tu ruta', text: 'Ya puedes verlo en tus guardados.' }
         : { tone: 'menta', title: 'Hilo quitado de tu ruta' });
+      onFavoriteChange?.(next);
     } catch {
       setFavorite(!next);
     } finally {
@@ -73,10 +75,12 @@ export default function PublicationActions({ publication, user, returnTo = 'expl
       {points && (
         <span className="text-[13px] font-bold text-gold animate-[fadeToast_2s_ease_forwards]">+10 pts</span>
       )}
-      <button type="button" className={button} onClick={handleToggleFavorite} title={favoriteLabel} aria-label={withLabels ? undefined : favoriteLabel} aria-pressed={favorite}>
-        <Icon name="bookmark" className={`size-4 ${favorite ? 'fill-current text-[var(--kind)]' : ''}`} />
-        {withLabels && (favorite ? 'Guardada' : 'Guardar')}
-      </button>
+      {(!user || user.role === 'CIUDADANO') && (
+        <button type="button" className={button} onClick={handleToggleFavorite} title={favoriteLabel} aria-label={withLabels ? undefined : favoriteLabel} aria-pressed={favorite}>
+          <Icon name="bookmark" className={`size-4 ${favorite ? 'fill-current text-[var(--kind)]' : ''}`} />
+          {withLabels && (favorite ? 'Guardada' : 'Guardar')}
+        </button>
+      )}
       <ShareMenu url={publicationShareUrl(publication.id)} text={`${publication.title} - TEJIDO Bajo Cauca`} withLabels={withLabels} menuUp={menuUp} onShared={handleShared} />
     </div>
   );
