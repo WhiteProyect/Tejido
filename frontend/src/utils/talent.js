@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { UNVERIFIED_TEXT, isUnverifiedError, notifyUnverified } from '../components/VerifyEmailNotice.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from './api.js';
 import { CULTURAL_CATEGORIES, MUNICIPALITIES } from './constants.js';
@@ -130,7 +131,12 @@ export function useTalentFavorite(talent, user, { returnTo, onChange } = {}) {
       onChange?.(next);
     } catch (error) {
       setFavorite(!next);
-      showToast({ tone: 'naranja', title: 'No pudimos guardar el talento', text: error.message });
+      if (isUnverifiedError(error)) {
+        notifyUnverified();
+        showToast({ tone: 'dorado', title: UNVERIFIED_TEXT, text: 'Usa el enlace que te enviamos o pide otro en el aviso de arriba.' });
+      } else {
+        showToast({ tone: 'naranja', title: 'No pudimos guardar el talento', text: error.message });
+      }
     } finally {
       setBusy(false);
     }

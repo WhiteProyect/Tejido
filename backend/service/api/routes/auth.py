@@ -1,18 +1,24 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, Request
-from pydantic import BaseModel, field_validator
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Request
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.service.api.deps import get_current_user, require_login, require_roles
 from backend.service.core.rate_limit import (
-    is_login_locked, is_signup_locked, register_login_failure, register_signup_attempt,
+    allow_password_reset, allow_verification_resend, is_login_locked, is_signup_locked, register_login_failure,
+    register_signup_attempt,
 )
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
 from backend.service.models.tables import User
-from backend.service.schemas.users import OrganizationSelfUpdateInput, UserSelfUpdateInput
+from backend.service.schemas.users import (
+    EmailInput, OrganizationSelfUpdateInput, ResetPasswordInput, SignupInput, TokenInput, UserSelfUpdateInput, full_name,
+    normalize_email,
+)
+from backend.service.services import accounts, notifications
 from backend.service.services.auth import login_user, logout_user
+from backend.service.services.email_tokens import token_link
 from backend.service.services.branches import me_branch
 from backend.service.services.invites import accept_invite
 from backend.service.services.organizations import get_my_organization, update_my_organization
@@ -25,29 +31,6 @@ router = APIRouter()
 class LoginInput(BaseModel):
     email: Optional[str] = None
     password: str = ""
-
-
-class SignupInput(BaseModel):
-    name: str
-    email: str
-    password: str = ""
-
-    @field_validator("name", mode="before")
-    @classmethod
-    def _name(cls, v):
-        v = str(v or "").strip()
-        if not v:
-            raise ValueError("El nombre es obligatorio")
-        return v
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def _email(cls, v):
-        v = str(v or "").strip().lower()
-        local, _, domain = v.partition("@")
-        if not local or "." not in domain or " " in v:
-            raise ValueError("Escribe un correo valido")
-        return v
 
 
 class AcceptInviteInput(BaseModel):
@@ -72,16 +55,82 @@ def login(payload: LoginInput, request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/api/auth/signup")
-def signup(payload: SignupInput, request: Request, db: Session = Depends(get_db)):
-    """Publico: crea una cuenta CIUDADANO activa y deja la sesion abierta
-    (mismo shape de respuesta que /api/auth/login)."""
+def signup(payload: SignupInput, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Publico: crea una cuenta CIUDADANO activa, con el correo SIN verificar, y deja la sesion
+    abierta (mismo shape de respuesta que /api/auth/login). El correo de verificacion sale en
+    segundo plano: si falla, el registro no falla (se loguea)."""
+    if not payload.accept_terms:
+        raise AppError(422, "TERMS_REQUIRED",
+                       "Para crear tu cuenta debes aceptar los Términos y Condiciones y la Política de Privacidad")
     client_ip = request.client.host if request.client else "unknown"
     if is_signup_locked(client_ip):
         raise AppError(429, "TOO_MANY_ATTEMPTS", "Demasiados intentos de registro. Intenta de nuevo en unos minutos.")
     register_signup_attempt(client_ip)
 
-    token, user = signup_user(db, payload.name, payload.email, payload.password)
+    token, user, verify_token = signup_user(db, payload)
+    db.commit()
+    background_tasks.add_task(notifications.notify_verify_email, user["email"], user["first_name"],
+                              token_link("VERIFY", verify_token))
     return {"token": token, "user": user}
+
+
+@router.post("/api/auth/verify-email")
+def verify_email(payload: TokenInput, db: Session = Depends(get_db)):
+    """Publico: marca el correo como verificado con el enlace del correo (idempotente)."""
+    already = accounts.verify_email(db, payload.token)
+    return {"ok": True, "already_verified": already,
+            "message": "Tu correo ya estaba verificado." if already else "¡Listo! Tu correo quedó verificado."}
+
+
+@router.post("/api/auth/resend-verification")
+def resend_verification(background_tasks: BackgroundTasks, user: Optional[dict] = Depends(get_current_user),
+                        db: Session = Depends(get_db)):
+    """Con sesion: reenvia el correo de verificacion (1 por minuto y 5 por hora)."""
+    require_login(user, "Inicia sesión para pedir el correo de verificación")
+    if user["email_verified"]:
+        return {"ok": True, "sent": False, "message": "Tu correo ya está verificado."}
+    limited = allow_verification_resend(user["id"])
+    if limited == "minute":
+        raise AppError(429, "RATE_LIMITED", "Ya te enviamos un correo hace menos de un minuto. Espera un momento antes de pedir otro.")
+    if limited == "hour":
+        raise AppError(429, "RATE_LIMITED", "Pediste varios correos en la última hora. Inténtalo de nuevo más tarde.")
+    pending = accounts.start_verification(db, user["id"])
+    if pending is None:
+        return {"ok": True, "sent": False, "message": "Tu correo ya está verificado."}
+    email, name, verify_token = pending
+    db.commit()
+    background_tasks.add_task(notifications.notify_verify_email, email, name, token_link("VERIFY", verify_token))
+    return {"ok": True, "sent": True, "message": f"Te enviamos un correo nuevo a {email}."}
+
+
+FORGOT_MESSAGE = "Si hay una cuenta con ese correo, te enviamos un enlace para restablecer la contraseña. Revisa tu bandeja (y el spam)."
+
+
+@router.post("/api/auth/forgot-password")
+def forgot_password(payload: EmailInput, request: Request, background_tasks: BackgroundTasks,
+                    db: Session = Depends(get_db)):
+    """Publico: SIEMPRE el mismo mensaje, exista o no la cuenta (no revela cuales existen)."""
+    try:
+        email = normalize_email(payload.email)
+    except ValueError:
+        raise AppError(400, "VALIDATION", "Escribe un correo valido")
+    client_ip = request.client.host if request.client else "unknown"
+    if not allow_password_reset(client_ip, email):
+        raise AppError(429, "RATE_LIMITED", "Pediste varios enlaces seguidos. Inténtalo de nuevo en unos minutos.")
+    pending = accounts.start_password_reset(db, email)
+    if pending is not None:
+        to_email, name, reset_token = pending
+        db.commit()
+        background_tasks.add_task(notifications.notify_password_reset, to_email, name, token_link("RESET", reset_token))
+    return {"ok": True, "message": FORGOT_MESSAGE}
+
+
+@router.post("/api/auth/reset-password")
+def reset_password(payload: ResetPasswordInput, db: Session = Depends(get_db)):
+    """Publico: nueva contrasena con el enlace del correo. Cierra todas las sesiones anteriores y no
+    abre una nueva: despues se inicia sesion como siempre."""
+    accounts.reset_password(db, payload.token, payload.password)
+    return {"ok": True, "message": "Tu contraseña cambió. Ya puedes iniciar sesión con la nueva."}
 
 
 @router.post("/api/auth/accept-invite")
@@ -109,18 +158,28 @@ def me(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(g
 @router.patch("/api/me")
 def update_me(payload: UserSelfUpdateInput, user: Optional[dict] = Depends(get_current_user),
               db: Session = Depends(get_db)):
-    """El usuario autenticado edita su nombre y su foto. Siempre sobre su propia fila
-    (user["id"] de la sesion); el body no puede elegir otro usuario ni tocar email o rol.
-    Devuelve el mismo shape que GET /api/me."""
+    """El usuario autenticado edita su nombre (o nombre y apellido), municipio y foto. Siempre sobre
+    su propia fila (user["id"] de la sesion); el body no puede elegir otro usuario ni tocar email,
+    rol ni la verificacion. Devuelve el mismo shape que GET /api/me."""
     require_login(user)
     row = db.get(User, user["id"])
     sent = payload.model_fields_set
     if "name" in sent and payload.name is not None:
         row.name = payload.name
+    if "first_name" in sent and payload.first_name is not None:
+        row.first_name = payload.first_name
+    if "last_name" in sent and payload.last_name is not None:
+        row.last_name = payload.last_name
+    # Nombre y apellido mandan: `name` se recompone en cuanto estan los dos.
+    if sent & {"first_name", "last_name"} and row.first_name and row.last_name:
+        row.name = full_name(row.first_name, row.last_name)
+    if "municipality" in sent:
+        row.municipality = payload.municipality
     if "avatar_url" in sent:
         row.avatar_url = payload.avatar_url
     db.flush()
-    return {"user": {**user, "name": row.name, "avatar_url": row.avatar_url, **me_branch(db, user)}}
+    return {"user": {**user, "name": row.name, "avatar_url": row.avatar_url, "first_name": row.first_name,
+                     "last_name": row.last_name, "municipality": row.municipality, **me_branch(db, user)}}
 
 
 GESTOR_ONLY = "Solo un gestor tiene una organización propia"

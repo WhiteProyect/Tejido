@@ -55,7 +55,7 @@ export default function Footer() {
         <p className="text-[#aebdb8]">Descubre lo que mueve a Caucasia.</p>
         <div className="flex flex-wrap [align-items:start] gap-7 mt-6" aria-label="Aliados de Tejido">
           <div className={PARTNER}>
-            <img className={`flex ${PARTNER_IMG}`} src="/images/white-proyect-logo.png" alt="White Proyect" title="White Proyect" />
+            <img className={`flex ${PARTNER_IMG}`} src="/images/logos/white-project.png" alt="White Proyect" title="White Proyect" />
           </div>
           <div className={PARTNER}>
             <img

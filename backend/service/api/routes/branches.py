@@ -11,7 +11,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
-from backend.service.api.deps import get_current_user, require_login
+from backend.service.api.deps import get_current_user, require_login, require_verified
 from backend.service.core.rate_limit import allow_branch_request
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
@@ -80,6 +80,7 @@ def create_branch_request(payload: JoinRequestInput, background_tasks: Backgroun
     require_login(user, "Inicia sesión para pedir participar en una rama")
     if user["role"] != "CIUDADANO":
         raise AppError(409, "ALREADY_MEMBER", "Tu cuenta ya participa en TEJIDO como gestor o administrador")
+    require_verified(user)
     if not allow_branch_request(user["id"]):
         raise AppError(429, "RATE_LIMITED", "Hiciste varias solicitudes seguidas. Inténtalo de nuevo más tarde.")
     request = svc.create_request(db, user, payload.branch, payload.message)

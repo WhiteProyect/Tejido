@@ -1,7 +1,7 @@
 import HeroInteractive from '../components/HeroInteractive.jsx';
 import TimelineSection from '../components/TimelineSection.jsx';
 import VideoText from '../components/VideoText.jsx';
-import HomeFeaturedArtist from './HomeFeaturedArtist.jsx';
+import HomeCarousel from './HomeCarousel.jsx';
 import HomeMapSection from './HomeMapSection.jsx';
 import { BTN_CULTURAL_BASE, BTN_INK_MD } from '../components/uiStyles.js';
 
@@ -14,7 +14,7 @@ export default function HomeScreen({ onExplore, publications = [] }) {
     <>
       <HeroInteractive onExplore={onExplore} publications={publications} />
 
-      <HomeFeaturedArtist />
+      <HomeCarousel />
 
       <HomeMapSection publications={publications} />
 

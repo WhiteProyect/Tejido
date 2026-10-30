@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import BackHomeButton from '../components/BackHomeButton.jsx';
 import Logo from '../components/Logo.jsx';
 import { BTN_INK_MD, EYEBROW } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
@@ -46,10 +47,8 @@ export default function AcceptInviteScreen({ token, onSuccess }) {
   }
 
   return (
-    <section className="relative flex min-h-svh items-center justify-center overflow-hidden bg-paper px-6 pt-[112px] pb-[88px] max600:pt-[92px] max600:pb-16">
-      <a className="absolute left-6 top-6 z-20 inline-flex items-center gap-2 rounded-[999px] py-2.5 px-4 text-[14px] font-semibold text-ink transition-colors duration-200 hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink max600:left-3 max600:top-4" href="#inicio">
-        <span aria-hidden="true">←</span> Volver al inicio
-      </a>
+    <section className="relative flex min-h-svh items-center justify-center overflow-clip bg-paper px-6 pt-[112px] pb-[88px] max600:pt-[92px] max600:pb-16">
+      <BackHomeButton />
 
       <div className="relative z-10 flex w-full max-w-[420px] flex-col items-center text-center">
         <Logo href={null} />

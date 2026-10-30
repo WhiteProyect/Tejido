@@ -115,3 +115,25 @@ def test_notify_moderation_sends_html_to_gestor(resend_calls):
     [params] = resend_calls
     assert params["to"] == ["gestor@correo.co"] and "Falta el lugar" in params["html"] and "Falta el lugar" in params["text"]
     assert "necesita ajustes" in params["subject"]
+
+
+def test_global_template_follows_the_brand_design():
+    html, _ = render_email(kicker="k", accent="river", title=EVIL, paragraphs=[EVIL], cta_label="Ir",
+                           cta_url=f"{BASE}/#inicio", footer_note="Nota del pie")
+    assert 'bgcolor="#173f36"' in html and "background-color:#fdfbf7" in html  # cabecera tinta, fondo de página
+    for color in ("#88c5a4", "#d4a843", "#9b72a6", "#c85a32"):  # barra de hilos
+        assert f'bgcolor="{color}"' in html
+    assert ">TEJIDO</div>" in html and ">CAUCASIA</div>" in html
+    assert "TEJIDO · Caucasia, Bajo Cauca" in html and "Nota del pie" in html
+    assert "<img" not in html and "gradient" not in html
+    assert "<script" not in html and "&lt;script&gt;" in html
+
+
+def test_verify_email_uses_the_first_name_and_designer_copy():
+    link = f"{BASE}/#verificar?token=abc"
+    subject, html, text = notifications.build_verify_email("Ana María", link)
+    assert "TEJIDO" in subject
+    assert "Validación de cuenta" in html and "Un nuevo hilo se suma a" in html and "TEJIDO.</em>" in html
+    assert "Hola, Ana:" in html and "Confirmar mi correo" in html and f'href="{link}"' in html
+    assert "48 horas" in html and "48 horas" in text and link in text
+    assert "Hola:" in notifications.build_verify_email(None, link)[2]

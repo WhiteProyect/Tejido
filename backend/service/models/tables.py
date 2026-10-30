@@ -64,6 +64,17 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     # Foto de perfil (URL o ruta del sitio), la edita el propio usuario (PATCH /api/me).
     avatar_url: Mapped[str | None] = mapped_column(String)
+    # Registro de ciudadanos (desde 2026-10): nombre y apellido por separado (`name` se guarda como
+    # "Nombre Apellido"), municipio opcional (schemas/municipalities.py) y la aceptacion de los
+    # terminos con su version. Las cuentas anteriores tienen estos campos en null.
+    first_name: Mapped[str | None] = mapped_column(String)
+    last_name: Mapped[str | None] = mapped_column(String)
+    municipality: Mapped[str | None] = mapped_column(String)
+    # Correo verificado (enlace del correo, invitacion aceptada o restablecer contrasena). Null =
+    # sin verificar: services/email_tokens.py y api/deps.py::require_verified.
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    terms_version: Mapped[str | None] = mapped_column(String)
 
     role: Mapped["Role"] = relationship()
 
@@ -627,4 +638,19 @@ class TalentFavorite(Base):
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     talent_id: Mapped[int] = mapped_column(ForeignKey("talent_profiles.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class EmailToken(Base):
+    """Enlace de un solo uso enviado por correo: VERIFY (verificar el correo, 48 h) o RESET
+    (restablecer la contrasena, 1 h). Solo se guarda el sha256 del token: el token en claro
+    viaja unicamente en el correo (services/email_tokens.py)."""
+    __tablename__ = "email_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    purpose: Mapped[str] = mapped_column(String, nullable=False)  # VERIFY | RESET
+    token_hash: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

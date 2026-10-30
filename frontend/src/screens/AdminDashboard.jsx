@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import CategoryCoverEditor from '../components/CategoryCoverEditor.jsx';
 import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import PublicationForm from '../components/PublicationForm.jsx';
@@ -31,6 +32,7 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 // - publicaciones/<id> (enlace desde un reporte de la Bandeja) abre el editor de esa publicacion.
 // - Talento: components/talent/manage/TalentManager.jsx (todas las ramas; lista y editor). Su
 //   contador es stats.talent_review.
+// - Portadas: la portada de cada una de las 10 categorias (components/CategoryCoverEditor.jsx).
 // - Bandeja: components/admin/BandejaPanel.jsx (mensajes de Nosotros y reportes).
 const STATUSES = ['REVIEW', 'DRAFT', 'REJECTED', 'PUBLISHED'];
 const CATEGORY_LABELS = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
@@ -40,6 +42,7 @@ const TABS = [
   ['gestores', 'Gestores', 'people'],
   ['artistas', 'Artistas', 'music'],
   ['talento', 'Talento', 'mic'],
+  ['portadas', 'Portadas', 'palette'],
   ['bandeja', 'Bandeja', 'inbox'],
 ];
 const TAB_IDS = TABS.map(([id]) => id);
@@ -83,6 +86,18 @@ function StatsPanel({ stats }) {
           </div>
         ))}
       </dl>
+    </section>
+  );
+}
+
+function CoversPanel() {
+  return (
+    <section className={PANEL} aria-labelledby="admin-portadas">
+      <h2 id="admin-portadas" className={`${PANEL_TITLE} flex items-center gap-3`}><Icon name="palette" className="size-6 text-river" /> Portadas de las categorías</h2>
+      <p className="mt-2 mb-0 max-w-[640px] text-[14px] text-muted">Las imágenes de Explorar y de cada categoría. Sin una portada propia se ve la original. Los líderes también pueden cambiar la de su rama.</p>
+      <ul className="mt-6 mb-0 grid list-none grid-cols-[repeat(4,minmax(0,1fr))] gap-5 p-0 max1200:grid-cols-[repeat(3,minmax(0,1fr))] max800:grid-cols-[repeat(2,minmax(0,1fr))] max480:grid-cols-[minmax(0,1fr)]">
+        {CULTURAL_CATEGORIES.map(([key]) => <li key={key} className="flex min-w-0 [&>*]:w-full"><CategoryCoverEditor categoryKey={key} /></li>)}
+      </ul>
     </section>
   );
 }
@@ -281,6 +296,7 @@ export default function AdminDashboard({ section }) {
           {tab === 'gestores' && <GestoresPanel />}
           {tab === 'artistas' && <ArtistasPanel subpath={subpath} />}
           {tab === 'talento' && <TalentManager role="ADMIN" subpath={subpath} onChanged={loadStats} />}
+          {tab === 'portadas' && <CoversPanel />}
           {tab === 'bandeja' && <BandejaPanel onChange={loadStats} />}
         </div>
       </div>

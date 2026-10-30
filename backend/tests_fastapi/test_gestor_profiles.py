@@ -13,6 +13,7 @@ from backend.service.services import email as email_service
 from backend.tests_fastapi.test_gestor_category import body, category_ids  # noqa: F401
 from backend.tests_fastapi.test_gestores_invites import GOOD_PASSWORD, schema_session
 from backend.tests_fastapi.test_parity import auth_header, tokens  # noqa: F401
+from backend.tests_fastapi.test_signup import mark_verified, signup_payload
 
 IMG = "https://res.cloudinary.com/demo/image/upload/v1/tejido/gestores/foto.jpg"
 
@@ -76,7 +77,8 @@ def test_slug_unique_case_insensitive_stable_and_assigned_on_approval(client, ad
 
     # Aprobar una solicitud crea la organizacion con slug.
     citizen_name = unique("Ciudadana Slug")
-    signup = client.post("/api/auth/signup", json={"name": citizen_name, "email": f"s-{uuid.uuid4().hex[:8]}@tejido-test.co", "password": GOOD_PASSWORD})
+    signup = client.post("/api/auth/signup", json=signup_payload(citizen_name, f"s-{uuid.uuid4().hex[:8]}@tejido-test.co"))
+    mark_verified(signup.json()["user"]["id"])
     cit = {"Authorization": f"Bearer {signup.json()['token']}"}
     req = client.post("/api/branch-requests", json={"branch": "LITERATURA"}, headers=cit).json()
     assert client.post(f"/api/branches/LITERATURA/requests/{req['id']}/approve", headers=admin).status_code == 200

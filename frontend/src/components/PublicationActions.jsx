@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
 import ShareMenu, { ICON_BUTTON, LABELED_BUTTON } from './ShareMenu.jsx';
+import { UNVERIFIED_TEXT, notifyUnverified } from './VerifyEmailNotice.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 
 // Guardar y compartir una publicacion: la misma logica en la tarjeta (PublicationCard) y en su
@@ -55,7 +56,15 @@ export default function PublicationActions({ publication, user, returnTo = 'expl
         method: next ? 'POST' : 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!response.ok) throw new Error('favorite request failed');
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        if (body.error === 'EMAIL_NOT_VERIFIED') {
+          // Correo sin verificar: el aviso de verificacion, no un error generico.
+          notifyUnverified();
+          showToast({ tone: 'dorado', title: UNVERIFIED_TEXT, text: 'Usa el enlace que te enviamos o pide otro en el aviso de arriba.' });
+        }
+        throw new Error('favorite request failed');
+      }
       showToast(next
         ? { tone: 'menta', eyebrow: 'Hilo guardado', title: 'Sumaste este hilo a tu ruta', text: 'Ya puedes verlo en tus guardados.' }
         : { tone: 'menta', title: 'Hilo quitado de tu ruta' });

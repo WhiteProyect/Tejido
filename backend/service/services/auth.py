@@ -12,6 +12,16 @@ def now_utc():
     return datetime.now(timezone.utc)
 
 
+def user_payload(user: User, role: str) -> dict:
+    """Lo que reciben el frontend y las rutas sobre la sesion (login, signup, invitacion y
+    api/deps.py::get_current_user devuelven las mismas claves)."""
+    return {
+        "id": user.id, "name": user.name, "email": user.email, "role": role, "avatar_url": user.avatar_url,
+        "first_name": user.first_name, "last_name": user.last_name, "municipality": user.municipality,
+        "email_verified": user.email_verified_at is not None,
+    }
+
+
 def login_user(db: Session, email: str, password: str):
     email = str(email or "").strip().lower()
     row = (
@@ -32,7 +42,7 @@ def login_user(db: Session, email: str, password: str):
     expires_at = datetime.now(timezone.utc) + timedelta(hours=8)
     db.add(SessionRow(token=token, user_id=user.id, expires_at=expires_at))
     db.flush()
-    return token, {"id": user.id, "name": user.name, "email": user.email, "role": role, "avatar_url": user.avatar_url}
+    return token, user_payload(user, role)
 
 
 def logout_user(db: Session, token: str):

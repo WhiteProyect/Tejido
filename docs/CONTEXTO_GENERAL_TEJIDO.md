@@ -246,9 +246,9 @@ territorial. Sin embargo, este contexto debe leerse con estas precisiones:
 - El módulo de colaboración y recompensas existe en backend, pero su pantalla
   de frontend ya no forma parte del recorrido actual.
 - El pasaporte se mide localmente por dispositivo.
-- Faltan imágenes locales esperadas para los seis municipios en
-  `frontend/public/assets/municipios/`; el mapa puede mostrar fondos de reserva
-  donde deberían aparecer esas fotos.
+- Faltan las fotos de los seis municipios: cada una va en
+  `frontend/public/images/municipios/<slug>/portada.jpg` (las carpetas ya existen);
+  mientras tanto el mapa muestra el fondo crema de reserva donde deberían aparecer.
 - El despliegue público, dominio y contenerización siguen deliberadamente
   pendientes; el proyecto está orientado hoy al cierre de funcionalidades.
 - El directorio turístico (hoteles, restaurantes, puntos de interés) está

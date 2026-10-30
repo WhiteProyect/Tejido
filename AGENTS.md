@@ -126,7 +126,8 @@ El código vive en `frontend/src/` (React + Vite):
 - `components/`: piezas reutilizables;
 - `styles/`: `main.css`, `artist.css`, `moneystack.css` (CSS legado, aprobado
   visualmente) y `tailwind.css` (integración de Tailwind y tokens de marca);
-- `frontend/public/`: estáticos (`assets/artistas/<slug>/`, `images/`).
+- `frontend/public/`: estáticos (`images/` y `videos/`). Las fotos de artistas, publicaciones
+  y talento viven en Cloudinary.
 
 Estilos con Tailwind (detalle en `frontend/README.md`, sección "Tailwind"):
 

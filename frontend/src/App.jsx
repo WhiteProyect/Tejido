@@ -3,9 +3,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Footer from './components/Footer.jsx';
 import HiloAssistant from './components/HiloAssistant.jsx';
 import SiteHeader from './components/SiteHeader.jsx';
+import { VerifyEmailBanner } from './components/VerifyEmailNotice.jsx';
 import { CULTURAL_CATEGORIES } from './utils/constants.js';
 import { useToast } from './context/ToastContext.jsx';
 import AcceptInviteScreen from './screens/AcceptInviteScreen.jsx';
+import { ResetPasswordScreen, VerifyEmailScreen } from './screens/AccountTokenScreens.jsx';
 import AdminDashboard from './screens/AdminDashboard.jsx';
 import AgendaScreen from './screens/AgendaScreen.jsx';
 import CategoryScreen from './screens/CategoryScreen.jsx';
@@ -97,6 +99,11 @@ function getRoute() {
     return { screen: 'talento-vista-previa', slug: hash.slice('talento-vista-previa/'.length) };
   }
 
+  // Enlaces de los correos de cuenta: #verificar?token=... y #restablecer?token=... (la pantalla
+  // lee el token del hash y lo quita de la URL).
+  if (hash.startsWith('verificar')) return { screen: 'verificar', slug: null };
+  if (hash.startsWith('restablecer')) return { screen: 'restablecer', slug: null };
+
   // Link de invitacion de cuenta: #invitacion/<token> (el token viaja en `slug`).
   if (hash.startsWith('invitacion/')) {
     return { screen: 'invitacion', slug: hash.slice('invitacion/'.length) };
@@ -151,6 +158,27 @@ export default function App() {
       window.removeEventListener('popstate', handleChange);
     };
   }, []);
+
+  // Cuenta sin verificar: al volver a la pestaña (p. ej. tras abrir el enlace del correo en otra)
+  // se relee /api/me para quitar el aviso sin recargar.
+  useEffect(() => {
+    if (!user || user.email_verified !== false) return undefined;
+    function refresh() {
+      if (document.visibilityState !== 'visible') return;
+      const token = localStorage.getItem('tejido_token');
+      if (!token) return;
+      fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
+        .then((res) => res.json())
+        .then((data) => { if (data.user) setUser(data.user); })
+        .catch(() => {});
+    }
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [user]);
 
   function handleLogin(userData) {
     setUser(userData);
@@ -266,6 +294,12 @@ export default function App() {
     case 'login':
       content = <LoginScreen onSuccess={handleLogin} />;
       break;
+    case 'verificar':
+      content = <VerifyEmailScreen user={user} onUserUpdate={setUser} />;
+      break;
+    case 'restablecer':
+      content = <ResetPasswordScreen onSessionClosed={() => setUser(null)} />;
+      break;
     case 'invitacion':
       content = <AcceptInviteScreen token={route.slug} onSuccess={handleLogin} />;
       break;
@@ -280,6 +314,7 @@ export default function App() {
       {!isArtistRoute && (
         <>
           {!isLoginRoute && <SiteHeader user={user} isMoneystack={route.screen === 'moneystack'} onLogin={() => { sessionStorage.setItem('tejido_return_to', window.location.hash.replace('#', '') || 'inicio'); window.location.hash = 'login'; }} onLogout={handleLogout} />}
+          {!isLoginRoute && <VerifyEmailBanner user={user} />}
           <main>
             <AnimatePresence mode="wait">
               <motion.div

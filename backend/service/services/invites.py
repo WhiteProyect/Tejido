@@ -13,7 +13,7 @@ from backend.service.core.config import settings
 from backend.service.core.security import hash_password
 from backend.service.errors import AppError
 from backend.service.models.tables import InviteToken, Role, Session_ as SessionRow, User
-from backend.service.services.auth import now_utc
+from backend.service.services.auth import now_utc, user_payload
 
 INVITE_DAYS = 7
 MIN_PASSWORD_LENGTH = 8
@@ -62,10 +62,12 @@ def accept_invite(db: Session, token: str, password: str):
     ).one()
     user.password_hash = hash_password(password)
     user.active = True
+    # Aceptar la invitacion prueba el correo: queda verificado.
+    if user.email_verified_at is None:
+        user.email_verified_at = now
     invite.used_at = now
 
     session_token = secrets.token_urlsafe(32)
     db.add(SessionRow(token=session_token, user_id=user.id, expires_at=now + timedelta(hours=SESSION_HOURS)))
     db.flush()
-    return session_token, {"id": user.id, "name": user.name, "email": user.email, "role": role,
-                           "avatar_url": user.avatar_url}
+    return session_token, user_payload(user, role)

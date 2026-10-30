@@ -74,42 +74,42 @@ export const MUNICIPALITIES_DATA = {
     name: 'Caucasia',
     title: 'Capital del Bajo Cauca',
     description: 'Centro comercial y administrativo de la región, ubicada en la confluencia de los ríos Cauca y Nechí. Capital del Bajo Cauca, fundada en 1866.',
-    image: '/assets/municipios/caucasia.jpg',
+    image: '/images/municipios/caucasia/portada.jpg',
     tags: ['Capital', 'Confluencia', 'Comercio']
   },
   caceres: {
     name: 'Cáceres',
     title: 'Historia y Tradición',
     description: 'Fundado en 1576. Uno de los pueblos más antiguos de Antioquia con rica historia minera y tradición colonial que se respira en sus calles empedradas.',
-    image: '/assets/municipios/caceres.jpg',
+    image: '/images/municipios/caceres/portada.jpg',
     tags: ['Colonial', 'Minería', 'Historia']
   },
   taraza: {
     name: 'Tarazá',
     title: 'Tierra de Café',
     description: 'Tierra de cafetaleros y tradición campesina. Conocido por su calidez humana, producción agrícola y los paisajes verdes de sus montañas.',
-    image: '/assets/municipios/taraza.jpg',
+    image: '/images/municipios/taraza/portada.jpg',
     tags: ['Café', 'Agricultura', 'Campesinos']
   },
   nechi: {
     name: 'Nechí',
     title: 'Río y Tradición Minera',
     description: 'Fundado en 1636 como campamento minero. Hogar de comunidades afrocolombianas que mantienen vivas las tradiciones ancestrales del río.',
-    image: '/assets/municipios/nechi.jpg',
+    image: '/images/municipios/nechi/portada.jpg',
     tags: ['Minería', 'Afrocolombiano', 'Río']
   },
   elbagre: {
     name: 'El Bagre',
     title: 'Cuna de Artistas',
     description: 'Primer productor de oro de Antioquia. Tierra de artistas y músicos que enamoran con su folklore y la alegría de su gente.',
-    image: '/assets/municipios/elbagre.jpg',
+    image: '/images/municipios/elbagre/portada.jpg',
     tags: ['Oro', 'Folklore', 'Música']
   },
   zaragoza: {
     name: 'Zaragoza',
     title: 'Municipio Fundado',
     description: 'Fundado en 1581. Pueblo con historia minera milenaria y paisajes naturales impresionantes donde el río Cauca narra historias.',
-    image: '/assets/municipios/zaragoza.jpg',
+    image: '/images/municipios/zaragoza/portada.jpg',
     tags: ['Fundación', 'Naturaleza', 'Minería']
   }
 };

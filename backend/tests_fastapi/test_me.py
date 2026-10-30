@@ -14,8 +14,9 @@ import pytest
 from backend.service.core.rate_limit import reset_login_rate_limit
 from backend.tests_fastapi.test_gestores_invites import GOOD_PASSWORD, create_gestor, sent_emails  # noqa: F401
 from backend.tests_fastapi.test_parity import hit, tokens  # noqa: F401
+from backend.tests_fastapi.test_signup import signup_payload
 
-USER_KEYS = {"id", "name", "email", "role", "avatar_url"}
+USER_KEYS = {"id", "name", "email", "role", "avatar_url", "first_name", "last_name", "municipality", "email_verified"}
 # GET / PATCH /api/me agregan la rama del gestor y si la lidera (null / false para los demas).
 ME_KEYS = USER_KEYS | {"branch", "is_leader"}
 NO_BRANCH = {"branch": None, "is_leader": False}
@@ -30,7 +31,7 @@ def _clean_rate_limit_state():
 
 def signup(client, name="Ciudadana Perfil"):
     email = f"perfil-{uuid.uuid4().hex[:10]}@tejido-test.co"
-    resp = client.post("/api/auth/signup", json={"name": name, "email": email, "password": GOOD_PASSWORD})
+    resp = client.post("/api/auth/signup", json=signup_payload(name, email))
     assert resp.status_code == 200, resp.text
     body = resp.json()
     return body["user"], {"Authorization": f"Bearer {body['token']}"}

@@ -3,6 +3,7 @@ import { BTN_INK_MD, BTN_INK_OUTLINE_MD, FORM_INPUT, FORM_LABEL } from '../uiSty
 import { useToast } from '../../context/ToastContext.jsx';
 import { apiRequest } from '../../utils/api.js';
 import { CULTURAL_CATEGORIES } from '../../utils/constants.js';
+import { UnverifiedNotice, isUnverifiedError } from '../VerifyEmailNotice.jsx';
 
 // Formulario "Quiero participar" en un dialogo accesible (categoria, perfil del lider y perfil del
 // ciudadano). lockedBranch: la rama viene elegida y no se cambia. onSend(branch, message) es el
@@ -36,6 +37,7 @@ export default function BranchRequestDialog({ lockedBranch, initialBranch, onSen
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [unverified, setUnverified] = useState(false);
   const [sent, setSent] = useState(null); // { label, hasLeader }
 
   useEffect(() => {
@@ -67,13 +69,16 @@ export default function BranchRequestDialog({ lockedBranch, initialBranch, onSen
     event.preventDefault();
     setSending(true);
     setError('');
+    setUnverified(false);
     try {
       await onSend(branch, message.trim());
       const hasLeader = await branchHasLeader(branch);
       setSent({ label: LABELS[branch], hasLeader });
       showToast({ tone: 'menta', eyebrow: 'Hilo en camino', title: 'Solicitud enviada', text: `Pediste participar en ${LABELS[branch]}.` });
     } catch (sendError) {
-      setError(sendError.message);
+      // Correo sin verificar: el aviso de verificacion (con reenviar), no un error generico.
+      if (isUnverifiedError(sendError)) setUnverified(true);
+      else setError(sendError.message);
     } finally {
       setSending(false);
     }
@@ -115,6 +120,7 @@ export default function BranchRequestDialog({ lockedBranch, initialBranch, onSen
               </p>
             </div>
             {error && <p className={ALERT} role="alert">{error}</p>}
+            {unverified && <UnverifiedNotice />}
             <div className="flex flex-wrap gap-3 max480:grid max480:grid-cols-1">
               <button type="submit" className={`${BTN_INK_MD} max480:w-full`} disabled={sending}>{sending ? 'Enviando...' : 'Enviar solicitud'}</button>
               <button type="button" className={`${BTN_INK_OUTLINE_MD} max480:w-full`} onClick={onClose} disabled={sending}>Cancelar</button>

@@ -19,6 +19,13 @@
    Solo animan transform/opacity; el centrado usa la propiedad `translate` de Tailwind. */
 @keyframes loginBreath { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.03); opacity: .6; } }
 @keyframes loginFloat { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(6px, -12px); } }
+/* Franja botanica de las letras TEJIDO (components/VideoText.jsx): balanceo lento de cada pieza de
+   flora. Amplitud y desplazamiento por variables (--flora-rot, --flora-y) para que cada pieza tenga
+   los suyos; se usa con alternate, asi va y vuelve sin saltos. */
+@keyframes floraSway {
+  from { transform: translateY(calc(var(--flora-y) * -0.5)) rotate(calc(var(--flora-rot) * -1)); }
+  to { transform: translateY(calc(var(--flora-y) * 0.5)) rotate(var(--flora-rot)); }
+}
 @media (max-width: 600px) { .footer-threshold-line { rx: 20px; ry: 20px; } }
 
 

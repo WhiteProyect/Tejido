@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import AccountDataPanel from '../components/AccountDataPanel.jsx';
 import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import ProfileHeader from '../components/ProfileHeader.jsx';
@@ -218,6 +219,7 @@ export default function ProfileScreen({ user, onLogout, onUserUpdate }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
+        <AccountDataPanel user={user} onUserUpdate={onUserUpdate} />
         <Module user={user} onUserUpdate={onUserUpdate} />
       </motion.div>
     </section>

@@ -15,6 +15,7 @@ from backend.service.services import email as email_service
 from backend.tests_fastapi.test_gestor_category import body, category_ids, new_gestor  # noqa: F401
 from backend.tests_fastapi.test_gestores_invites import GOOD_PASSWORD, schema_session
 from backend.tests_fastapi.test_parity import auth_header, tokens  # noqa: F401
+from backend.tests_fastapi.test_signup import mark_verified, signup_payload
 
 
 @pytest.fixture
@@ -41,11 +42,17 @@ def branch_cleanup(admin, client):
         client.delete(f"/api/admin/branches/{branch}/leader", headers=admin)
 
 
-def citizen(client, name="Ciudadana"):
+def citizen(client, name="Ciudadana", verified=True):
+    """Ciudadano recien registrado. verified: su correo queda verificado (como tras abrir el enlace),
+    para las acciones que lo exigen (guardar, pedir participar)."""
     email = f"rama-{uuid.uuid4().hex[:10]}@tejido-test.co"
-    resp = client.post("/api/auth/signup", json={"name": name, "email": email, "password": GOOD_PASSWORD})
+    resp = client.post("/api/auth/signup", json=signup_payload(name, email))
     assert resp.status_code == 200, resp.text
-    return resp.json()["user"], {"Authorization": f"Bearer {resp.json()['token']}"}
+    user = resp.json()["user"]
+    if verified:
+        mark_verified(user["id"])
+        user = {**user, "email_verified": True}
+    return user, {"Authorization": f"Bearer {resp.json()['token']}"}
 
 
 def gestor(client, admin, branch, name):

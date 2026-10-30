@@ -182,7 +182,9 @@ def test_accept_invite_activates_and_allows_login(client, tokens, sent_emails):
     # Mismo shape que /api/auth/login, y la sesion queda abierta.
     assert set(data) == {"token", "user"}
     assert data["user"] == {"id": body["user_id"], "name": payload["name"],
-                            "email": payload["email"], "role": "GESTOR", "avatar_url": None}
+                            "email": payload["email"], "role": "GESTOR", "avatar_url": None,
+                            "first_name": None, "last_name": None, "municipality": None,
+                            "email_verified": True}
     me = client.get("/api/me", headers={"Authorization": f"Bearer {data['token']}"}).json()
     assert me["user"]["id"] == body["user_id"]
 

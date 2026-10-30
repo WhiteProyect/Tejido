@@ -32,6 +32,19 @@ from backend.service.models.tables import (
     User,
 )
 
+# Fotos de los artistas de ejemplo: las mismas que scripts/migrar_imagenes_a_cloudinary.py subio a
+# Cloudinary (frontend/public/assets/artistas/ ya no existe). og-mauro/hero.jpg nunca existio:
+# el hero usa el perfil, como DJ Apolo.
+_CLOUDINARY = "https://res.cloudinary.com/j8vnyemy/image/upload"
+OG_MAURO_PERFIL = f"{_CLOUDINARY}/v1792789274/tejido/artistas/og-mauro/j9y5aeuyfscwxlidmyjt.jpg"
+OG_MAURO_GALERIA = [
+    f"{_CLOUDINARY}/v1792789279/tejido/artistas/og-mauro/nykkvirggonahkpw78sc.jpg",
+    f"{_CLOUDINARY}/v1792789281/tejido/artistas/og-mauro/ihkyunwz0u6np4qr2g5j.jpg",
+    f"{_CLOUDINARY}/v1792789283/tejido/artistas/og-mauro/kroot6prcttgqzhvkfhl.jpg",
+    f"{_CLOUDINARY}/v1792789285/tejido/artistas/og-mauro/gabemhg20xfpe93xjtud.jpg",
+]
+DJ_APOLO_PERFIL = f"{_CLOUDINARY}/v1792789276/tejido/artistas/dj-apolo/zyak2wujnekz96bri3el.jpg"
+
 
 def now_utc():
     return datetime.now(timezone.utc)
@@ -66,6 +79,8 @@ def seed_database(db: Session):
         {
             "id": uid, "role_id": uid, "name": name, "email": email,
             "password_hash": hash_password(password), "active": True, "created_at": now_utc(),
+            # Como las cuentas que existian antes de la verificacion de correo: ya verificadas.
+            "email_verified_at": now_utc(),
         }
         for uid, name, email, password in demo_users
     ], ["id"])
@@ -257,7 +272,7 @@ def seed_database(db: Session):
                 "Su musica conecta las raices del rio Cauca con el ritmo urbano, creando un sonido unico "
                 "que representa la identidad del Bajo Cauca antioqueno. Bajo el sello Moneystack, "
                 "Og Mauro ha consolidado una voz propia que habla del territorio, la calle y la cultura.",
-            image="/assets/artistas/og-mauro/perfil.jpg", hero_image="/assets/artistas/og-mauro/hero.jpg",
+            image=OG_MAURO_PERFIL, hero_image=OG_MAURO_PERFIL,
             genre="Urbano / Rap / Hip-Hop", city="Caucasia", region="Bajo Cauca, Antioquia",
             featured=True, created_at=ts, updated_at=ts,
         )
@@ -305,13 +320,13 @@ def seed_database(db: Session):
             ))
 
         media = [
-            ("image", "/assets/artistas/og-mauro/galeria-1.jpg", "Ensayo fotografico",
+            ("image", OG_MAURO_GALERIA[0], "Ensayo fotografico",
              "Sesion de fotos para la portada de Territorio", "2026-03-01", 1, True),
-            ("image", "/assets/artistas/og-mauro/galeria-2.jpg", "En el estudio",
+            ("image", OG_MAURO_GALERIA[1], "En el estudio",
              "Grabando en el estudio de Moneystack", "2025-08-15", 2, False),
-            ("image", "/assets/artistas/og-mauro/galeria-3.jpg", "En vivo",
+            ("image", OG_MAURO_GALERIA[2], "En vivo",
              "Presentacion en el Festival Rio y Sabana", "2025-07-18", 3, True),
-            ("image", "/assets/artistas/og-mauro/galeria-4.jpg", "Detras de escena",
+            ("image", OG_MAURO_GALERIA[3], "Detras de escena",
              "Backstage antes del concierto", "2025-09-20", 4, False),
             ("video", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "Bajo Cauca - Video Oficial",
              "El video oficial del tema que define su carrera", "2024-08-20", 5, True),
@@ -357,7 +372,7 @@ def seed_database(db: Session):
         db.add(Artist(
             name="DJ Apolo", stage_name="DJ Apolo", slug="dj-apolo",
             bio="DJ del Bajo Cauca bajo el sello Moneystack.",
-            image="/assets/artistas/dj-apolo/perfil.jpg", hero_image="/assets/artistas/dj-apolo/perfil.jpg",
+            image=DJ_APOLO_PERFIL, hero_image=DJ_APOLO_PERFIL,
             genre="DJ / Electronica", city="Caucasia", region="Bajo Cauca, Antioquia",
             featured=False, created_at=ts, updated_at=ts,
         ))

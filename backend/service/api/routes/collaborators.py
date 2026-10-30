@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.service.api.deps import get_current_user, require_login
+from backend.service.api.deps import get_current_user, require_login, require_verified
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
 from backend.service.models.tables import ActivityType
@@ -64,7 +64,7 @@ def share(payload: ShareInput, user: Optional[dict] = Depends(get_current_user),
 
 @router.post("/report", status_code=201)
 def report(payload: ReportActivityInput, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_login(user, "Inicia sesion para reportar")
+    require_verified(user, "Inicia sesion para reportar")
     if not payload.type:
         raise AppError(400, "VALIDATION", "El tipo de actividad es requerido")
     if not payload.description:

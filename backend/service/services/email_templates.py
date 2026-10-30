@@ -7,21 +7,22 @@ HTML. Los enlaces (boton y mailto:) los arma el backend; aqui solo se aceptan ht
 """
 from html import escape
 
-# Paleta de marca (frontend/src/styles/tailwind.css).
+# Paleta de marca (frontend/src/styles/tailwind.css) y la del diseño de correo de la diseñadora.
 INK = "#173f36"
-INK_DEEP = "#0c241e"
 CREAM = "#f3e4c8"
-PAPER = "#fff9ec"
 CREAM_WARM = "#faf3e6"
-LINE = "#ddd5c7"
+PAGE_BG = "#fdfbf7"
+CARD_BG = "#ffffff"
 MINT = "#75b79b"
 GOLD = "#d4a843"
 PURPLE = "#8a4f7d"
 ORANGE = "#d85b36"
 RIVER = "#1d8fa3"
+# Barra de hilos bajo la cabecera (menta, dorado, morado, naranja), tonos del diseño.
+THREADS = ("#88c5a4", "#d4a843", "#9b72a6", "#c85a32")
 # Texto secundario: #53645c en vez de muted (#66746f) para pasar AA sobre crema.
 TEXT_SOFT = "#53645c"
-TEXT_BODY = "#2f423b"
+TEXT_BODY = "#4a5c58"
 HEADER_SUB = "#b9c8bd"
 
 # Acento por tipo de correo: (franja/borde, texto). El texto es una variante oscura que pasa AA
@@ -35,7 +36,7 @@ ACCENTS = {
 }
 
 SANS = "'DM Sans', Arial, Helvetica, sans-serif"
-SERIF = "Georgia, 'Times New Roman', serif"
+SERIF = "'Playfair Display', Georgia, serif"
 
 LIMITS = {"title": 200, "detail": 500, "quote": 2000, "paragraph": 1200}
 
@@ -57,22 +58,24 @@ def _safe_href(href: str | None) -> str | None:
 
 
 def _header() -> str:
+    # El espaciado de letras deja un hueco al final de la palabra: el padding-left igual lo
+    # compensa para que TEJIDO / CAUCASIA queden centrados de verdad.
     dots = (
-        f'<span style="color:{MINT};">&#9679;</span>&nbsp;'
-        f'<span style="color:{CREAM};">&#9675;</span>&nbsp;'
-        f'<span style="color:#b98cb0;">&#9679;</span>'
+        f'<span style="color:{THREADS[0]};">&#9679;</span>&nbsp;'
+        f'<span style="color:{THREADS[1]};">&#9675;</span>&nbsp;'
+        f'<span style="color:{THREADS[2]};">&#9679;</span>'
     )
-    stripe = "".join(
-        f'<td width="25%" height="5" style="height:5px;line-height:5px;font-size:0;background-color:{color};">&nbsp;</td>'
-        for color in (MINT, GOLD, PURPLE, ORANGE)
+    threads = "".join(
+        f'<td width="25%" height="4" bgcolor="{color}" style="height:4px;line-height:0;font-size:0;background-color:{color};">&nbsp;</td>'
+        for color in THREADS
     )
     return (
-        f'<tr><td class="px" style="background-color:{INK_DEEP};padding:28px 40px 24px;border-radius:20px 20px 0 0;">'
-        f'<div style="font-family:{SANS};font-size:24px;line-height:1;letter-spacing:2px;">{dots}</div>'
-        f'<div style="font-family:{SANS};font-size:24px;font-weight:700;letter-spacing:7px;color:{CREAM};margin-top:12px;">TEJIDO</div>'
-        f'<div style="font-family:{SANS};font-size:10px;font-weight:700;letter-spacing:4px;color:{HEADER_SUB};margin-top:4px;">CAUCASIA</div>'
+        f'<tr><td class="px" align="center" bgcolor="{INK}" style="background-color:{INK};padding:32px 40px 28px;border-radius:12px 12px 0 0;text-align:center;">'
+        f'<div style="font-family:{SANS};font-size:22px;line-height:1;letter-spacing:2px;">{dots}</div>'
+        f'<div style="font-family:{SANS};font-size:26px;line-height:1.2;font-weight:700;letter-spacing:7px;padding-left:7px;color:{CREAM};margin-top:14px;">TEJIDO</div>'
+        f'<div style="font-family:{SANS};font-size:10px;line-height:1.4;font-weight:700;letter-spacing:4px;padding-left:4px;color:{HEADER_SUB};margin-top:6px;">CAUCASIA</div>'
         f'</td></tr>'
-        f'<tr><td style="padding:0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>{stripe}</tr></table></td></tr>'
+        f'<tr><td style="padding:0;line-height:0;font-size:0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>{threads}</tr></table></td></tr>'
     )
 
 
@@ -110,9 +113,9 @@ def _button(label: str, url: str) -> str:
     href = _safe_href(url) or "#"
     return (
         f'<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 0;">'
-        f'<tr><td bgcolor="{INK}" style="background-color:{INK};border-radius:12px;">'
+        f'<tr><td bgcolor="{INK}" style="background-color:{INK};border-radius:8px;">'
         f'<a href="{href}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:{SANS};font-size:16px;'
-        f'font-weight:700;color:{CREAM};text-decoration:none;border-radius:12px;">{escape(label)}</a>'
+        f'line-height:1.25;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">{escape(label)}</a>'
         f'</td></tr></table>'
         f'<p style="margin:16px 0 0;font-family:{SANS};font-size:13px;line-height:1.5;color:{TEXT_SOFT};">'
         f'¿No ves el botón? Copia este enlace en tu navegador:<br>'
@@ -121,11 +124,13 @@ def _button(label: str, url: str) -> str:
 
 
 def _footer(note: str) -> str:
+    note_html = (f'<div style="margin-top:6px;font-size:12px;line-height:1.5;font-weight:400;color:{TEXT_SOFT};">{escape(note)}</div>'
+                 if note else "")
     return (
-        f'<tr><td class="px" style="padding:24px 40px 8px;font-family:{SANS};font-size:13px;line-height:1.6;color:{TEXT_SOFT};text-align:center;">'
-        f'<strong style="color:{INK};">TEJIDO</strong> · Caucasia, Bajo Cauca'
-        f'{f"<br>{escape(note)}" if note else ""}'
-        f'</td></tr>'
+        f'<tr><td class="px" align="center" bgcolor="{PAGE_BG}" style="background-color:{PAGE_BG};padding:20px 40px 24px;'
+        f'border-radius:0 0 12px 12px;font-family:{SANS};text-align:center;">'
+        f'<div style="font-size:13px;line-height:1.5;font-weight:700;color:{INK};">TEJIDO · Caucasia, Bajo Cauca</div>'
+        f'{note_html}</td></tr>'
     )
 
 
@@ -158,7 +163,7 @@ def render_email(*, kicker: str, accent: str, title: str, title_accent: str = ""
         body.append(_button(cta_label, cta_url))
 
     preheader_html = (
-        f'<div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:{CREAM_WARM};">'
+        f'<div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:{PAGE_BG};">'
         f'{escape(clip(preheader, 140))}{"&#8199;&#65279;&#847; " * 30}</div>'
     )
     html = (
@@ -168,14 +173,15 @@ def render_email(*, kicker: str, accent: str, title: str, title_accent: str = ""
         f'<title>{escape(clip(title, LIMITS["title"]))}</title>'
         '<style>@media (max-width:480px){.px{padding-left:20px!important;padding-right:20px!important}'
         '.card{padding:28px 20px!important}}</style></head>'
-        f'<body style="margin:0;padding:0;background-color:{CREAM_WARM};">'
+        f'<body style="margin:0;padding:0;background-color:{PAGE_BG};">'
         f'{preheader_html}'
-        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{CREAM_WARM};">'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="{PAGE_BG}" style="background-color:{PAGE_BG};">'
         '<tr><td align="center" style="padding:24px 12px;">'
         '<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->'
-        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="{CARD_BG}" '
+        f'style="max-width:600px;background-color:{CARD_BG};border-radius:12px;border-collapse:separate;">'
         f'{_header()}'
-        f'<tr><td class="card" style="background-color:{PAPER};border:1px solid {LINE};border-top:0;border-radius:0 0 20px 20px;padding:36px 40px;">'
+        f'<tr><td class="card" bgcolor="{CARD_BG}" style="background-color:{CARD_BG};padding:36px 40px;">'
         f'{"".join(body)}</td></tr>'
         f'{_footer(footer_note)}'
         '</table>'
@@ -195,3 +201,45 @@ def render_email(*, kicker: str, accent: str, title: str, title_accent: str = ""
     if footer_note:
         text_parts.append(footer_note)
     return html, "\n\n".join(text_parts)
+
+
+# ─────────────────────────── cuenta: verificar correo y restablecer contrasena ───────────────────────────
+# Mismo diseño de marca que los avisos (render_email: sin imagenes ni degradados, boton y texto
+# alterno). El nombre del usuario se escapa en render_email. Devuelven (asunto, html, texto).
+ACCOUNT_NOTE = "Recibes este correo porque alguien usó esta dirección en TEJIDO."
+
+
+def build_verify_email(first_name: str | None, link: str):
+    first = (first_name or "").split()
+    greeting = f"Hola, {clip(first[0], 60)}:" if first else "Hola:"
+    html, text = render_email(
+        kicker="Validación de cuenta",
+        accent="river",
+        title="Un nuevo hilo se suma a",
+        title_accent="TEJIDO.",
+        paragraphs=[greeting,
+                    "Nos emociona que quieras ser parte de la cultura y el talento de Caucasia. Para empezar a explorar y guardar tus lugares favoritos, confirma tu dirección."],
+        closing=["El enlace vence en 48 horas. Si no fuiste tú, ignora este correo: sin confirmarlo no se puede guardar ni participar con esta cuenta."],
+        cta_label="Confirmar mi correo",
+        cta_url=link,
+        preheader="Confirma tu correo para guardar y participar en TEJIDO.",
+        footer_note=ACCOUNT_NOTE,
+    )
+    return "Verifica tu correo en TEJIDO", html, text
+
+
+def build_reset_email(name: str, link: str):
+    greeting = f"Hola, {clip(name, 120)}:" if name else "Hola:"
+    html, text = render_email(
+        kicker="Restablecer contraseña",
+        accent="gold",
+        title="Crea una contraseña",
+        title_accent="nueva.",
+        paragraphs=[greeting, "Pediste restablecer la contraseña de tu cuenta de TEJIDO. Abre el enlace y elige una nueva."],
+        closing=["El enlace vence en 1 hora y sirve una sola vez. Si no lo pediste, ignora este correo: tu contraseña no cambia."],
+        cta_label="Restablecer mi contraseña",
+        cta_url=link,
+        preheader="El enlace para crear tu contraseña nueva vence en 1 hora.",
+        footer_note=ACCOUNT_NOTE,
+    )
+    return "Restablece tu contraseña de TEJIDO", html, text

@@ -10,20 +10,20 @@
 //   location lugar (si se deja vacio sale "Caucasia")
 export const TIMELINE_ITEMS = [
   {
-    id: 'biblioteca-al-parque',
-    date: '2026-07-04',
-    kind: 'INICIATIVA',
-    title: 'Biblioteca al parque',
-    summary: 'Lecturas, juegos y conversación cada sábado.',
-    location: 'Parques de Caucasia',
+    id: 'INFIERNO-HOUSE',
+    date: '2023-03-23',
+    kind: 'EVENTO',
+    title: 'INFIERNO HOUSE',
+    summary: 'Primer golpe de money stack en caucasia.',
+    location: 'Containers / caucasia - antioquia',
   },
   {
-    id: 'mercado-hecho-en-caucasia',
-    date: '2026-07-11',
+    id: 'Bajo-cauca-fest',
+    date: '2022-12-02',
     kind: 'EVENTO',
-    title: 'Mercado Hecho en Caucasia',
-    summary: 'Emprendimientos locales, música y cocina en un solo lugar.',
-    location: 'Parque de las Banderas',
+    title: 'BAJO CAUCA FEST',
+    summary: 'Primer festival de Rock en el bajo cauca.',
+    location: 'Parque de la ceiba',
   },
   {
     id: 'festival-rio-y-sabana-2026',

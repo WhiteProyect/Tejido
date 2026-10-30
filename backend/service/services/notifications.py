@@ -10,7 +10,7 @@ import logging
 
 from backend.service.core.config import settings
 from backend.service.services import email as email_service
-from backend.service.services.email_templates import clip, render_email
+from backend.service.services.email_templates import build_reset_email, build_verify_email, clip, render_email
 from backend.service.services.suggestions import looks_like_email, split_message
 
 logger = logging.getLogger("tejido.api")
@@ -316,3 +316,13 @@ def notify_talent_review(talent_name: str, leader_name: str, branch_label: str) 
 def notify_talent_decision(to_email: str, to_name: str, talent_name: str, status: str, note: str | None) -> None:
     subject, html, text = build_talent_decision(to_name, talent_name, status, note)
     _safely(f"decision del talento '{talent_name}'", email_service.send_gestor_notification, to_email, subject, text, html=html)
+
+
+def notify_verify_email(to_email: str, name: str, link: str) -> None:
+    subject, html, text = build_verify_email(name, link)
+    _safely(f"verificacion de correo de {to_email}", email_service.send_gestor_notification, to_email, subject, text, html=html)
+
+
+def notify_password_reset(to_email: str, name: str, link: str) -> None:
+    subject, html, text = build_reset_email(name, link)
+    _safely(f"restablecer contrasena de {to_email}", email_service.send_gestor_notification, to_email, subject, text, html=html)

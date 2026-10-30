@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import CategoryCoverEditor from '../components/CategoryCoverEditor.jsx';
 import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import PublicationCard from '../components/PublicationCard.jsx';
@@ -34,7 +35,8 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 //   Solicitudes (aprobar o rechazar ingresos) y Participantes (components/gestor/leader/), con
 //   sus contadores en el encabezado; se cargan al entrar y se refrescan tras cada accion. Y
 //   Talento (#gestor-dashboard/talento[/<id>[/<pestana>]]): el talento contratable de su rama
-//   (components/talent/manage/TalentManager.jsx).
+//   (components/talent/manage/TalentManager.jsx). En Mi categoria, ademas, "Portada de mi rama"
+//   (components/CategoryCoverEditor.jsx; solo el lider la ve y el backend solo le deja su rama).
 // La pestana va en la URL con replaceState (sin hashchange: App subiria la pagina).
 
 const CATEGORY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label, slug]) => [key, { label, slug }]));
@@ -453,6 +455,13 @@ export default function GestorDashboard({ user, section }) {
                   )}
                 </section>
               </>
+            )}
+            {tab === 'mi-categoria' && showLeader && (
+              <section className={PANEL} aria-labelledby="portada-rama">
+                <h2 id="portada-rama" className={`${PANEL_TITLE} flex items-center gap-3`}><Icon name="palette" className="size-6 text-river" /> Portada de mi rama</h2>
+                <p className="mt-2 mb-5 max-w-[620px] text-[14px] text-muted">Es la imagen de {info.label} en Explorar y en la página de la categoría. Como líder puedes cambiarla o volver a la original.</p>
+                <div className="max-w-[420px]"><CategoryCoverEditor categoryKey={branch} /></div>
+              </section>
             )}
             {tab === 'mi-categoria' && <MyCategory category={category} />}
             {showLeader && !leader.loaded && ['por-revisar', 'solicitudes', 'participantes'].includes(tab) && (

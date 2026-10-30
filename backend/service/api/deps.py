@@ -24,7 +24,8 @@ def get_current_user(
         return None
     row = (
         db.execute(
-            select(User.id, User.name, User.email, Role.name.label("role"), User.avatar_url)
+            select(User.id, User.name, User.email, Role.name.label("role"), User.avatar_url, User.first_name,
+                   User.last_name, User.municipality, User.email_verified_at)
             .join(Role, Role.id == User.role_id)
             .join(SessionRow, SessionRow.user_id == User.id)
             .where(
@@ -36,12 +37,25 @@ def get_current_user(
         .mappings()
         .first()
     )
-    return dict(row) if row else None
+    if not row:
+        return None
+    user = dict(row)
+    user["email_verified"] = user.pop("email_verified_at") is not None
+    return user
 
 
 def require_login(user: Optional[dict], message: str = "Inicia sesion") -> dict:
     if not user:
         raise AppError(401, "UNAUTHORIZED", message)
+    return user
+
+
+def require_verified(user: Optional[dict], message: str = "Inicia sesion") -> dict:
+    """Acciones de ciudadano que escriben (guardar, pedir participar, reportar): exigen el correo
+    verificado. Compara contra users.email_verified_at (via get_current_user), no contra el rol."""
+    require_login(user, message)
+    if not user.get("email_verified"):
+        raise AppError(403, "EMAIL_NOT_VERIFIED", "Verifica tu correo para usar esta función")
     return user
 
 

@@ -60,3 +60,19 @@ def required_text(v, max_length, label, min_length=1):
     if len(v) > max_length:
         raise ValueError(f"{label} no puede superar {max_length} caracteres")
     return v
+
+
+def our_cloudinary_image(v, folder):
+    """Imagen subida a NUESTRA cuenta de Cloudinary y dentro de `folder` (p. ej. tejido/categorias):
+    https://res.cloudinary.com/<cloud_name>/image/upload/.../<folder>/... Sin cloud name configurado
+    no se acepta ninguna."""
+    from backend.service.core.config import settings  # import tardio: este modulo no depende de config
+
+    v = _clean_url(v)
+    if v is None:
+        raise ValueError("Falta la imagen")
+    cloud = settings.cloudinary_cloud_name
+    prefix = f"https://res.cloudinary.com/{cloud}/image/upload/"
+    if not cloud or not v.startswith(prefix) or f"/{folder}/" not in v[len(prefix) - 1:] or not _EXTERNAL_RE.match(v):
+        raise ValueError("La imagen debe subirse desde TEJIDO (Cloudinary, carpeta de portadas)")
+    return v

@@ -107,3 +107,42 @@ BRANCH_REQUEST_LIMIT = RateLimitItemPerHour(5)
 def allow_branch_request(user_id: int) -> bool:
     """Cuenta el intento y dice si todavia esta dentro del limite."""
     return _limiter.hit(BRANCH_REQUEST_LIMIT, f"branch-request:user:{user_id}")
+
+
+# ---------------------------------------------------------------------------
+# Reenviar el correo de verificacion (/api/auth/resend-verification): por usuario, 1 cada 60 s
+# y 5 por hora. Cada pedido manda un correo (cuota de Resend).
+# ---------------------------------------------------------------------------
+
+RESEND_VERIFY_SHORT = RateLimitItemPerMinute(1)
+RESEND_VERIFY_HOUR = RateLimitItemPerHour(5)
+
+
+def allow_verification_resend(user_id: int) -> str | None:
+    """None si se puede enviar (y lo cuenta); si no, 'minute' u 'hour' segun el limite alcanzado."""
+    key = f"verify-resend:user:{user_id}"
+    if not _limiter.test(RESEND_VERIFY_SHORT, key):
+        return "minute"
+    if not _limiter.test(RESEND_VERIFY_HOUR, key):
+        return "hour"
+    _limiter.hit(RESEND_VERIFY_SHORT, key)
+    _limiter.hit(RESEND_VERIFY_HOUR, key)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# "Olvide mi contrasena" (/api/auth/forgot-password): por IP (10 cada 15 min) y por correo
+# (3 por hora). Se cuenta exista o no la cuenta, para no revelar cuales existen.
+# ---------------------------------------------------------------------------
+
+FORGOT_IP_LIMIT = RateLimitItemPerMinute(10, 15)
+FORGOT_EMAIL_LIMIT = RateLimitItemPerHour(3)
+
+
+def allow_password_reset(ip: str, email: str) -> bool:
+    ip_key, email_key = f"forgot:ip:{ip}", f"forgot:email:{email}"
+    if not _limiter.test(FORGOT_IP_LIMIT, ip_key) or not _limiter.test(FORGOT_EMAIL_LIMIT, email_key):
+        return False
+    _limiter.hit(FORGOT_IP_LIMIT, ip_key)
+    _limiter.hit(FORGOT_EMAIL_LIMIT, email_key)
+    return True

@@ -22,12 +22,19 @@ SCOPE_ROLES = {
     "avatar": {"ADMIN", "GESTOR", "CIUDADANO"},
     # GESTOR solo si es lider de su rama (se revisa abajo con la base).
     "talent": {"ADMIN", "GESTOR"},
+    "category_cover": {"ADMIN", "GESTOR"},
+}
+# Scopes en los que un GESTOR necesita ser lider de su rama.
+LEADER_SCOPES = {
+    "talent": "Solo el líder de una rama o un administrador pueden subir fotos de talento",
+    "category_cover": "Solo el líder de una rama o un administrador pueden cambiar la portada de una categoría",
 }
 SCOPE_FOLDERS = {
     "publication": "tejido/publicaciones",
     "organization": "tejido/gestores",
     "avatar": "tejido/perfiles",
     "talent": "tejido/talento",
+    "category_cover": "tejido/categorias",
 }
 
 
@@ -48,8 +55,8 @@ def sign_upload(payload: UploadSignInput, user: Optional[dict] = Depends(get_cur
     require_login(user, "Inicia sesión para subir imágenes")
     if user["role"] not in SCOPE_ROLES[payload.scope]:
         raise AppError(403, "FORBIDDEN", "No puedes subir imágenes aquí")
-    if payload.scope == "talent" and user["role"] == "GESTOR" and leader_of(db, user["id"]) is None:
-        raise AppError(403, "FORBIDDEN", "Solo el líder de una rama o un administrador pueden subir fotos de talento")
+    if payload.scope in LEADER_SCOPES and user["role"] == "GESTOR" and leader_of(db, user["id"]) is None:
+        raise AppError(403, "FORBIDDEN", LEADER_SCOPES[payload.scope])
     folder = _folder(db, payload)
     if not svc.is_configured():
         raise AppError(503, "UPLOADS_DISABLED", "La subida de imágenes no está configurada. Por ahora pega un enlace.")

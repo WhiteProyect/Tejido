@@ -18,6 +18,7 @@ from typing import Optional
 from sqlalchemy import and_, delete, exists, func, select
 from sqlalchemy.orm import Session
 
+from backend.service.api.deps import require_verified
 from backend.service.errors import AppError
 from backend.service.models.tables import (
     Organization, Role, TalentAvailability, TalentEndorsement, TalentFavorite, TalentMedia, TalentMilestone, TalentProfile,
@@ -558,8 +559,13 @@ def require_citizen(user: Optional[dict]) -> dict:
     return user
 
 
+def require_verified_citizen(user: Optional[dict]) -> dict:
+    """Guardar o quitar talento: ciudadano y con el correo verificado (GET /api/me/saved solo lee)."""
+    return require_verified(require_citizen(user))
+
+
 def add_favorite(db: Session, user: Optional[dict], talent_id: int) -> None:
-    user = require_citizen(user)
+    user = require_verified_citizen(user)
     visible = db.execute(select(TalentProfile.id).where(TalentProfile.id == talent_id, *_visible())).first()
     if not visible:
         raise AppError(404, "NOT_FOUND", "Este talento no está disponible")
@@ -573,7 +579,7 @@ def add_favorite(db: Session, user: Optional[dict], talent_id: int) -> None:
 
 def remove_favorite(db: Session, user: Optional[dict], talent_id: int) -> None:
     """Idempotente, y tambien si el talento ya no esta publicado (no deja guardados huerfanos)."""
-    user = require_citizen(user)
+    user = require_verified_citizen(user)
     db.execute(delete(TalentFavorite).where(TalentFavorite.user_id == user["id"], TalentFavorite.talent_id == talent_id))
 
 

@@ -7,7 +7,8 @@ import { getInitials } from '../utils/initials.js';
 import { cdnImage } from '../utils/cloudinaryUrl.js';
 
 // Cabecera del perfil, comun a todos los roles: avatar (foto o iniciales) y nombre, ambos
-// editables por el propio usuario con PATCH /api/me. La foto se sube a Cloudinary (ImageField,
+// editables por el propio usuario con PATCH /api/me. Si la cuenta ya tiene nombre y apellido por
+// separado, el nombre se edita en "Tus datos" (components/AccountDataPanel.jsx) y aqui solo se muestra. La foto se sube a Cloudinary (ImageField,
 // scope "avatar") y se guarda al terminar de subir; un enlace pegado o "Quitar imagen" se guardan
 // con "Guardar foto". Tras guardar avisa con un toast y entrega el usuario nuevo a onUserUpdate
 // (App lo guarda, asi el header del sitio cambia sin recargar).
@@ -104,7 +105,7 @@ export default function ProfileHeader({ user, roleLabel, markClass, onUserUpdate
         {/* En movil el nombre ocupa el ancho junto al avatar (72 + 20 de gap) y el boton baja. */}
         <div className="min-w-0 flex-1 max600:basis-[calc(100%-92px)]">
           <p className={`${EYEBROW} mb-2`}>Mi perfil · {roleLabel}</p>
-          {editingName ? (
+          {editingName && !user.first_name ? (
             <input
               ref={nameInputRef}
               className="m-0 w-full min-w-0 rounded-[10px] border-0 border-b-2 border-b-orange bg-[rgba(117,183,155,.14)] px-2 font-sans text-[length:clamp(34px,4.4vw,58px)] font-extrabold leading-[1.1] tracking-[-0.045em] text-ink outline-none"
@@ -121,10 +122,13 @@ export default function ProfileHeader({ user, roleLabel, markClass, onUserUpdate
             />
           ) : (
             <div className="flex items-center gap-3">
-              <h1 className="m-0 min-w-0 cursor-text font-sans text-[length:clamp(34px,4.4vw,58px)] font-extrabold leading-[1] tracking-[-0.045em] text-ink [overflow-wrap:anywhere]" onClick={() => { setNameDraft(user.name); setEditingName(true); }}>{user.name}</h1>
-              <button type="button" className={`${ICON_BTN} size-9`} aria-label="Editar nombre" onClick={() => { setNameDraft(user.name); setEditingName(true); setError(''); }}>
-                <Icon name="pen" className="size-4" />
-              </button>
+              <h1 className={`m-0 min-w-0 font-sans text-[length:clamp(34px,4.4vw,58px)] font-extrabold leading-[1] tracking-[-0.045em] text-ink [overflow-wrap:anywhere] ${user.first_name ? '' : 'cursor-text'}`}
+                onClick={user.first_name ? undefined : () => { setNameDraft(user.name); setEditingName(true); }}>{user.name}</h1>
+              {!user.first_name && (
+                <button type="button" className={`${ICON_BTN} size-9`} aria-label="Editar nombre" onClick={() => { setNameDraft(user.name); setEditingName(true); setError(''); }}>
+                  <Icon name="pen" className="size-4" />
+                </button>
+              )}
             </div>
           )}
           <p className="mt-2 mb-0 text-[15px] text-muted">{user.email}</p>
