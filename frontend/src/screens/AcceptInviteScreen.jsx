@@ -1,11 +1,14 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import BackHomeButton from '../components/BackHomeButton.jsx';
 import Logo from '../components/Logo.jsx';
 import { BTN_INK_MD, EYEBROW } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
+import useLeaveTransition from '../utils/useLeaveTransition.js';
 
 // Activacion de cuenta desde el link de invitacion (#invitacion/<token>): la persona define
 // su contrasena y queda con la sesion abierta, igual que al entrar por LoginScreen.
+// 'Volver al inicio' sale animado como en LoginScreen (utils/useLeaveTransition.js).
 const MIN_PASSWORD = 8; // misma regla que backend/service/services/invites.py
 
 export default function AcceptInviteScreen({ token, onSuccess }) {
@@ -14,6 +17,7 @@ export default function AcceptInviteScreen({ token, onSuccess }) {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { leaving, leave } = useLeaveTransition();
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -48,9 +52,13 @@ export default function AcceptInviteScreen({ token, onSuccess }) {
 
   return (
     <section className="relative flex min-h-svh items-center justify-center overflow-clip bg-paper px-6 pt-[112px] pb-[88px] max600:pt-[92px] max600:pb-16">
-      <BackHomeButton />
+      <BackHomeButton onLeave={leave} leaving={leaving} />
 
-      <div className="relative z-10 flex w-full max-w-[420px] flex-col items-center text-center">
+      <motion.div
+        className="relative z-10 flex w-full max-w-[420px] flex-col items-center text-center"
+        animate={leaving ? { opacity: 0, y: -10, scale: 0.98 } : { opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.24, ease: 'easeIn' }}
+      >
         <Logo href={null} />
         <p className={`${EYEBROW} mt-[34px]`}>Invitación a TEJIDO</p>
         <h1 className="m-0 font-sans text-[length:clamp(40px,5.5vw,64px)] font-bold leading-[.98] tracking-[-.055em]">
@@ -77,7 +85,7 @@ export default function AcceptInviteScreen({ token, onSuccess }) {
             </button>
           </form>
         )}
-      </div>
+      </motion.div>
     </section>
   );
 }

@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import Footer from './components/Footer.jsx';
 import HiloAssistant from './components/HiloAssistant.jsx';
 import SiteHeader from './components/SiteHeader.jsx';
 import { VerifyEmailBanner } from './components/VerifyEmailNotice.jsx';
 import { CULTURAL_CATEGORIES } from './utils/constants.js';
 import { clearMapReturn } from './utils/mapReturn.js';
+import { navIndex } from './utils/navSections.js';
 import { useToast } from './context/ToastContext.jsx';
 import AcceptInviteScreen from './screens/AcceptInviteScreen.jsx';
 import { ResetPasswordScreen, VerifyEmailScreen } from './screens/AccountTokenScreens.jsx';
@@ -127,9 +128,38 @@ function getRoute() {
   return { screen: hash || 'inicio', slug: null };
 }
 
+const isArtistScreen = (screen) => screen === 'artist' || screen === 'media-kit' || screen === 'dashboard';
+// El hub (#municipios) y el municipio (#municipio/<slug>) comparten la clave de la transicion (ver
+// screenKey mas abajo).
+const screenKeyOf = (route) => (route.screen === 'municipio' ? 'municipios' : route.screen);
+
+// Transicion del contenido. Entre dos pestañas del header (navIndex) se desliza de lado segun el
+// movimiento de la pestaña (destino a la derecha: sale a la izquierda y entra desde la derecha); en
+// cualquier otra navegacion, el fundido vertical de siempre. La direccion llega tambien a la salida
+// por `custom` (el elemento que sale ya no recibe props nuevas).
+const PAGE = {
+  enter: ({ dir, reduce }) => (reduce ? { opacity: 0 } : dir ? { opacity: 0, x: dir * 40 } : { opacity: 0, y: 12 }),
+  center: ({ dir, reduce }) => ({
+    opacity: 1, x: 0, y: 0,
+    transition: reduce ? { duration: 0.1 } : dir ? { duration: 0.24, ease: 'easeOut' } : { duration: 0.25, ease: 'easeInOut' },
+  }),
+  exit: ({ dir, reduce }) => (reduce
+    ? { opacity: 0, transition: { duration: 0.1 } }
+    : dir
+      ? { opacity: 0, x: dir * -40, transition: { duration: 0.15, ease: 'easeIn' } }
+      : { opacity: 0, y: -12, transition: { duration: 0.25, ease: 'easeInOut' } }),
+};
+
 export default function App() {
   const { showToast } = useToast();
+  const reduceMotion = useReducedMotion();
   const [route, setRoute] = useState(getRoute);
+  const routeRef = useRef(route);
+  const lastUrl = useRef(window.location.pathname + window.location.hash);
+  // -1/1: deslizamiento hacia una pestaña a la izquierda/derecha; 0: fundido vertical.
+  const [slide, setSlide] = useState(0);
+  // Subir al principio cuando termine de salir la pantalla anterior (ver onExitComplete).
+  const pendingScroll = useRef(false);
   const [publications, setPublications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -139,13 +169,33 @@ export default function App() {
   const [authReady, setAuthReady] = useState(() => !localStorage.getItem('tejido_token'));
 
   useEffect(() => {
-    const handleChange = () => {
+    // Cada navegacion trae popstate y luego hashchange: el segundo no cambia nada. Un enlace al hash
+    // actual (p. ej. la pestaña en la que ya se esta) solo trae popstate: sube al principio, como antes.
+    const handleChange = (event) => {
+      const url = window.location.pathname + window.location.hash;
+      if (url === lastUrl.current) {
+        if (event.type === 'popstate') window.scrollTo(0, 0);
+        return;
+      }
+      lastUrl.current = url;
       hasNavigated = true;
       const next = getRoute();
+      const prev = routeRef.current;
+      routeRef.current = next;
       // La vuelta al mapa del inicio solo vale desde un municipio (ver utils/mapReturn.js).
       if (next.screen !== 'inicio' && next.screen !== 'municipio') clearMapReturn();
+      const from = navIndex(prev.screen);
+      const to = navIndex(next.screen);
+      setSlide(from !== null && to !== null && from !== to ? Math.sign(to - from) : 0);
       setRoute(next);
-      window.scrollTo(0, 0);
+      // Misma clave (hub <-> municipio, otro filtro u otro slug de la misma pantalla) o pantallas de
+      // artista (fuera de la transicion): arriba de inmediato. Si no, al entrar la pantalla nueva, para
+      // que la que sale no salte hacia arriba.
+      if (screenKeyOf(next) === screenKeyOf(prev) || isArtistScreen(next.screen) || isArtistScreen(prev.screen)) {
+        window.scrollTo(0, 0);
+      } else {
+        pendingScroll.current = true;
+      }
     };
     window.addEventListener('hashchange', handleChange);
     window.addEventListener('popstate', handleChange);
@@ -220,7 +270,7 @@ export default function App() {
     showToast({ tone: 'rio', eyebrow: 'Hasta pronto', title: 'Sesión cerrada', text: 'Vuelve cuando quieras seguir tejiendo tu recorrido.' });
   }
 
-  const isArtistRoute = route.screen === 'artist' || route.screen === 'media-kit' || route.screen === 'dashboard';
+  const isArtistRoute = isArtistScreen(route.screen);
   // Login (y la activacion por invitacion) son pantallas enfocadas: sin header, footer ni Hilo
   // (traen su propio "Volver al inicio").
   const isLoginRoute = route.screen === 'login' || route.screen === 'invitacion';
@@ -331,23 +381,28 @@ export default function App() {
   // entre ellos no hay fundido de salida/entrada y el cambio ocurre en un solo render, para que la
   // portada crezca desde la pildora pulsada sin esperar el fundido del hub (con "wait" se veria la
   // pantalla vacia en medio). Ver utils/municipalityTransition.js.
-  const screenKey = route.screen === 'municipio' ? 'municipios' : route.screen;
+  const screenKey = screenKeyOf(route);
+  const pageCustom = { dir: slide, reduce: reduceMotion };
 
   return (
     <>
       {!isArtistRoute && (
         <>
-          {!isLoginRoute && <SiteHeader user={user} isMoneystack={route.screen === 'moneystack'} onLogin={() => { sessionStorage.setItem('tejido_return_to', window.location.hash.replace('#', '') || 'inicio'); window.location.hash = 'login'; }} onLogout={handleLogout} />}
+          {!isLoginRoute && <SiteHeader user={user} screen={route.screen} municipalitySlug={route.screen === 'municipio' ? route.slug : null} isMoneystack={route.screen === 'moneystack'} onLogin={() => { sessionStorage.setItem('tejido_return_to', window.location.hash.replace('#', '') || 'inicio'); window.location.hash = 'login'; }} onLogout={handleLogout} />}
           {!isLoginRoute && <VerifyEmailBanner user={user} />}
-          <main>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={screenKey}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.25, ease: 'easeInOut' }}
-              >
+          {/* overflow-x clip (no hidden): sin barra horizontal durante el deslizamiento y sin romper
+              los sticky de las pantallas. */}
+          <main className="overflow-x-clip">
+            <AnimatePresence
+              mode="wait"
+              custom={pageCustom}
+              onExitComplete={() => {
+                if (!pendingScroll.current) return;
+                pendingScroll.current = false;
+                window.scrollTo(0, 0);
+              }}
+            >
+              <motion.div key={screenKey} custom={pageCustom} variants={PAGE} initial="enter" animate="center" exit="exit">
                 {content}
               </motion.div>
             </AnimatePresence>
