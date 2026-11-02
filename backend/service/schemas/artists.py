@@ -74,6 +74,15 @@ class _ArtistFields(BaseModel):
     region: Optional[str] = None
     featured: Optional[bool] = None
     user_id: Optional[int] = None
+    # Obligatorio (la ruta responde 422 con su propio codigo, services/municipalities.py); aqui
+    # solo se normaliza.
+    municipality: Optional[str] = None
+
+    @field_validator("municipality", mode="before")
+    @classmethod
+    def _municipality(cls, v):
+        v = str(v or "").strip().lower()
+        return v or None
 
     @field_validator("name", mode="before")
     @classmethod
@@ -113,6 +122,7 @@ class ArtistCreateInput(_ArtistFields):
     city: Optional[str] = "Caucasia"
     region: Optional[str] = "Bajo Cauca, Antioquia"
     featured: bool = False
+    moneystack: bool = True
 
     @field_validator("slug", mode="before")
     @classmethod
@@ -127,6 +137,7 @@ class ArtistUpdateInput(_ArtistFields):
     exclusivos de ADMIN (la ruta lo comprueba)."""
     slug: Optional[str] = None
     active: Optional[bool] = None
+    moneystack: Optional[bool] = None
     spotify_url: Optional[str] = None
     youtube_url: Optional[str] = None
     instagram_url: Optional[str] = None
@@ -141,6 +152,11 @@ class ArtistUpdateInput(_ArtistFields):
     @classmethod
     def _active(cls, v):
         return _not_null(v, "active")
+
+    @field_validator("moneystack", mode="before")
+    @classmethod
+    def _moneystack(cls, v):
+        return _not_null(v, "moneystack")
 
     @field_validator("spotify_url", "youtube_url", "instagram_url", "tiktok_url", mode="before")
     @classmethod

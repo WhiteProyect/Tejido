@@ -5,6 +5,8 @@
  * en múltiples pantallas y componentes.
  */
 
+import { MUNICIPALITY_LIST } from './municipalities.js';
+
 // ─── Colores por tipo de publicación ───────────────────────
 export const KIND_COLORS = {
   EVENTO: '#d85b36',
@@ -49,80 +51,12 @@ export const BRANCH_LABELS = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, l
 export const CULTURAL_BRANCHES = CULTURAL_CATEGORIES.map(([key]) => key);
 
 // ─── Municipios del Bajo Cauca ─────────────────────────────
-export const MUNICIPALITIES = [
-  { id: 'caucasia', name: 'Caucasia', emoji: '\uD83C\uDFF0', color: '#d4a843', theme: 'Capital' },
-  { id: 'caceres', name: 'Cáceres', emoji: '\uD83C\uDFDB', color: '#1d8fa3', theme: 'Historia' },
-  { id: 'taraza', name: 'Tarazá', emoji: '\u2615', color: '#75b79b', theme: 'Café' },
-  { id: 'nechi', name: 'Nechí', emoji: '\uD83C\uDF0A', color: '#1d8fa3', theme: 'Río' },
-  { id: 'elbagre', name: 'El Bagre', emoji: '\u2B50', color: '#d4a843', theme: 'Oro' },
-  { id: 'zaragoza', name: 'Zaragoza', emoji: '\u2693', color: '#8a4f7d', theme: 'Fundación' },
-];
+// La fuente única es utils/municipalities.js. Estas formas se derivan de ella (mismas claves y
+// mismo orden de antes) para los que ya las usan: formularios, pasaporte, hero.
+export const MUNICIPALITIES = MUNICIPALITY_LIST.map(({ slug, name, emoji, color, theme }) => ({ id: slug, name, emoji, color, theme }));
 
 // ─── Palabras clave para agrupar publicaciones por municipio ─
-export const MUNICIPALITY_LOCATION_MAP = {
-  caucasia: ['caucasia', 'malecón', 'parque de las banderas', 'parques de caucasia', 'pando'],
-  caceres: ['cáceres', 'caceres'],
-  taraza: ['tarazá', 'taraza'],
-  nechi: ['nechí', 'nechi'],
-  elbagre: ['el bagre', 'bagre'],
-  zaragoza: ['zaragoza'],
-};
-
-// ─── Datos completos de municipios (para UI del mapa) ───────
-export const MUNICIPALITIES_DATA = {
-  caucasia: {
-    name: 'Caucasia',
-    title: 'Capital del Bajo Cauca',
-    description: 'Centro comercial y administrativo de la región, ubicada en la confluencia de los ríos Cauca y Nechí. Capital del Bajo Cauca, fundada en 1866.',
-    image: '/images/municipios/caucasia/portada.jpg',
-    tags: ['Capital', 'Confluencia', 'Comercio']
-  },
-  caceres: {
-    name: 'Cáceres',
-    title: 'Historia y Tradición',
-    description: 'Fundado en 1576. Uno de los pueblos más antiguos de Antioquia con rica historia minera y tradición colonial que se respira en sus calles empedradas.',
-    image: '/images/municipios/caceres/portada.jpg',
-    tags: ['Colonial', 'Minería', 'Historia']
-  },
-  taraza: {
-    name: 'Tarazá',
-    title: 'Tierra de Café',
-    description: 'Tierra de cafetaleros y tradición campesina. Conocido por su calidez humana, producción agrícola y los paisajes verdes de sus montañas.',
-    image: '/images/municipios/taraza/portada.jpg',
-    tags: ['Café', 'Agricultura', 'Campesinos']
-  },
-  nechi: {
-    name: 'Nechí',
-    title: 'Río y Tradición Minera',
-    description: 'Fundado en 1636 como campamento minero. Hogar de comunidades afrocolombianas que mantienen vivas las tradiciones ancestrales del río.',
-    image: '/images/municipios/nechi/portada.jpg',
-    tags: ['Minería', 'Afrocolombiano', 'Río']
-  },
-  elbagre: {
-    name: 'El Bagre',
-    title: 'Cuna de Artistas',
-    description: 'Primer productor de oro de Antioquia. Tierra de artistas y músicos que enamoran con su folklore y la alegría de su gente.',
-    image: '/images/municipios/elbagre/portada.jpg',
-    tags: ['Oro', 'Folklore', 'Música']
-  },
-  zaragoza: {
-    name: 'Zaragoza',
-    title: 'Municipio Fundado',
-    description: 'Fundado en 1581. Pueblo con historia minera milenaria y paisajes naturales impresionantes donde el río Cauca narra historias.',
-    image: '/images/municipios/zaragoza/portada.jpg',
-    tags: ['Fundación', 'Naturaleza', 'Minería']
-  }
-};
-
-// ─── Coordenadas SVG de municipios para el mapa interactivo ─
-export const MUNICIPALITY_SVG_POSITIONS = {
-  caucasia: { x: 365, y: 205 },
-  caceres: { x: 195, y: 190 },
-  taraza: { x: 235, y: 108 },
-  nechi: { x: 335, y: 115 },
-  elbagre: { x: 490, y: 128 },
-  zaragoza: { x: 215, y: 330 },
-};
+export const MUNICIPALITY_LOCATION_MAP = Object.fromEntries(MUNICIPALITY_LIST.map(({ slug, locationKeywords }) => [slug, locationKeywords]));
 
 // ─── Utilidad: normalizar texto para comparación ────────────
 export function normalizeText(text = '') {

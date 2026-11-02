@@ -8,6 +8,7 @@ from backend.service.errors import AppError
 from backend.service.models.tables import Category, Event, Favorite, Opportunity, Organization, Publication, Role, User
 from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS
 from backend.service.schemas.publications import PublicationInput
+from backend.service.services.municipalities import PUBLICATION_MESSAGE, require_municipality
 from backend.service.services.org_profiles import visible_slug
 from backend.service.services.serialization import row_to_dict, rows_to_dicts
 
@@ -24,6 +25,7 @@ def list_publications(
     kind: Optional[str] = None,
     search: Optional[str] = None,
     cultural_category: Optional[str] = None,
+    municipality: Optional[str] = None,
 ):
     conditions = [Publication.deleted.is_(False)]
     wants_mine = mine == "1" and user
@@ -41,6 +43,9 @@ def list_publications(
 
     if cultural_category:
         conditions.append(Publication.cultural_category == cultural_category)
+
+    if municipality:
+        conditions.append(Publication.municipality == municipality)
 
     if search:
         term = f"%{search}%"
@@ -247,6 +252,7 @@ def _sync_publication_detail(db: Session, publication_id: int, item: Publication
 
 
 def create_publication(db: Session, user: dict, item: PublicationInput) -> int:
+    municipality = require_municipality(item.municipality, PUBLICATION_MESSAGE)
     validate_category(db, item.category_id, item.kind)
     cultural_category = resolve_cultural_category(db, user, item.cultural_category)
     image = item.image
@@ -265,6 +271,7 @@ def create_publication(db: Session, user: dict, item: PublicationInput) -> int:
         end_date=item.end_date,
         link=item.link,
         cultural_category=cultural_category,
+        municipality=municipality,
         featured=bool(item.featured) if user["role"] == "ADMIN" else False,
         status=status,
         created_at=ts,
@@ -277,6 +284,8 @@ def create_publication(db: Session, user: dict, item: PublicationInput) -> int:
 
 
 def update_publication(db: Session, user: dict, publication_id: int, current_status: str, item: PublicationInput):
+    # Editar una publicacion antigua sin municipio obliga a elegirlo.
+    municipality = require_municipality(item.municipality, PUBLICATION_MESSAGE)
     cultural_category = resolve_cultural_category(db, user, item.cultural_category)
     status, clear_note = status_after_edit(user, current_status, item.publish)
     changes = {
@@ -291,6 +300,7 @@ def update_publication(db: Session, user: dict, publication_id: int, current_sta
         "end_date": item.end_date,
         "link": item.link,
         "cultural_category": cultural_category,
+        "municipality": municipality,
         "status": status,
         "updated_at": now_utc(),
     }

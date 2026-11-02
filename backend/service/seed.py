@@ -202,6 +202,7 @@ def seed_database(db: Session):
             row["start_date"] = _iso_dt(row.get("start_date"))
             row["end_date"] = _iso_dt(row.get("end_date"))
             row["cultural_category"] = seed_cultural_categories.get(row["title"])
+            row["municipality"] = "caucasia"
 
         for row in seed_publications:
             venue = row.pop("venue", None)
@@ -273,7 +274,7 @@ def seed_database(db: Session):
                 "que representa la identidad del Bajo Cauca antioqueno. Bajo el sello Moneystack, "
                 "Og Mauro ha consolidado una voz propia que habla del territorio, la calle y la cultura.",
             image=OG_MAURO_PERFIL, hero_image=OG_MAURO_PERFIL,
-            genre="Urbano / Rap / Hip-Hop", city="Caucasia", region="Bajo Cauca, Antioquia",
+            genre="Urbano / Rap / Hip-Hop", city="Caucasia", region="Bajo Cauca, Antioquia", municipality="caucasia",
             featured=True, created_at=ts, updated_at=ts,
         )
         db.add(artist)
@@ -373,7 +374,7 @@ def seed_database(db: Session):
             name="DJ Apolo", stage_name="DJ Apolo", slug="dj-apolo",
             bio="DJ del Bajo Cauca bajo el sello Moneystack.",
             image=DJ_APOLO_PERFIL, hero_image=DJ_APOLO_PERFIL,
-            genre="DJ / Electronica", city="Caucasia", region="Bajo Cauca, Antioquia",
+            genre="DJ / Electronica", city="Caucasia", region="Bajo Cauca, Antioquia", municipality="caucasia",
             featured=False, created_at=ts, updated_at=ts,
         ))
 

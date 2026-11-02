@@ -61,7 +61,7 @@ def gestor_with_published(client, tokens, category_ids):
 def test_delete_removes_accounts_and_publications_but_keeps_artist(client, tokens, category_ids, no_email, script):
     admin = auth_header(tokens, "admin")
     email, gestor_id, headers, pub = gestor_with_published(client, tokens, category_ids)
-    artist = client.post("/api/artists", json={"stage_name": f"Artista {uuid.uuid4().hex[:6]}", "user_id": gestor_id,
+    artist = client.post("/api/artists", json={"stage_name": f"Artista {uuid.uuid4().hex[:6]}", "user_id": gestor_id, "municipality": "caucasia",
                                                "bio": "Bio que no debe cambiar"}, headers=admin)
     assert artist.status_code == 201, artist.text
     artist_id = artist.json()["id"]

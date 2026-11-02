@@ -1,22 +1,26 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import ImageField from '../ImageField.jsx';
 import { FORM_INPUT, FORM_LABEL } from '../uiStyles.js';
 import { adminArtistApi } from '../../services/artistApi.js';
+import { MUNICIPALITIES } from '../../utils/constants.js';
 import { FULL, HELP, InlineForm, buildPayload, useFormValues } from './artist/common.jsx';
 
 // Datos basicos de un artista: alta (ArtistasPanel, artist = null) y pestana "Datos" del editor.
 // POST /api/artists al crear; PUT /api/artists/{id} solo con lo que cambio. Los campos siguen
 // ArtistCreateInput / ArtistUpdateInput (backend/service/schemas/artists.py). readOnly: artista
-// archivado (se ve, no se edita).
+// archivado (se ve, no se edita). Municipio obligatorio (422 MUNICIPALITY_REQUIRED en el backend):
+// un artista antiguo sin municipio obliga a elegirlo al guardar. Sin `required` nativo en el
+// selector: el formulario usa la validacion del navegador y su globo taparia el error del campo.
 
 const MAX_BIO = 5000;
-const FIELDS = ['stage_name', 'real_name', 'genre', 'city', 'region', 'slug', 'image', 'hero_image', 'bio'];
+const FIELDS = ['stage_name', 'real_name', 'genre', 'city', 'region', 'municipality', 'slug', 'image', 'hero_image', 'bio'];
+const MUNICIPALITY_MESSAGE = 'Elige el municipio del artista.';
 
 function initialValues(artist) {
   if (!artist) {
-    return { stage_name: '', real_name: '', genre: '', city: 'Caucasia', region: 'Bajo Cauca, Antioquia', slug: '', image: '', hero_image: '', bio: '', featured: false };
+    return { stage_name: '', real_name: '', genre: '', city: 'Caucasia', region: 'Bajo Cauca, Antioquia', municipality: '', slug: '', image: '', hero_image: '', bio: '', featured: false, moneystack: true };
   }
-  return { ...Object.fromEntries(FIELDS.map((field) => [field, artist[field] ?? ''])), featured: Boolean(artist.featured) };
+  return { ...Object.fromEntries(FIELDS.map((field) => [field, artist[field] ?? ''])), featured: Boolean(artist.featured), moneystack: artist.moneystack !== false };
 }
 
 // Vista aproximada del slug que generara el backend (services/artists.py::slugify).
@@ -29,11 +33,18 @@ export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false
   const form = useFormValues(initialValues(artist));
   const { values, initialValues: initial, bind, set } = form;
   const [error, setError] = useState('');
+  const [municipalityError, setMunicipalityError] = useState('');
+  const municipalityRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const disabled = saving || readOnly;
 
   async function handleSubmit() {
     setError('');
+    if (!values.municipality) {
+      setMunicipalityError(MUNICIPALITY_MESSAGE);
+      municipalityRef.current?.focus();
+      return;
+    }
     const body = buildPayload(form, isEdit);
     if (isEdit && Object.keys(body).length === 0) {
       setError('No hay cambios para guardar.');
@@ -45,7 +56,12 @@ export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false
       setSaving(false);
       onSaved({ id: isEdit ? artist.id : result.id, slug: result.slug ?? body.slug ?? artist.slug, stage_name: values.stage_name.trim() });
     } catch (saveError) {
-      setError(saveError.message);
+      if (saveError.code === 'MUNICIPALITY_REQUIRED') {
+        setMunicipalityError(saveError.message);
+        municipalityRef.current?.focus();
+      } else {
+        setError(saveError.message);
+      }
       setSaving(false);
     }
   }
@@ -70,6 +86,24 @@ export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false
       <label className={FORM_LABEL}>Región
         <input className={FORM_INPUT} {...bind('region')} maxLength={120} disabled={disabled} />
       </label>
+      <div className="grid content-start gap-1.5">
+        <label className={FORM_LABEL} htmlFor={id('municipality')}>Municipio *</label>
+        <select
+          id={id('municipality')}
+          ref={municipalityRef}
+          className={FORM_INPUT}
+          value={values.municipality}
+          onChange={(event) => { set('municipality', event.target.value); setMunicipalityError(''); }}
+          disabled={disabled}
+          aria-required="true"
+          aria-invalid={municipalityError ? true : undefined}
+          aria-describedby={municipalityError ? id('municipality-error') : undefined}
+        >
+          <option value="">Elige el municipio</option>
+          {MUNICIPALITIES.map(({ id: key, name }) => <option key={key} value={key}>{name}</option>)}
+        </select>
+        {municipalityError && <p id={id('municipality-error')} className="m-0 text-[13px] font-semibold text-[#b3442b]">{municipalityError}</p>}
+      </div>
 
       <div className="grid gap-1.5">
         <label className={FORM_LABEL} htmlFor={id('slug')}>Slug {isEdit ? '*' : '(opcional)'}</label>
@@ -93,6 +127,10 @@ export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false
       <label className={`${FULL} flex cursor-pointer items-center gap-3 text-[15px] font-semibold text-ink`}>
         <input type="checkbox" className="size-5 cursor-pointer accent-ink" checked={values.featured} onChange={(event) => set('featured', event.target.checked)} disabled={disabled} />
         Destacado en Moneystack
+      </label>
+      <label className={`${FULL} flex cursor-pointer items-center gap-3 text-[15px] font-semibold text-ink`}>
+        <input type="checkbox" className="size-5 cursor-pointer accent-ink" checked={values.moneystack} onChange={(event) => set('moneystack', event.target.checked)} disabled={disabled} />
+        Pertenece al sello Moneystack
       </label>
     </>
   );

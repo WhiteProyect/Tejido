@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import ImageField from './ImageField.jsx';
 import { BTN_GHOST, BTN_INK_MD, BTN_INK_OUTLINE_MD, FORM_INPUT, FORM_LABEL, PANEL, PANEL_TITLE } from './uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
-import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
+import { CULTURAL_CATEGORIES, KIND_LABELS, MUNICIPALITIES } from '../utils/constants.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
 // Formulario de crear/editar publicacion, compartido por el Dashboard del Gestor y el del
@@ -15,10 +15,13 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 // - Sin allowPublish (gestor): nunca publica. Su categoria es fija (fixedCategory = su rama; el
 //   backend rechaza otra). Editar un borrador o una rechazada la deja en borrador; editar una
 //   publicada la devuelve a revision y deja de verse hasta que el admin la apruebe.
+// - Municipio obligatorio en todos los tipos y roles (el backend responde 422 MUNICIPALITY_REQUIRED);
+//   una publicacion antigua sin municipio obliga a elegirlo al editarla.
 const EMPTY_FORM = {
   kind: 'HISTORIA', title: '', summary: '', content: '', location: 'Caucasia',
-  start_date: '', end_date: '', link: '', image: '', cultural_category: '',
+  start_date: '', end_date: '', link: '', image: '', cultural_category: '', municipality: '',
 };
+const MUNICIPALITY_MESSAGE = 'Elige el municipio de la publicación.';
 // El tipo TALENTO ya no se ofrece al crear: el talento contratable tiene su propio flujo (pestaña
 // Talento de los dashboards). Las publicaciones TALENTO que ya existen se siguen editando con su tipo.
 const KINDS = Object.entries(KIND_LABELS);
@@ -42,6 +45,7 @@ function formFromPublication(publication) {
     // Las publicaciones viejas guardan un degradado CSS en image: no es un enlace, no se muestra.
     image: isImageUrl(publication.image) ? publication.image : '',
     cultural_category: publication.cultural_category || '',
+    municipality: publication.municipality || '',
   };
 }
 
@@ -79,6 +83,9 @@ export default function PublicationForm({ publication, categories, allowPublish 
   const [form, setForm] = useState(() => (publication ? formFromPublication(publication) : EMPTY_FORM));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [municipalityError, setMunicipalityError] = useState('');
+  const municipalityRef = useRef(null);
+  const municipalityId = `${useId().replace(/:/g, '')}-municipio`;
   const editing = Boolean(publication);
   // Solo admin: publish: true en el mismo POST/PUT. Una ya publicada sigue publicada al editarla.
   const [publish, setPublish] = useState(false);
@@ -91,6 +98,12 @@ export default function PublicationForm({ publication, categories, allowPublish 
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (!form.municipality) {
+      setMunicipalityError(MUNICIPALITY_MESSAGE);
+      setError('');
+      municipalityRef.current?.focus();
+      return;
+    }
     const problem = validate(form);
     if (problem) { setError(problem); return; }
     const category = categories.find((item) => item.type === form.kind);
@@ -108,6 +121,7 @@ export default function PublicationForm({ publication, categories, allowPublish 
       // Si no hay enlace nuevo se conserva un degradado viejo (no se muestra en el formulario).
       image: form.image.trim() || (editing && publication.image && !isImageUrl(publication.image) ? publication.image : null),
       cultural_category: fixedCategory || form.cultural_category || null,
+      municipality: form.municipality,
       ...(allowPublish && publish ? { publish: true } : {}),
     };
     setSaving(true);
@@ -118,7 +132,12 @@ export default function PublicationForm({ publication, categories, allowPublish 
       showToast(toastFor({ editing, allowPublish, publish, backToReview, status: publication?.status }));
       onSaved();
     } catch (saveError) {
-      setError(saveError.message);
+      if (saveError.code === 'MUNICIPALITY_REQUIRED') {
+        setMunicipalityError(saveError.message);
+        municipalityRef.current?.focus();
+      } else {
+        setError(saveError.message);
+      }
       setSaving(false);
     }
   }
@@ -171,10 +190,30 @@ export default function PublicationForm({ publication, categories, allowPublish 
         <label className={FORM_LABEL}>Contenido
           <textarea className={`${FORM_INPUT} min-h-[180px] resize-y leading-[1.55]`} {...field('content')} maxLength={20000} required />
         </label>
-        <div className="grid grid-cols-3 gap-5 max800:grid-cols-1">
+        <div className="grid grid-cols-2 gap-5 max600:grid-cols-1">
+          <div className="grid content-start gap-1.5">
+            <label className={FORM_LABEL} htmlFor={municipalityId}>Municipio</label>
+            <select
+              id={municipalityId}
+              ref={municipalityRef}
+              className={FORM_INPUT}
+              value={form.municipality}
+              onChange={(event) => { set('municipality')(event.target.value); setMunicipalityError(''); }}
+              disabled={saving}
+              required
+              aria-invalid={municipalityError ? true : undefined}
+              aria-describedby={municipalityError ? `${municipalityId}-error` : undefined}
+            >
+              <option value="">Elige el municipio</option>
+              {MUNICIPALITIES.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
+            </select>
+            {municipalityError && <p id={`${municipalityId}-error`} className="m-0 text-[13px] font-semibold text-[#b3442b]">{municipalityError}</p>}
+          </div>
           <label className={FORM_LABEL}>Ubicación
             <input className={FORM_INPUT} {...field('location')} maxLength={180} />
           </label>
+        </div>
+        <div className="grid grid-cols-2 gap-5 max600:grid-cols-1">
           <label className={FORM_LABEL}>Inicio (opcional)
             <input className={FORM_INPUT} type="datetime-local" {...field('start_date')} />
           </label>

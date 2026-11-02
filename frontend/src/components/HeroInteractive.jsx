@@ -18,6 +18,7 @@ import { Fragment, useState, useEffect, useCallback, useMemo } from 'react';
 import Icon from './Icon.jsx';
 import { BTN_INK_LG } from './uiStyles.js';
 import Threads from './Threads.jsx';
+import { MUNICIPALITY_LIST } from '../utils/municipalities.js';
 
 /* --- ESCENAS -------------------------------------------------- */
 
@@ -107,63 +108,22 @@ const SCENES = {
 };
 
 /* --- DATOS DE MUNICIPIOS -------------------------------------- */
-
-const MUNICIPALITIES = {
-  'muni-caucasia': {
-    pose: 'hilo-descubre.png',
-    name: 'Caucasia',
-    color: '#d4a843',
-    title: 'Capital del Bajo Cauca',
-    description: 'Centro comercial y administrativo de la región. Confluencia de los ríos Cauca y Nechí. Fundada en 1866. Donde todo se conecta.',
-    tags: ['Capital', 'Confluencia', 'Comercio'],
-    background: 'muni-caucasia',
-  },
-  'muni-caceres': {
-    pose: 'hilo-descubre.png',
-    name: 'Cáceres',
-    color: '#1d8fa3',
-    title: 'Historia y Tradición',
-    description: 'Fundado en 1576. Uno de los pueblos más antiguos de Antioquia con rica historia minera y tradición colonial que se respira en sus calles empedradas.',
-    tags: ['Colonial', 'Minería', 'Historia'],
-    background: 'muni-caceres',
-  },
-  'muni-taraza': {
-    pose: 'hilo-descubre.png',
-    name: 'Tarazá',
-    color: '#75b79b',
-    title: 'Tierra de Café',
-    description: 'Tierra de cafetaleros y tradición campesina. Conocido por su calidez humana, producción agrícola y los paisajes verdes de sus montañas.',
-    tags: ['Café', 'Agricultura', 'Campesinos'],
-    background: 'muni-taraza',
-  },
-  'muni-nechi': {
-    pose: 'hilo-descubre.png',
-    name: 'Nechí',
-    color: '#0f6b7a',
-    title: 'Río y Tradición Minera',
-    description: 'Fundado en 1636 como campamento minero. Hogar de comunidades afrocolombianas que mantienen vivas las tradiciones ancestrales del río.',
-    tags: ['Minería', 'Afrocolombiano', 'Río'],
-    background: 'muni-nechi',
-  },
-  'muni-elbagre': {
-    pose: 'hilo-descubre.png',
-    name: 'El Bagre',
-    color: '#c4713a',
-    title: 'Cuna de Artistas',
-    description: 'Primer productor de oro de Antioquia. Tierra de artistas y músicos que enamoran con su folklore y la alegría de su gente.',
-    tags: ['Oro', 'Folklore', 'Música'],
-    background: 'muni-elbagre',
-  },
-  'muni-zaragoza': {
-    pose: 'hilo-descubre.png',
-    name: 'Zaragoza',
-    color: '#6b3a7d',
-    title: 'Municipio Fundado',
-    description: 'Fundado en 1581. Pueblo con historia minera milenaria y paisajes naturales impresionantes donde el río Cauca narra historias.',
-    tags: ['Fundación', 'Naturaleza', 'Minería'],
-    background: 'muni-zaragoza',
-  },
+// Nombre, color de la escena (heroColor), titulo, etiquetas y descripcion salen de la fuente unica
+// (utils/municipalities.js). Aqui queda solo lo propio de la escena: la pose de Hilo, el fondo y
+// la descripcion de Caucasia, que en el hero es mas corta y cierra distinto.
+const HERO_DESCRIPTIONS = {
+  caucasia: 'Centro comercial y administrativo de la región. Confluencia de los ríos Cauca y Nechí. Fundada en 1866. Donde todo se conecta.',
 };
+
+const MUNICIPALITIES = Object.fromEntries(MUNICIPALITY_LIST.map((municipality) => [`muni-${municipality.slug}`, {
+  pose: 'hilo-descubre.png',
+  name: municipality.name,
+  color: municipality.heroColor,
+  title: municipality.title,
+  description: HERO_DESCRIPTIONS[municipality.slug] ?? municipality.description,
+  tags: municipality.tags,
+  background: `muni-${municipality.slug}`,
+}]));
 
 /* --- ESTILOS (Tailwind) ----------------------------------------
  * El contenedor de fondo (.hero-interactive-bg) aloja los hilos animados

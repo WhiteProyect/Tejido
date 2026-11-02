@@ -18,12 +18,13 @@ from backend.service.schemas.artists import (
     TrackInput,
 )
 from backend.service.services import artists as svc
+from backend.service.services.municipalities import ARTIST_MESSAGE, municipality_filter, require_municipality
 
 router = APIRouter(prefix="/api/artists")
 
 ADMIN_ONLY = "Solo un administrador puede hacer esto"
 # Campos del PUT que el GESTOR dueno no puede tocar: definen la identidad publica y la propiedad.
-ADMIN_ONLY_FIELDS = {"slug", "featured", "active", "user_id"}
+ADMIN_ONLY_FIELDS = {"slug", "featured", "active", "user_id", "moneystack"}
 
 
 def _check_artist_admin(db: Session, user: Optional[dict], artist_id: int, include_inactive: bool = False) -> dict:
@@ -52,8 +53,8 @@ def _check_video_url(tipo: str, url: str):
 # ───────────────────────── rutas literales (deben ir antes de /{slug}) ─────────────────────────
 
 @router.get("")
-def list_artists(db: Session = Depends(get_db)):
-    return svc.list_artists(db)
+def list_artists(municipality: Optional[str] = Query(default=None), db: Session = Depends(get_db)):
+    return svc.list_artists(db, municipality_filter(municipality))
 
 
 @router.get("/home")
@@ -148,8 +149,9 @@ def create_artist(payload: ArtistCreateInput, user: Optional[dict] = Depends(get
     require_roles(user, ("ADMIN",), ADMIN_ONLY)
     if not payload.stage_name:
         raise AppError(400, "VALIDATION", "El nombre artístico es requerido")
+    municipality = require_municipality(payload.municipality, ARTIST_MESSAGE)
     _check_owner_user(db, payload.user_id)
-    data = payload.model_dump()
+    data = {**payload.model_dump(), "municipality": municipality}
     slug = data.pop("slug")
     if slug is None:
         slug = svc.generate_artist_slug(db, data["stage_name"])
@@ -184,12 +186,16 @@ def restore_artist(artist_id: int, user: Optional[dict] = Depends(get_current_us
 
 @router.put("/{artist_id:int}")
 def update_artist(artist_id: int, payload: ArtistUpdateInput, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
-    _check_artist_admin(db, user, artist_id, include_inactive=True)
+    current = _check_artist_admin(db, user, artist_id, include_inactive=True)
     updates = payload.provided()
     if not updates:
         raise AppError(400, "VALIDATION", "Sin cambios para aplicar")
+    # El PUT solo trae lo que cambio: si trae municipio debe ser valido, y si no lo trae el artista
+    # ya debe tenerlo (editar uno antiguo sin municipio obliga a elegirlo).
+    if "municipality" in updates or not current.get("municipality"):
+        updates["municipality"] = require_municipality(updates.get("municipality"), ARTIST_MESSAGE)
     if user["role"] != "ADMIN" and ADMIN_ONLY_FIELDS & updates.keys():
-        raise AppError(403, "FORBIDDEN", "Solo un administrador puede cambiar slug, destacado, estado o dueño")
+        raise AppError(403, "FORBIDDEN", "Solo un administrador puede cambiar slug, destacado, estado, dueño o sello")
     if "slug" in updates and svc.artist_slug_taken(db, updates["slug"], exclude_id=artist_id):
         raise AppError(409, "SLUG_IN_USE", "Ya existe un artista con ese slug")
     if "user_id" in updates:

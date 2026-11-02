@@ -2,13 +2,45 @@ import { useState, useEffect, useRef } from 'react';
 import Logo from './Logo.jsx';
 import { cdnImage } from '../utils/cloudinaryUrl.js';
 
+// Enlaces de la barra, en orden. "Municipios" va junto a Explorar: las dos son puertas de entrada
+// al territorio (por tema y por lugar).
+const NAV_LINKS = [
+  ['inicio', 'Inicio'],
+  ['explorar', 'Explorar'],
+  ['municipios', 'Municipios'],
+  ['mapa', 'Mapa vivo'],
+  ['agenda', 'Agenda'],
+  ['oportunidades', 'Oportunidades'],
+  ['talento', 'Talento'],
+  ['nosotros', 'Nosotros'],
+  ['moneystack', 'Moneystack'],
+];
+
+// Enlace activo segun el hash: las pantallas hijas cuentan para su seccion (#municipio/<slug> en
+// Municipios, #talento/<slug> y los filtros en Talento, #categoria/<slug> en Explorar).
+function activeSection(hash) {
+  const path = hash.replace(/^#/, '').split('?')[0];
+  const first = path.split('/')[0];
+  if (!first) return 'inicio';
+  if (first === 'municipio') return 'municipios';
+  if (first === 'categoria') return 'explorar';
+  return NAV_LINKS.some(([key]) => key === first) ? first : null;
+}
+
 export default function SiteHeader({ user, onLogin, onLogout, isMoneystack = false }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   // La foto viene de PATCH /api/me (una URL): si no carga, vuelve la inicial.
   const [avatarFailed, setAvatarFailed] = useState(false);
   useEffect(() => { setAvatarFailed(false); }, [user?.avatar_url]);
   const [isHidden, setIsHidden] = useState(false);
+  const [active, setActive] = useState(() => activeSection(window.location.hash));
   const menuRef = useRef(null);
+
+  useEffect(() => {
+    const update = () => setActive(activeSection(window.location.hash));
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
+  }, []);
   const lastScrollY = useRef(0);
 
   useEffect(() => {
@@ -55,21 +87,18 @@ export default function SiteHeader({ user, onLogin, onLogout, isMoneystack = fal
     ? { header: 'bg-black border-b-[rgba(0,0,0,0.742)]', text: 'text-[#f7f7f5]', ring: 'border-[#f7f7f5]', login: 'text-[#f7f7f5] hover:bg-[rgba(247,247,245,0.1)] focus-visible:outline-[#f7f7f5]', tip: 'bg-[#f7f7f5] text-[#0a0a0a]' }
     : { header: 'bg-paper border-b-line', text: 'text-ink', ring: 'border-ink', login: 'text-ink hover:bg-cream focus-visible:outline-ink', tip: 'bg-ink text-paper' };
   const navLink = `${tone.text} hover:text-orange`;
+  // Activo: subrayado (no solo color) y aria-current.
+  const activeLink = 'underline decoration-2 underline-offset-[7px]';
 
   return (
     // Con el menu de usuario abierto el header sube sobre los avisos (Toast, z-90), que en movil
     // aparecen justo debajo y taparian "Cerrar Sesion".
     <header className={`flex items-center justify-between py-[18px] px-[5vw] border-b sticky top-0 ${showUserMenu ? 'z-[95]' : 'z-5'} transition-[transform] duration-[220ms] ease-[ease] motion-reduce:transition-none ${tone.header} ${isHidden ? '[transform:translateY(-100%)]' : '[transform:translateY(0)]'}`}>
       <Logo className={tone.text} ringClassName={tone.ring} />
-      <nav aria-label="Principal" className="flex gap-8 text-[14px] font-semibold max800:hidden">
-        <a href="#inicio" className={navLink}>Inicio</a>
-        <a href="#explorar" className={navLink}>Explorar</a>
-        <a href="#mapa" className={navLink}>Mapa vivo</a>
-        <a href="#agenda" className={navLink}>Agenda</a>
-        <a href="#oportunidades" className={navLink}>Oportunidades</a>
-        <a href="#talento" className={navLink}>Talento</a>
-        <a href="#nosotros" className={navLink}>Nosotros</a>
-        <a href="#moneystack" className={navLink}>Moneystack</a>
+      <nav aria-label="Principal" className="flex gap-8 text-[14px] font-semibold max1200:gap-5 max800:hidden">
+        {NAV_LINKS.map(([key, label]) => (
+          <a key={key} href={`#${key}`} className={`${navLink} ${active === key ? activeLink : ''}`} aria-current={active === key ? 'page' : undefined}>{label}</a>
+        ))}
       </nav>
       {user ? (
         <div className="relative" ref={menuRef}>

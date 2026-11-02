@@ -140,6 +140,7 @@ def test_publication_create_and_moderation_flow(client, tokens):
             "summary": "Publicacion creada por el smoke test automatizado de Fase 1.",
             "content": "Contenido de prueba generado automaticamente para validar el flujo de "
                        "creacion y moderacion en el backend FastAPI.",
+            "municipality": "caucasia",
         },
         headers=auth_header(tokens, "gestor"),
     )

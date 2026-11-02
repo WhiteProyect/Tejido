@@ -30,9 +30,12 @@ def now_utc():
 
 # ───────────────────────── lecturas base ─────────────────────────
 
-def list_artists(db: Session):
+def list_artists(db: Session, municipality: str | None = None):
+    conditions = [Artist.active.is_(True)]
+    if municipality:
+        conditions.append(Artist.municipality == municipality)
     artists = db.execute(
-        select(Artist).where(Artist.active.is_(True)).order_by(Artist.featured.desc(), Artist.name)
+        select(Artist).where(*conditions).order_by(Artist.featured.desc(), Artist.name)
     ).scalars().all()
     return models_to_dicts(artists)
 
@@ -344,7 +347,7 @@ def update_artist_fields(db: Session, artist_id: int, data: dict):
     allowed = (
         "name", "stage_name", "slug", "real_name", "bio", "image", "hero_image", "genre",
         "city", "region", "spotify_url", "youtube_url", "instagram_url", "tiktok_url", "featured",
-        "active", "user_id",
+        "active", "user_id", "municipality", "moneystack",
     )
     updates = {key: data[key] for key in allowed if key in data}
     if not updates:

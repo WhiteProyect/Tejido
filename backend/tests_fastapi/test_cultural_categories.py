@@ -56,7 +56,7 @@ def test_publication_cultural_category_is_validated_and_saved(client, tokens, ca
         "kind": "HISTORIA", "category_id": category_ids["HISTORIA"],
         "title": "Historia de danza para categorias", "summary": "Resumen de prueba de categorias culturales.",
         "content": "Contenido de prueba para verificar la categoria cultural de una publicacion.",
-        "publish": True,
+        "publish": True, "municipality": "caucasia",
     }
     bad = client.post("/api/publications", json={**base, "cultural_category": "RAP"}, headers=auth_header(tokens, "admin"))
     assert bad.status_code == 400

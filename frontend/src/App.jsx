@@ -5,6 +5,7 @@ import HiloAssistant from './components/HiloAssistant.jsx';
 import SiteHeader from './components/SiteHeader.jsx';
 import { VerifyEmailBanner } from './components/VerifyEmailNotice.jsx';
 import { CULTURAL_CATEGORIES } from './utils/constants.js';
+import { clearMapReturn } from './utils/mapReturn.js';
 import { useToast } from './context/ToastContext.jsx';
 import AcceptInviteScreen from './screens/AcceptInviteScreen.jsx';
 import { ResetPasswordScreen, VerifyEmailScreen } from './screens/AccountTokenScreens.jsx';
@@ -19,6 +20,8 @@ import ExploreScreen from './screens/ExploreScreen.jsx';
 import GestorProfileScreen from './screens/GestorProfileScreen.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import MapScreen from './screens/MapScreen.jsx';
+import MunicipalitiesScreen from './screens/MunicipalitiesScreen.jsx';
+import MunicipalityScreen from './screens/MunicipalityScreen.jsx';
 import MoneystackScreen from './screens/MoneystackScreen.jsx';
 import LegalScreen from './screens/LegalScreen.jsx';
 import LoginScreen from './screens/LoginScreen.jsx';
@@ -59,6 +62,12 @@ function getRoute() {
     if (hash.includes('/media-kit')) return { screen: 'media-kit', slug };
     if (hash.includes('/dashboard')) return { screen: 'dashboard', slug };
     return { screen: 'artist', slug };
+  }
+
+  // Pantalla de un municipio: #municipio/<slug> (slugs en utils/municipalities.js; uno invalido
+  // lo manda la pantalla a #municipios). El hub es #municipios (cae en el caso general).
+  if (hash.startsWith('municipio/')) {
+    return { screen: 'municipio', slug: hash.slice('municipio/'.length) };
   }
 
   // Categoria cultural: #categoria/<slug> (slugs en utils/constants.js::CULTURAL_CATEGORIES).
@@ -132,7 +141,10 @@ export default function App() {
   useEffect(() => {
     const handleChange = () => {
       hasNavigated = true;
-      setRoute(getRoute());
+      const next = getRoute();
+      // La vuelta al mapa del inicio solo vale desde un municipio (ver utils/mapReturn.js).
+      if (next.screen !== 'inicio' && next.screen !== 'municipio') clearMapReturn();
+      setRoute(next);
       window.scrollTo(0, 0);
     };
     window.addEventListener('hashchange', handleChange);
@@ -258,6 +270,12 @@ export default function App() {
     case 'mapa':
       content = <MapScreen publications={publications} />;
       break;
+    case 'municipios':
+      content = <MunicipalitiesScreen />;
+      break;
+    case 'municipio':
+      content = <MunicipalityScreen slug={route.slug} user={user} />;
+      break;
     case 'agenda':
       content = <AgendaScreen events={events} />;
       break;
@@ -309,6 +327,12 @@ export default function App() {
       break;
   }
 
+  // El hub (#municipios) y el municipio (#municipio/<slug>) comparten la clave de la transicion:
+  // entre ellos no hay fundido de salida/entrada y el cambio ocurre en un solo render, para que la
+  // portada crezca desde la pildora pulsada sin esperar el fundido del hub (con "wait" se veria la
+  // pantalla vacia en medio). Ver utils/municipalityTransition.js.
+  const screenKey = route.screen === 'municipio' ? 'municipios' : route.screen;
+
   return (
     <>
       {!isArtistRoute && (
@@ -318,7 +342,7 @@ export default function App() {
           <main>
             <AnimatePresence mode="wait">
               <motion.div
-                key={route.screen}
+                key={screenKey}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}

@@ -32,6 +32,15 @@ class PublicationInput(BaseModel):
     featured: bool = False
     publish: bool = False
     cultural_category: Optional[str] = None
+    # Obligatorio, pero se comprueba en el servicio (services/municipalities.py) para responder 422
+    # con su propio codigo; aqui solo se normaliza.
+    municipality: Optional[str] = None
+
+    @field_validator("municipality", mode="before")
+    @classmethod
+    def _normalize_municipality(cls, v):
+        v = str(v or "").strip().lower()
+        return v or None
 
     @field_validator("kind", mode="before")
     @classmethod

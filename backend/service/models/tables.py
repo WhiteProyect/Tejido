@@ -40,6 +40,8 @@ from sqlalchemy import CheckConstraint, Date, DateTime, Float, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from backend.service.schemas.municipalities import MUNICIPALITY_LABELS
+
 
 class Base(DeclarativeBase):
     pass
@@ -153,12 +155,18 @@ class InviteToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+def _municipality_check(table: str) -> CheckConstraint:
+    allowed = ", ".join(f"'{slug}'" for slug in MUNICIPALITY_LABELS)
+    return CheckConstraint(f"municipality IS NULL OR municipality IN ({allowed})", name=f"ck_{table}_municipality")
+
+
 class Publication(Base):
     __tablename__ = "publications"
     __table_args__ = (
         # Cubre el filtro mas comun de la app: listar publicaciones publicadas
         # y no borradas (list_publications, admin/stats, artist profile).
         Index("ix_publications_status_deleted", "status", "deleted"),
+        _municipality_check("publications"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -182,6 +190,9 @@ class Publication(Base):
     # Categoria cultural (schemas/cultural_categories.py). Va en la publicacion, no se hereda
     # del autor. Nullable: no toda publicacion tiene una.
     cultural_category: Mapped[str | None] = mapped_column(String)
+    # Municipio (schemas/municipalities.py). Obligatorio al crear y editar (la API lo exige);
+    # nullable en la base mientras se rellenan las existentes (scripts/backfill_municipality.py).
+    municipality: Mapped[str | None] = mapped_column(String, index=True)
 
     category: Mapped["Category"] = relationship()
     author: Mapped["User"] = relationship()
@@ -338,6 +349,7 @@ class Artist(Base):
         # Slug unico sin distinguir mayusculas (la URL publica /artistas/<slug> lo resuelve con lower()).
         # Indice funcional: autogenerate no lo detecta, la migracion lo escribe a mano.
         Index("uq_artists_slug_lower", func.lower(text("slug")), unique=True),
+        _municipality_check("artists"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -358,6 +370,11 @@ class Artist(Base):
     tiktok_url: Mapped[str | None] = mapped_column(String)
     featured: Mapped[bool] = mapped_column(default=False, nullable=False)
     active: Mapped[bool] = mapped_column(default=True, nullable=False, index=True)
+    # Municipio, como en las publicaciones (obligatorio en la API, nullable mientras se rellena).
+    # city queda como texto libre, sin tocar.
+    municipality: Mapped[str | None] = mapped_column(String, index=True)
+    # Pertenece al sello Moneystack (hoy, todos).
+    moneystack: Mapped[bool] = mapped_column(default=True, server_default=text("true"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

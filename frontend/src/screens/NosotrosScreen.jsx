@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import Icon from '../components/Icon.jsx';
+import { CONTACT_DRAFT_KEY } from '../components/municipality/SuggestNote.jsx';
 import { BTN_INK_MD, EYEBROW, SECTION } from '../components/uiStyles.js';
 import { getInitials } from '../utils/initials.js';
 import { useToast } from '../context/ToastContext.jsx';
@@ -68,6 +69,21 @@ export default function NosotrosScreen() {
   const [message, setMessage] = useState('');
   // idle | loading | success | error
   const [status, setStatus] = useState({ type: 'idle' });
+
+  // Llega desde "Sugerir a TEJIDO" (pantallas de municipio) con una primera linea: se pone en el
+  // mensaje y se baja al formulario, como "Conviertete en colaborador". Se lee una vez al crear el
+  // estado (en desarrollo StrictMode repite el efecto y la segunda vez ya no la encontraria).
+  const [draft] = useState(() => {
+    try { return sessionStorage.getItem(CONTACT_DRAFT_KEY); } catch { return null; }
+  });
+  useEffect(() => {
+    if (!draft) return undefined;
+    try { sessionStorage.removeItem(CONTACT_DRAFT_KEY); } catch { /* sin almacenamiento */ }
+    setMessage((current) => current || draft);
+    contactRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    const timer = window.setTimeout(() => messageRef.current?.focus({ preventScroll: true }), reduceMotion ? 0 : 450);
+    return () => window.clearTimeout(timer);
+  }, [draft, reduceMotion]);
 
   // El endpoint publico de sugerencias solo guarda `message`: nombre y contacto (opcionales)
   // viajan como encabezado del mismo texto, asi el equipo los ve sin cambiar el backend.

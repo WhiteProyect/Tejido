@@ -58,6 +58,7 @@ def create_publication(client, tokens, category_ids, who="gestor", kind="HISTORI
             "Contenido de prueba generado automaticamente para ejercitar flujos de negocio "
             "que antes no tenian ningun test.",
         ),
+        "municipality": overrides.pop("municipality", "caucasia"),
         **overrides,
     }
     resp = hit(
@@ -190,6 +191,7 @@ def test_publication_update_permissions_and_state(client, tokens, category_ids):
         "title": "Editar - Fase 4 (actualizado)",
         "summary": "Resumen actualizado por el test de edicion de Fase 4.",
         "content": "Contenido actualizado por el test de edicion de Fase 4, con longitud suficiente.",
+        "municipality": "caucasia",
     }
 
     # Rol sin permiso de edicion (CIUDADANO no es GESTOR/ADMIN) -> 403
@@ -598,6 +600,7 @@ def test_publication_create_validation_errors(client, tokens, category_ids):
         "title": "Titulo valido de prueba",
         "summary": "Resumen valido de prueba con longitud suficiente.",
         "content": "Contenido valido de prueba con longitud suficiente para pasar la validacion.",
+        "municipality": "caucasia",
     }
     headers = auth_header(tokens, "gestor")
 

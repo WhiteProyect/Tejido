@@ -158,6 +158,11 @@ def _cards(db: Session, profiles: list[TalentProfile], user: Optional[dict] = No
     } for p in profiles]
 
 
+def public_cards(db: Session, profiles: list[TalentProfile]) -> list[dict]:
+    """Tarjetas del listado publico para otras pantallas (pagina del municipio), sin sesion."""
+    return _cards(db, profiles)
+
+
 def _filter_value(value: Optional[str], valid, label: str, upper: bool) -> Optional[str]:
     value = str(value or "").strip()
     if not value:

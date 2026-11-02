@@ -16,6 +16,7 @@ from backend.service.schemas.publications import PublicationInput, PublicationSt
 from backend.service.services import branches as branch_service
 from backend.service.services import notifications
 from backend.service.services import publications as svc
+from backend.service.services.municipalities import municipality_filter
 
 router = APIRouter()
 
@@ -31,11 +32,12 @@ def list_publications(
     kind: Optional[str] = Query(default=None),
     search: Optional[str] = Query(default=None),
     cultural_category: Optional[str] = Query(default=None),
+    municipality: Optional[str] = Query(default=None),
     user: Optional[dict] = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return svc.list_publications(db, user, mine=mine, status=status, kind=kind, search=search,
-                                 cultural_category=cultural_category)
+                                 cultural_category=cultural_category, municipality=municipality_filter(municipality))
 
 
 @router.get("/api/publications/{publication_id}")

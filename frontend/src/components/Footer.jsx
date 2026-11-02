@@ -73,6 +73,7 @@ export default function Footer() {
       <motion.div className={`${COL} border-l [border-image:linear-gradient(to_bottom,transparent,rgba(255,255,255,.16),transparent)_1] pl-[34px] max600:border-none max600:pl-0`} variants={footerItem}>
         <b className={HEADING}>Explora</b>
         <a href="#explorar" className={LINK}>Historias</a>
+        <a href="#municipios" className={LINK}>Municipios</a>
         <a href="#agenda" className={LINK}>Eventos</a>
         <a href="#oportunidades" className={LINK}>Oportunidades</a>
         <a href="#talento" className={LINK}>Talento</a>

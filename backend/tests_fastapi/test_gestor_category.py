@@ -55,6 +55,7 @@ def body(category_ids, title, **extra):
         "kind": "HISTORIA", "category_id": category_ids["HISTORIA"], "title": title,
         "summary": "Resumen de prueba para la categoria del gestor.",
         "content": "Contenido de prueba con longitud suficiente para la categoria del gestor.",
+        "municipality": "caucasia",
         **extra,
     }
 
