@@ -393,7 +393,7 @@ export default function HiloAssistant({ publications = [], screen = '' }) {
   return (
     <section
       // En el perfil de talento, en movil, sube por encima de su barra fija de "Contratar".
-      className={`fixed bottom-3 right-[18px] z-70 font-sans max600:right-2 ${screen === 'talento-perfil' ? 'max768:bottom-[96px]' : 'max600:bottom-2'}`}
+      className={`fixed right-[18px] z-70 font-sans max600:right-2 ${screen === 'talento-perfil' ? 'bottom-3 max768:bottom-[96px]' : 'bottom-[calc(var(--barra-inferior,0px)+12px)] max600:bottom-[calc(var(--barra-inferior,0px)+8px)]'}`}
       aria-label="Asistente virtual de TEJIDO"
     >
       {/* Lanzador: cápsula + Hilo a su derecha, y el susurro a la izquierda de ambos */}
@@ -467,7 +467,7 @@ export default function HiloAssistant({ publications = [], screen = '' }) {
           </div>
 
           {/* Brújula (2x2 + secundarias) o Chat Turístico */}
-          <div className="min-h-0 flex-1 overflow-auto bg-[linear-gradient(180deg,#fffaf0,#f6eddd)] pt-4 px-[18px] pb-3">
+          <div className="min-h-0 flex-1 overflow-auto bg-[#fffaf0] pt-4 px-[18px] pb-3">
             {view === 'brujula' ? (
               // div con role, no <nav>: el CSS legado oculta la etiqueta nav por debajo de 800 px.
               <div role="navigation" aria-label="Brújula de Hilo">

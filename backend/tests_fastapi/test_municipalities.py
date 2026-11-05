@@ -23,7 +23,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from backend.service.core.config import settings
 from backend.service.db.session import get_db
 from backend.service.main import app
-from backend.service.models.tables import Artist, Publication, TalentProfile
+from backend.service.models.tables import Artist, OpportunityType, Publication, TalentProfile
 from backend.service.schemas.municipalities import deduce_municipality
 from backend.service.services import municipalities as municipality_service
 from backend.tests_fastapi.test_branches import admin, branch_cleanup, gestor, join, leader, sent  # noqa: F401
@@ -48,6 +48,10 @@ def load_script():
 def publication(category_ids, kind, title, **extra):
     data = body(category_ids, title, **extra)
     data.update(kind=kind, category_id=category_ids[kind])
+    if kind == "OPORTUNIDAD":  # tipo, quien convoca y enlace son obligatorios en las oportunidades
+        with schema_session() as session:
+            data["opportunity_type_id"] = session.execute(select(OpportunityType.id).order_by(OpportunityType.id).limit(1)).scalar_one()
+        data.update(organizer="Casa de la Cultura", link="https://ejemplo.co/convocatoria")
     return data
 
 

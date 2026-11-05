@@ -1,40 +1,104 @@
 """
-Fase 2: arranca la app FastAPI contra un SCHEMA temporal y aislado dentro del
-mismo Postgres real (Neon) -- nunca contra el schema `public` que ya tiene
-los datos migrados de produccion. Se crea, se siembra (backend/service/seed.py)
-y se destruye en cada corrida de la suite.
+La suite corre contra una base APARTE de la principal: TEST_DATABASE_URL (una rama de Neon dedicada a
+pruebas), en el entorno o en el .env. Sin ella, o si apunta a la misma base que DATABASE_URL, la suite
+no arranca. Antes de importar la app, settings.database_url se cambia por esa URL: la app, el seed,
+los scripts y las pruebas de migracion solo ven la rama de pruebas.
+
+Cada corrida crea un schema test_<12 hex> con una tabla _test_meta (hora y proceso que lo creo), lo
+siembra (backend/service/seed.py) y lo borra al terminar. Si una corrida muere sin llegar a borrarlo
+(proceso cortado, equipo suspendido), la siguiente borra al iniciar los test_<12 hex> con _test_meta
+de mas de STALE_AFTER que nadie este usando.
 """
 import json
+import os
+import re
+import socket
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
+from backend.service.core.config import settings
+
 REPORT_PATH = Path(__file__).resolve().parent / "baseline_report_fastapi.json"
+SCHEMA_NAME = re.compile(r"^test_[0-9a-f]{12}$")
+STALE_AFTER = timedelta(hours=6)
+
+
+def _target(url: str) -> tuple[str, str]:
+    """(host sin "-pooler", base) para comparar dos URLs de Neon sin mirar la clave."""
+    parsed = make_url(url)
+    return ((parsed.host or "").lower().replace("-pooler.", "."), parsed.database or "")
+
+
+def _test_database_url() -> str:
+    url = (settings.test_database_url or "").strip()
+    if not url:
+        pytest.exit("Falta TEST_DATABASE_URL (rama de pruebas de Neon). Ver README, seccion "
+                    "'Pruebas del backend'. La suite no corre contra la base principal.", returncode=4)
+    try:
+        test_target, main_target = _target(url), _target(settings.database_url)
+    except Exception:
+        pytest.exit("TEST_DATABASE_URL no es una URL de base de datos valida.", returncode=4)
+    if not test_target[0] or test_target == main_target:
+        pytest.exit("TEST_DATABASE_URL apunta a la base principal (mismo host y base que DATABASE_URL): "
+                    "la suite no corre ahi. Usa la rama de pruebas.", returncode=4)
+    return url
+
+
+# Antes de que cualquier modulo cree el motor de la app (backend/service/db/session.py lo crea al
+# importarse): desde aqui todo lo que lea settings.database_url ve la rama de pruebas.
+settings.database_url = _test_database_url()
+
+
+def _drop_stale_schemas(engine) -> None:
+    """Borra los test_<12 hex> que dejaron corridas muertas: solo los que tienen _test_meta, con mas
+    de STALE_AFTER y sin bloqueos de otras conexiones. Nunca otro schema."""
+    with engine.begin() as conn:
+        rows = conn.execute(text("SELECT oid, nspname FROM pg_namespace WHERE nspname ~ :pattern"),
+                            {"pattern": SCHEMA_NAME.pattern}).all()
+        for oid, name in rows:
+            if not SCHEMA_NAME.match(name):
+                continue
+            if conn.execute(text("SELECT to_regclass(:t)"), {"t": f'"{name}"._test_meta'}).scalar_one() is None:
+                continue
+            created = conn.execute(text(f'SELECT min(created_at) FROM "{name}"._test_meta')).scalar_one()
+            if created is None or datetime.now(timezone.utc) - created < STALE_AFTER:
+                continue
+            locks = conn.execute(text(
+                "SELECT count(*) FROM pg_locks l JOIN pg_class c ON c.oid = l.relation "
+                "WHERE c.relnamespace = :oid AND l.pid <> pg_backend_pid()"), {"oid": oid}).scalar_one()
+            if locks:
+                continue
+            conn.execute(text(f'DROP SCHEMA "{name}" CASCADE'))
 
 
 @pytest.fixture(scope="session")
 def client():
-    from backend.service.core.config import settings
     from backend.service.db.session import get_db
     from backend.service.main import app
     from backend.service.models.tables import Base
     from backend.service.seed import seed_database
 
-    # El pooler de Neon (pgbouncer, modo transaccion) rechaza el parametro de
-    # arranque `options=-csearch_path=...` que necesitamos para aislar los
-    # tests en un schema temporal. Para ESTA conexion de test se usa el
-    # endpoint directo de Neon (sin "-pooler" en el host); la app en si sigue
-    # usando settings.database_url (pooled) tal cual en runtime normal.
+    # El pooler de Neon (pgbouncer, modo transaccion) rechaza el parametro de arranque
+    # `options=-csearch_path=...` que aisla los tests en su schema: se usa el endpoint directo.
     direct_url = settings.database_url.replace("-pooler.", ".")
 
     schema = f"test_{uuid.uuid4().hex[:12]}"
     admin_engine = create_engine(direct_url)
+    _drop_stale_schemas(admin_engine)
+    # Schema y _test_meta en la misma transaccion: nadie ve el schema sin su marca.
     with admin_engine.begin() as conn:
         conn.execute(text(f'CREATE SCHEMA "{schema}"'))
+        conn.execute(text(f'CREATE TABLE "{schema}"._test_meta (created_at timestamptz NOT NULL DEFAULT now(), '
+                          'pid integer NOT NULL, host text NOT NULL)'))
+        conn.execute(text(f'INSERT INTO "{schema}"._test_meta (pid, host) VALUES (:pid, :host)'),
+                     {"pid": os.getpid(), "host": socket.gethostname()})
 
     try:
         test_engine = create_engine(direct_url, connect_args={"options": f"-csearch_path={schema}"})
@@ -72,7 +136,6 @@ def client():
         finally:
             test_engine.dispose()
     finally:
-        # Pase lo que pase arriba, nunca dejar un schema de test huerfano en Neon.
         with admin_engine.begin() as conn:
             conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
         admin_engine.dispose()

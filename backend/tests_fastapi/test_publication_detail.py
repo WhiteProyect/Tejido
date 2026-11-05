@@ -54,7 +54,7 @@ def test_published_event_with_gallery_is_public(client, admin, category_ids):
     # Lo que ya devolvia sigue igual.
     assert {"id", "title", "summary", "content", "kind", "status", "category", "color", "author", "favorite"} <= set(data)
     assert data["venue"] == "Malecon de Caucasia" and data["capacity"] is None
-    assert data["organization_name"] is None and data["deadline"] is None
+    assert "organization_name" not in data and data["deadline"] is None  # el legado lo reemplaza organizer (solo OPORTUNIDAD)
     assert [(i["alt_text"], i["position"]) for i in data["images"]] == [("Foto 0", 0), ("Foto 1", 1)]
     # El otro camino (endpoint de imagenes) devuelve lo mismo.
     assert client.get(f"/api/publications/{pub}/images").json() == data["images"]
@@ -62,14 +62,16 @@ def test_published_event_with_gallery_is_public(client, admin, category_ids):
 
 
 def test_published_opportunity_and_plain_history(client, admin, category_ids):
-    opp = create(client, admin, category_ids, "OPORTUNIDAD", "Convocatoria abierta", publish=True, end_date="2026-12-15T23:59")
+    opp = create(client, admin, category_ids, "OPORTUNIDAD", "Convocatoria abierta", publish=True, end_date="2026-12-15T23:59",
+                 opportunity_type_id=client.get("/api/opportunity-types").json()[0]["id"], organizer="Casa de la Cultura",
+                 link="https://ejemplo.co/convocatoria")
     data = client.get(f"/api/publications/{opp}").json()
     assert data["deadline"].startswith("2026-12-15") and data["venue"] is None
     assert data["images"] == []
 
     history = create(client, admin, category_ids, "HISTORIA", "Historia sin extras", publish=True)
     data = client.get(f"/api/publications/{history}").json()
-    assert (data["venue"], data["capacity"], data["organization_name"], data["deadline"]) == (None, None, None, None)
+    assert (data["venue"], data["capacity"], data["deadline"]) == (None, None, None) and "organizer" not in data
     assert data["images"] == [] and data["author_organization"] is None  # el admin demo no tiene organizacion
 
 

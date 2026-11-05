@@ -25,6 +25,7 @@ from backend.service.models.tables import (
     Event,
     InviteToken,
     Opportunity,
+    OpportunityType,
     Organization,
     Publication,
     Role,
@@ -69,6 +70,13 @@ def seed_database(db: Session):
     _upsert_ignore(db, Role, [
         {"id": 1, "name": "ADMIN"}, {"id": 2, "name": "GESTOR"}, {"id": 3, "name": "CIUDADANO"},
     ], ["id"])
+    # Los mismos 5 tipos que siembra la migracion f3c1a9e7b5d2 (los schemas de prueba usan create_all).
+    _upsert_ignore(db, OpportunityType, [
+        {"slug": slug, "label": label, "color": color, "sort_order": index, "active": True}
+        for index, (slug, label, color) in enumerate((("convocatoria", "Convocatoria", "ocre"), ("taller", "Taller", "menta"),
+                                                      ("audicion", "Audición", "morado"), ("concurso", "Concurso", "amarillo"),
+                                                      ("curso", "Curso", "crema")))
+    ], ["slug"])
 
     demo_users = [
         (1, "Valentina Admin", "admin@tejido.co", "Admin123!"),
@@ -153,7 +161,7 @@ def seed_database(db: Session):
                  content="Tres dias para encontrarnos alrededor de los sonidos, sabores e iniciativas "
                          "que nacen en el Bajo Cauca. Habra tarima local, mercado creativo y recorridos "
                          "ambientales.",
-                 image="linear-gradient(135deg,#F6C453,#F08A5D)", location="Malecon de Caucasia",
+                 image=None, location="Malecon de Caucasia",
                  start_date="2026-07-18T15:00", end_date="2026-07-20T22:00",
                  link="https://example.com/festival", featured=True, status="PUBLISHED", venue="Malecon de Caucasia"),
             dict(author_id=1, category_id=category_ids["HISTORIA"], kind="HISTORIA",
@@ -161,14 +169,14 @@ def seed_database(db: Session):
                  summary="Artesanas de El Pando convierten fibras y relatos en piezas unicas.",
                  content="Un grupo de mujeres reune saberes heredados y diseno contemporaneo para "
                          "contar historias del territorio a traves del tejido.",
-                 image="linear-gradient(135deg,#845EC2,#D65DB1)", location="El Pando, Caucasia",
+                 image=None, location="El Pando, Caucasia",
                  start_date=None, end_date=None, link=None, featured=True, status="PUBLISHED"),
             dict(author_id=3, category_id=category_ids["OPORTUNIDAD"], kind="OPORTUNIDAD",
                  title="Convocatoria Semillas Creativas",
                  summary="Apoyo para jovenes con ideas culturales y comunitarias.",
                  content="La convocatoria entrega mentoria y capital semilla a diez proyectos liderados "
                          "por jovenes de 18 a 28 anios.",
-                 image="linear-gradient(135deg,#00A896,#89C2D9)", location="Caucasia",
+                 image=None, location="Caucasia",
                  start_date=None, end_date="2026-08-15", link="https://example.com/semillas",
                  featured=True, status="PUBLISHED", organization_name="Alianza Bajo Cauca", deadline="2026-08-15"),
             dict(author_id=4, category_id=category_ids["TALENTO"], kind="TALENTO",
@@ -176,21 +184,21 @@ def seed_database(db: Session):
                  summary="Un lente joven que encuentra belleza en la vida cotidiana.",
                  content="Samuel recorre barrios y veredas documentando gestos, oficios y paisajes "
                          "que suelen pasar desapercibidos.",
-                 image="linear-gradient(135deg,#264653,#2A9D8F)", location="Caucasia",
+                 image=None, location="Caucasia",
                  start_date=None, end_date=None, link=None, featured=False, status="PUBLISHED"),
             dict(author_id=5, category_id=category_ids["INICIATIVA"], kind="INICIATIVA",
                  title="Biblioteca al parque",
                  summary="Lecturas, juegos y conversacion cada sabado.",
                  content="Una red de voluntarios lleva libros y actividades a parques de distintos "
                          "barrios para acercar la lectura a ninnas, ninos y familias.",
-                 image="linear-gradient(135deg,#3B82F6,#8B5CF6)", location="Parques de Caucasia",
+                 image=None, location="Parques de Caucasia",
                  start_date="2026-07-04T09:00", end_date=None, link=None, featured=False, status="PUBLISHED"),
             dict(author_id=2, category_id=category_ids["EVENTO"], kind="EVENTO",
                  title="Mercado Hecho en Caucasia",
                  summary="Emprendimientos locales, musica y cocina en un solo lugar.",
                  content="Encuentra marcas locales, productos agricolas, diseno y cocina del territorio. "
                          "Entrada libre.",
-                 image="linear-gradient(135deg,#F59E0B,#EF4444)", location="Parque de las Banderas",
+                 image=None, location="Parque de las Banderas",
                  start_date="2026-07-11T10:00", end_date="2026-07-11T19:00", link=None,
                  featured=False, status="PUBLISHED", venue="Parque de las Banderas"),
         ]
@@ -214,7 +222,7 @@ def seed_database(db: Session):
             if row["kind"] == "EVENTO":
                 db.add(Event(publication_id=publication.id, venue=venue, capacity=300))
             if row["kind"] == "OPORTUNIDAD":
-                db.add(Opportunity(publication_id=publication.id, organization_name=organization_name, deadline=deadline))
+                db.add(Opportunity(publication_id=publication.id, organizer=organization_name, deadline=deadline))
 
     # Idempotente: etiqueta las publicaciones sembradas antes de existir cultural_category, sin
     # pisar una categoria que alguien ya haya puesto.

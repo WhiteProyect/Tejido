@@ -109,6 +109,16 @@ function getRoute() {
     return { screen: 'talento-vista-previa', slug: hash.slice('talento-vista-previa/'.length) };
   }
 
+  // Agenda con filtros: #agenda?mun=...&cat=...&anteriores=1 (AgendaScreen los lee del hash).
+  if (hash.startsWith('agenda?')) {
+    return { screen: 'agenda', slug: null };
+  }
+
+  // Oportunidades con filtros: #oportunidades?mun=...&tipo=...&cat=...&pronto=1 (OpportunitiesScreen).
+  if (hash.startsWith('oportunidades?')) {
+    return { screen: 'oportunidades', slug: null };
+  }
+
   // Enlaces de los correos de cuenta: #verificar?token=... y #restablecer?token=... (la pantalla
   // lee el token del hash y lo quita de la URL).
   if (hash.startsWith('verificar')) return { screen: 'verificar', slug: null };
@@ -275,8 +285,6 @@ export default function App() {
   // (traen su propio "Volver al inicio").
   const isLoginRoute = route.screen === 'login' || route.screen === 'invitacion';
 
-  const events = publications.filter((publication) => publication.kind === 'EVENTO');
-  const opportunities = publications.filter((publication) => publication.kind === 'OPORTUNIDAD');
 
   let content;
   switch (route.screen) {
@@ -327,10 +335,10 @@ export default function App() {
       content = <MunicipalityScreen slug={route.slug} user={user} />;
       break;
     case 'agenda':
-      content = <AgendaScreen events={events} />;
+      content = <AgendaScreen />;
       break;
     case 'oportunidades':
-      content = <OpportunitiesScreen opportunities={opportunities} />;
+      content = <OpportunitiesScreen user={user} />;
       break;
     case 'talento':
       content = <TalentScreen user={user} />;

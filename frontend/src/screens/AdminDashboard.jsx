@@ -6,6 +6,7 @@ import PublicationForm from '../components/PublicationForm.jsx';
 import ArtistasPanel from '../components/admin/ArtistasPanel.jsx';
 import BandejaPanel from '../components/admin/BandejaPanel.jsx';
 import GestoresPanel from '../components/admin/GestoresPanel.jsx';
+import OpportunityTypesPanel from '../components/admin/OpportunityTypesPanel.jsx';
 import TalentManager from '../components/talent/manage/TalentManager.jsx';
 import { MODERATION_TOASTS, ModerationButtons, RejectForm, moderatePublication } from '../components/Moderation.jsx';
 import PillTabs from '../components/admin/PillTabs.jsx';
@@ -17,7 +18,7 @@ import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
 import { formatDateShort } from '../utils/dateUtils.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
-// Dashboard del Admin (#admin-dashboard[/publicaciones[/<id>]|gestores|artistas[/<id>[/<pestana>]]|talento[/<id>[/<pestana>]]|bandeja]):
+// Dashboard del Admin (#admin-dashboard[/publicaciones[/<id>]|gestores|artistas[/<id>[/<pestana>]]|talento[/<id>[/<pestana>]]|oportunidades|portadas|bandeja]):
 // - Pulso: GET /api/admin/stats (incluye gestores_activos), visible en todas las pestanas. Los
 //   mosaicos de reportes y mensajes enlazan a la Bandeja.
 // - Pestanas: solo se monta el panel activo. La pestana va en la URL con replaceState (sin
@@ -32,6 +33,7 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 // - publicaciones/<id> (enlace desde un reporte de la Bandeja) abre el editor de esa publicacion.
 // - Talento: components/talent/manage/TalentManager.jsx (todas las ramas; lista y editor). Su
 //   contador es stats.talent_review.
+// - Oportunidades: los tipos de oportunidad (components/admin/OpportunityTypesPanel.jsx).
 // - Portadas: la portada de cada una de las 10 categorias (components/CategoryCoverEditor.jsx).
 // - Bandeja: components/admin/BandejaPanel.jsx (mensajes de Nosotros y reportes).
 const STATUSES = ['REVIEW', 'DRAFT', 'REJECTED', 'PUBLISHED'];
@@ -42,6 +44,7 @@ const TABS = [
   ['gestores', 'Gestores', 'people'],
   ['artistas', 'Artistas', 'music'],
   ['talento', 'Talento', 'mic'],
+  ['oportunidades', 'Oportunidades', 'compass'],
   ['portadas', 'Portadas', 'palette'],
   ['bandeja', 'Bandeja', 'inbox'],
 ];
@@ -296,6 +299,7 @@ export default function AdminDashboard({ section }) {
           {tab === 'gestores' && <GestoresPanel />}
           {tab === 'artistas' && <ArtistasPanel subpath={subpath} />}
           {tab === 'talento' && <TalentManager role="ADMIN" subpath={subpath} onChanged={loadStats} />}
+          {tab === 'oportunidades' && <OpportunityTypesPanel />}
           {tab === 'portadas' && <CoversPanel />}
           {tab === 'bandeja' && <BandejaPanel onChange={loadStats} />}
         </div>

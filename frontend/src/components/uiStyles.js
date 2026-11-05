@@ -84,3 +84,75 @@ export const PANEL_TITLE = 'm-0 font-sans text-[26px] font-extrabold tracking-[-
 export const FORM_LABEL = 'grid gap-1.5 text-[12px] font-bold uppercase tracking-[.12em] text-muted';
 export const FORM_INPUT = 'w-full rounded-[12px] font-sans border border-[#d9cfbe] bg-white py-2.5 px-3.5 text-[15px] font-medium normal-case tracking-normal text-ink outline-none focus:border-ink disabled:opacity-60';
 
+
+// Avisos de dias de un evento (eventNotice de utils/dateUtils.js): colores planos y siempre con texto
+// (no solo color). Carrusel del inicio y Agenda. Normal: menta con tinta; urgente: #b8502b con blanco
+// (4,9:1); en curso: dorado con tinta.
+export const NOTICE_TONES = {
+  normal: 'bg-[rgba(136,197,164,0.25)] text-ink',
+  urgent: 'bg-[#b8502b] text-white',
+  ongoing: 'bg-[#d4a843] text-ink',
+};
+
+// Globo de sugerencia de Hilo (sobre su ilustracion), como el de "talento parecido".
+export const HILO_BUBBLE = "relative mb-1 max-w-[230px] cursor-pointer rounded-[16px] border border-[#cdbd9e] bg-[#fffdf8] py-2 px-3.5 text-center text-[15px] font-semibold leading-[1.3] text-ink [box-shadow:0_8px_20px_rgba(23,58,49,.12)] after:absolute after:-bottom-[7px] after:left-1/2 after:size-3 after:-translate-x-1/2 after:rotate-45 after:border-r after:border-b after:border-[#cdbd9e] after:bg-[#fffdf8] after:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+
+// ───────── Territorio: Agenda, Oportunidades, su detalle y el calendario (rediseño del diseñador) ─────────
+// Una sola fuente de colores y variantes. Sin degradados: bloques solidos y lineas #ddd5c7. Cada par de
+// texto/fondo esta medido (>= 4,5:1); cambiar un color aqui lo cambia en tarjetas, detalle y panel.
+export const TERRITORY = {
+  ink: '#173f36', paper: '#fff9ec', cream: '#f3e4c8', line: '#ddd5c7', ochre: '#b8502b', mint: '#75b79b',
+  purple: '#8a4f7d', yellow: '#f4b942', gold: '#d4a843', alert: '#d85b36', white: '#ffffff',
+  // Ocre para texto pequeño sobre crema/papel: #b8502b sobre #f3e4c8 da 3,97:1; este da 4,77:1 (5,70 sobre papel).
+  ochreText: '#a44727',
+  muted: '#4d5a55', mutedText: '#3f514a', mutedSoft: '#53645c',
+};
+const T = TERRITORY;
+
+// Paleta cerrada de los tipos de oportunidad (backend: services/opportunity_types.py::PALETTE).
+export const TYPE_COLORS = {
+  ocre: { label: 'Ocre', bg: T.ochre, text: T.paper },
+  menta: { label: 'Menta', bg: T.mint, text: T.ink },
+  morado: { label: 'Morado', bg: T.purple, text: T.paper },
+  amarillo: { label: 'Amarillo', bg: T.yellow, text: T.ink },
+  crema: { label: 'Crema', bg: T.cream, text: T.ink, border: T.ink },
+};
+export const TYPE_COLOR_KEYS = Object.keys(TYPE_COLORS);
+export const typeColors = (color) => TYPE_COLORS[color] || TYPE_COLORS.crema;
+
+// Pildoras (texto >= 14 px, peso 600+).
+export const PILL_COLORS = {
+  municipality: { bg: T.ink, text: T.paper },
+  municipalityMuted: { bg: T.muted, text: T.paper },
+  category: { bg: T.cream, text: T.ink },
+  tradition: { bg: T.purple, text: T.paper },
+  past: { bg: T.cream, text: T.ink },
+  closed: { bg: T.line, text: T.ink },
+  typeMuted: { bg: T.paper, text: T.muted, border: T.line },
+};
+// Avisos de dias (dateUtils: kind). Sobre una banda del mismo color, el aviso pasa a tinta con crema.
+export const NOTICE_COLORS = {
+  days: { bg: T.yellow, text: T.ink },
+  today: { bg: T.ochre, text: T.paper },
+  ongoing: { bg: T.mint, text: T.ink },
+  open: { bg: T.cream, text: T.ink },
+  onBand: { bg: T.ink, text: T.paper },
+};
+// Bandas de las tarjetas (debajo de la foto) y barras de bloque.
+export const BANDS = { upcoming: T.ink, tradition: T.purple, muted: T.line };
+
+export const PILL_BASE = 'inline-flex max-w-full items-center gap-1.5 rounded-full border py-1 px-3 text-[14px] font-semibold leading-[1.25] [overflow-wrap:anywhere]';
+
+// Estilo de una pildora sobre una banda: si su fondo es el mismo de la banda, lleva un borde de su
+// color de texto para que se vea su forma.
+export function pillStyle(colors, band) {
+  const same = band && colors.bg.toLowerCase() === band.toLowerCase();
+  return { backgroundColor: colors.bg, color: colors.text, borderColor: same ? colors.text : (colors.border || colors.bg) };
+}
+
+// Estilo de un aviso de dias sobre una banda: si coincide con ella, tinta con texto crema.
+export function noticeStyle(kind, band) {
+  const colors = NOTICE_COLORS[kind] || NOTICE_COLORS.days;
+  const same = band && colors.bg.toLowerCase() === band.toLowerCase();
+  return pillStyle(same ? NOTICE_COLORS.onBand : colors, band);
+}

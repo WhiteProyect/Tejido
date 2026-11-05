@@ -6,6 +6,7 @@ Uso (desde la raiz del proyecto):
     py scripts/preview_correos.py <carpeta_destino>
 """
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -35,6 +36,8 @@ def main():
         "rechazada": notifications.build_moderation("Eze kiel", 7, "Pizza Party", "REJECTED", "Falta la fecha y la hora del evento.\nAgrega también el lugar exacto."),
         "rechazada-sin-motivo": notifications.build_moderation("Eze kiel", 7, "Pizza Party", "REJECTED", None),
         "invitacion": ("Activa tu cuenta en TEJIDO", *build_invite_email("Eze kiel", "http://localhost:5173/#invitacion/ejemplo-token")),
+        "aviso-cierre-3-dias": notifications.build_opportunity_reminder("Sofia Ciudadana", 12, "Convocatoria Semillas Creativas", datetime(2026, 11, 13, 17, 30), 3, "https://convocatorias.ejemplo.co/semillas"),
+        "aviso-cierre-1-dia": notifications.build_opportunity_reminder(None, 12, "Convocatoria Semillas Creativas", datetime(2026, 11, 13), 1, None),
     }
     for name, (subject, html, text) in samples.items():
         (out / f"{name}.html").write_text(html, encoding="utf-8")

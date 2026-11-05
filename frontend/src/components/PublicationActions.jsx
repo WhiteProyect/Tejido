@@ -18,7 +18,8 @@ export function publicationShareUrl(id) {
   return `${window.location.origin}/#publicacion/${id}`;
 }
 
-export default function PublicationActions({ publication, user, returnTo = 'explorar', withLabels = false, menuUp = true, onFavoriteChange }) {
+// showFavorite=false: sin el boton Guardar (el detalle de una oportunidad lo trae en su bloque de postulacion).
+export default function PublicationActions({ publication, user, returnTo = 'explorar', withLabels = false, menuUp = true, onFavoriteChange, showFavorite = true }) {
   const { showToast } = useToast();
   const [points, setPoints] = useState(false);
   const [favorite, setFavorite] = useState(!!publication.favorite);
@@ -84,7 +85,7 @@ export default function PublicationActions({ publication, user, returnTo = 'expl
       {points && (
         <span className="text-[13px] font-bold text-gold animate-[fadeToast_2s_ease_forwards]">+10 pts</span>
       )}
-      {(!user || user.role === 'CIUDADANO') && (
+      {showFavorite && (!user || user.role === 'CIUDADANO') && (
         <button type="button" className={button} onClick={handleToggleFavorite} title={favoriteLabel} aria-label={withLabels ? undefined : favoriteLabel} aria-pressed={favorite}>
           <Icon name="bookmark" className={`size-4 ${favorite ? 'fill-current text-[var(--kind)]' : ''}`} />
           {withLabels && (favorite ? 'Guardada' : 'Guardar')}

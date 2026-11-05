@@ -193,6 +193,13 @@ class Publication(Base):
     # Municipio (schemas/municipalities.py). Obligatorio al crear y editar (la API lo exige);
     # nullable en la base mientras se rellenan las existentes (scripts/backfill_municipality.py).
     municipality: Mapped[str | None] = mapped_column(String, index=True)
+    # Eslogan (hasta 100 caracteres) y etiquetas (hasta 3 de 24): opcionales; hoy solo los muestra el
+    # carrusel del inicio. Se validan en services/publications.py.
+    tagline: Mapped[str | None] = mapped_column(String(100))
+    tags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
+    # Fecha habitual de un EVENTO que se repite ("Cada 20 de julio"), hasta 80 caracteres. Opcional; en
+    # otros tipos se guarda NULL. Lo usa la Agenda (services/agenda.py) para el bloque de tradiciones.
+    tradition_text: Mapped[str | None] = mapped_column(String(80))
 
     category: Mapped["Category"] = relationship()
     author: Mapped["User"] = relationship()
@@ -209,15 +216,52 @@ class Event(Base):
     capacity: Mapped[int | None] = mapped_column(Integer)
 
 
+class OpportunityType(Base):
+    """Tipos de oportunidad (Convocatoria, Taller...), administrables por el ADMIN. El slug nace de la
+    etiqueta y no cambia al renombrar; un tipo en uso no se borra: se desactiva."""
+    __tablename__ = "opportunity_types"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    __table_args__ = (CheckConstraint("color IN ('ocre', 'menta', 'morado', 'amarillo', 'crema')", name="ck_opportunity_types_color"),)
+
+    slug: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
+    label: Mapped[str] = mapped_column(String(60), nullable=False)
+    # Color de la banda y la pildora del tipo (paleta cerrada: services/opportunity_types.py::PALETTE).
+    color: Mapped[str] = mapped_column(String(12), nullable=False, default="ocre", server_default=text("'ocre'"))
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class Opportunity(Base):
+    """Detalle de una publicacion OPORTUNIDAD (una fila por publicacion; se actualiza, no se recrea)."""
     __tablename__ = "opportunities"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     publication_id: Mapped[int] = mapped_column(
         ForeignKey("publications.id", ondelete="CASCADE"), unique=True, nullable=False
     )
+    # Legado: lo reemplaza `organizer` (la migracion f3c1a9e7b5d2 copio su valor). Ya no se escribe.
     organization_name: Mapped[str | None] = mapped_column(String)
     deadline: Mapped[datetime | None] = mapped_column(DateTime)
+    type_id: Mapped[int | None] = mapped_column(ForeignKey("opportunity_types.id", ondelete="RESTRICT"), index=True)
+    organizer: Mapped[str | None] = mapped_column(String(120))  # quien convoca
+    requirements: Mapped[list] = mapped_column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
+    prize: Mapped[str | None] = mapped_column(String(120))  # premio o monto
+    audience: Mapped[str | None] = mapped_column(String(160))  # a quien va dirigida
+
+
+class OpportunityReminder(Base):
+    """Avisos de cierre ya enviados (services/opportunity_reminders.py): uno por usuario, oportunidad y
+    anticipacion, para no repetirlos."""
+    __tablename__ = "opportunity_reminders"
+    __table_args__ = (UniqueConstraint("user_id", "publication_id", "days_before", name="uq_opportunity_reminder"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    publication_id: Mapped[int] = mapped_column(ForeignKey("publications.id", ondelete="CASCADE"), nullable=False)
+    days_before: Mapped[int] = mapped_column(Integer, nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class Favorite(Base):

@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # inesperado. Fase 2: siempre PostgreSQL (ver backend/service/models,
     # que ya usa tipos especificos de Postgres como JSONB).
     database_url: str
+    # Base SOLO para la suite de pytest (una rama de Neon dedicada a pruebas). La lee
+    # backend/tests_fastapi/conftest.py, que no corre sin ella ni si apunta a la de database_url.
+    test_database_url: str = ""
 
     # Vite (frontend/vite.config.js) proxea /api a este host:puerto; /images y /assets
     # los sirve Vite desde frontend/public/ en desarrollo.

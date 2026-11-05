@@ -4,9 +4,10 @@ import Icon from '../components/Icon.jsx';
 import PublicationCard from '../components/PublicationCard.jsx';
 import ScreenIntro from '../components/ScreenIntro.jsx';
 import TalentCard from '../components/talent/TalentCard.jsx';
-import { BTN_INK_MD, BTN_INK_OUTLINE_MD, SCREEN_SECTION } from '../components/uiStyles.js';
+import { BTN_INK_MD, BTN_INK_OUTLINE_MD, NOTICE_TONES, SCREEN_SECTION } from '../components/uiStyles.js';
 import { apiRequest } from '../utils/api.js';
 import { KIND_LABELS } from '../utils/constants.js';
+import { closingNotice, isClosed } from '../utils/opportunities.js';
 
 // Guardadas (#guardadas): todo lo que guardo el ciudadano (GET /api/me/saved), publicaciones y
 // talento mezclados por fecha de guardado, con filtros por tipo. Solo el ciudadano guarda: sin
@@ -14,6 +15,21 @@ import { KIND_LABELS } from '../utils/constants.js';
 // tarjeta, sale de la lista (el toast lo pone la tarjeta).
 const CHIP = 'inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-4 text-[14px] font-bold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 const TALENT = 'TALENTO_PERFIL';
+
+// Oportunidad guardada: su aviso de cierre (con los colores del carrusel) o "Cerrada".
+function ClosingChip({ endDate }) {
+  const closed = isClosed(endDate);
+  const notice = closed ? null : closingNotice(endDate);
+  const tone = closed ? 'bg-[#4d5a55] text-white' : NOTICE_TONES[notice.tone];
+  return (
+    <p className="mt-0 mb-2.5 flex items-center gap-2 text-[14px] font-semibold text-[#53645c]">
+      <span className={`inline-flex rounded-full py-0.5 px-2.5 text-[13px] font-bold ${tone}`} data-aviso={closed ? 'cerrada' : notice.tone}>
+        {closed ? 'Cerrada' : notice.text}
+      </span>
+      {closed && 'Esta convocatoria ya cerró'}
+    </p>
+  );
+}
 
 function chipLabel(type) {
   if (type === TALENT) return 'Talento';
@@ -115,6 +131,7 @@ export default function SavedScreen({ user, authReady }) {
                 <TalentCard talent={item.talent} user={user} onFavoriteChange={(saved) => { if (!saved) remove(item.key); }} />
               ) : (
                 <div className="w-full">
+                  {item.type === 'OPORTUNIDAD' && <ClosingChip endDate={item.publication.end_date} />}
                   <PublicationCard publication={item.publication} user={user} returnTo="guardadas" onFavoriteChange={(saved) => { if (!saved) remove(item.key); }} />
                 </div>
               )}

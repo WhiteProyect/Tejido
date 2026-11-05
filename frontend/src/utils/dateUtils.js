@@ -87,9 +87,10 @@ export function getCountdown(isoDate) {
   const target = safeParseDate(isoDate);
   if (!target) return { days: 0, isPast: true, isToday: false, text: '' };
 
-  const now = new Date();
-  const diffMs = target - now;
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  // Dias de calendario (local), no horas: un evento de hoy a las 7 p. m. visto a las 10 a. m. es "hoy",
+  // no "mañana".
+  const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((startOfDay(target) - startOfDay(new Date())) / (1000 * 60 * 60 * 24));
 
   if (diffDays < 0) {
     return { days: 0, isPast: true, isToday: false, text: 'Evento finalizado' };
@@ -137,4 +138,42 @@ export function getDateUrgency(isoDate) {
   if (countdown.days <= 3) return 'urgent';
   if (countdown.days <= 7) return 'warning';
   return 'normal';
+}
+
+/**
+ * Rango corto de fechas: "18 jul 2026 – 20 jul 2026", o una sola si no hay fin o es el mismo dia.
+ */
+export function formatDateRange(start, end) {
+  const from = formatDateShort(start);
+  const to = formatDateShort(end);
+  if (from && to && from !== to) return `${from} – ${to}`;
+  return from || to;
+}
+
+/**
+ * Aviso de dias de un evento segun la fecha del navegador: { text, tone, kind }; null si ya termino o
+ * no tiene fechas. tone ('normal' | 'urgent' | 'ongoing') lo usa el carrusel del inicio (NOTICE_TONES);
+ * kind ('today' | 'days' | 'ongoing') la Agenda y Oportunidades (NOTICE_COLORS de uiStyles.js).
+ */
+export function eventNotice(start, end) {
+  if (!start && !end) return null;
+  const first = getCountdown(start || end);
+  if (getCountdown(end || start).isPast) return null;
+  if (first.isToday) return { text: 'Es hoy', tone: 'urgent', kind: 'today' };
+  if (!first.isPast) {
+    return { text: first.days === 1 ? 'Falta 1 día' : `Faltan ${first.days} días`, tone: getDateUrgency(start || end) === 'urgent' ? 'urgent' : 'normal', kind: 'days' };
+  }
+  return { text: 'En curso', tone: 'ongoing', kind: 'ongoing' };
+}
+
+/**
+ * Aviso de cierre (oportunidades): "Cierra hoy", "Queda 1 dia", "Quedan N dias"; null si ya cerro o
+ * no hay fecha. Mismo shape que eventNotice. Lo comparten el carrusel y Oportunidades.
+ */
+export function closingNotice(end) {
+  if (!end) return null;
+  const countdown = getCountdown(end);
+  if (countdown.isPast) return null;
+  if (countdown.isToday) return { text: 'Cierra hoy', tone: 'urgent', kind: 'today' };
+  return { text: countdown.days === 1 ? 'Queda 1 día' : `Quedan ${countdown.days} días`, tone: getDateUrgency(end) === 'urgent' ? 'urgent' : 'normal', kind: 'days' };
 }

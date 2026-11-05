@@ -83,7 +83,10 @@ export default function LoginScreen({ onSuccess }) {
   const reduce = useReducedMotion();
   const { leaving, leave } = useLeaveTransition();
   const id = useId().replace(/:/g, '');
-  const [mode, setMode] = useState('login'); // login | signup | forgot
+  // Un aviso que invita a "Crear cuenta" (p. ej. al postularse a una oportunidad) deja pedida la
+  // pestana de registro en sessionStorage; se usa una sola vez.
+  const [mode, setMode] = useState(() => (sessionStorage.getItem('tejido_login_mode') === 'signup' ? 'signup' : 'login')); // login | signup | forgot
+  useEffect(() => { sessionStorage.removeItem('tejido_login_mode'); }, []);
   const [swap, setSwap] = useState({ from: 'login', to: 'login' });
   const [values, setValues] = useState(EMPTY);
   const [fieldErrors, setFieldErrors] = useState({});

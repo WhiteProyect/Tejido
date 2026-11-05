@@ -3,17 +3,19 @@ import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import Lightbox from '../components/Lightbox.jsx';
 import PublicationActions from '../components/PublicationActions.jsx';
+import OpportunityApply from '../components/opportunities/OpportunityApply.jsx';
+import { OpportunityPills, OpportunityRequirements, OpportunitySummary } from '../components/opportunities/OpportunityDetail.jsx';
 import { BTN_INK_OUTLINE_MD, SECTION } from '../components/uiStyles.js';
 import { apiRequest } from '../utils/api.js';
 import { cdnImage } from '../utils/cloudinaryUrl.js';
 import { BRANCH_LABELS, CULTURAL_CATEGORIES, KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
-import { formatDate, getDeadlineText } from '../utils/dateUtils.js';
+import { formatDate } from '../utils/dateUtils.js';
 import { getInitials } from '../utils/initials.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
 // Pagina de una publicacion (#publicacion/<id>), la que abren los enlaces compartidos y
 // "Ver detalles" de la tarjeta. GET /api/publications/{id} trae todo: la fila, su evento u
-// oportunidad (venue, capacity / organization_name, deadline), la organizacion publica del autor
+// oportunidad (venue, capacity / tipo, quien convoca, requisitos, premio, dirigida a y plazo), la organizacion publica del autor
 // y la galeria (images). Una publicada es publica; otro estado solo lo ven su autor o un admin
 // (403/404 -> "no disponible"), que ademas ven una nota con el estado.
 const CATEGORY_BY_KEY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label, slug]) => [key, { label, slug }]));
@@ -21,7 +23,8 @@ const DETAIL_LABEL = 'm-0 text-[11px] font-bold uppercase tracking-[.14em] text-
 const DETAIL_VALUE = 'mt-1 mb-0 text-[15px] leading-[1.5] text-ink';
 const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 
-const isRealImage = (url) => Boolean(url) && !url.startsWith('linear-gradient(');
+// Las publicaciones viejas guardan un estilo CSS en image (no un enlace): no es una foto.
+const isRealImage = (url) => /^(https?:\/\/|\/)/.test(url || '');
 
 // "sabado 7 de noviembre de 2026 · 3:00 p. m." (la hora solo si la fecha trae una distinta de 00:00).
 function formatDateTime(iso) {
@@ -114,7 +117,9 @@ export default function PublicationScreen({ id, user, canGoBack }) {
   const organization = pub.author_organization;
   const authorName = organization?.name || pub.author || 'Equipo TEJIDO';
   const branch = organization?.branch && BRANCH_LABELS[organization.branch];
-  const deadline = pub.kind === 'OPORTUNIDAD' ? (pub.deadline || pub.end_date) : null;
+  const isOpportunity = pub.kind === 'OPORTUNIDAD';
+  const deadline = isOpportunity ? (pub.end_date || pub.deadline) : null;
+  const requirements = isOpportunity && Array.isArray(pub.requirements) ? pub.requirements : [];
   const [statusLabel, statusTone] = STATUS_LABELS[pub.status] || [pub.status, STATUS_LABELS.DRAFT[1]];
   const move = (delta) => setViewer((current) => (current + delta + photos.length) % photos.length);
 
@@ -144,15 +149,17 @@ export default function PublicationScreen({ id, user, canGoBack }) {
         )}
 
         <header className="max-w-[820px]">
-          <span className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[.1em] text-white" style={{ backgroundColor: 'var(--kind)' }}>
-            {KIND_LABELS[pub.kind] || pub.kind}
-          </span>
+          {isOpportunity ? <OpportunityPills pub={pub} /> : (
+            <span className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[.1em] text-white" style={{ backgroundColor: 'var(--kind)' }}>
+              {KIND_LABELS[pub.kind] || pub.kind}
+            </span>
+          )}
           <h1 className="mt-4 mb-0 font-sans text-[length:clamp(36px,5vw,64px)] font-extrabold leading-[1.02] tracking-[-.045em] text-ink [overflow-wrap:anywhere]">{pub.title}</h1>
           <p className="font-display mt-4 mb-0 text-[length:clamp(19px,2.2vw,24px)] font-bold italic leading-[1.4] text-[#2d5a3d]">{pub.summary}</p>
         </header>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <PublicationActions key={`${pub.id}-${user?.id ?? 'anon'}`} publication={pub} user={user} returnTo={`publicacion/${pub.id}`} withLabels menuUp={false} />
+          <PublicationActions key={`${pub.id}-${user?.id ?? 'anon'}`} publication={pub} user={user} returnTo={`publicacion/${pub.id}`} withLabels menuUp={false} showFavorite={!isOpportunity} />
         </div>
 
         {cover && (
@@ -179,20 +186,18 @@ export default function PublicationScreen({ id, user, canGoBack }) {
         )}
 
         <div className="mt-10 grid grid-cols-[minmax(0,1fr)_320px] items-start gap-10 max900:grid-cols-[minmax(0,1fr)] max900:gap-8">
-          <div className="min-w-0 whitespace-pre-line text-[17px] leading-[1.75] text-[#3f514a] [overflow-wrap:anywhere]">{pub.content}</div>
+          <div className="min-w-0">
+            <div className="whitespace-pre-line text-[17px] leading-[1.75] text-[#3f514a] [overflow-wrap:anywhere]">{pub.content}</div>
+            {isOpportunity && <OpportunityRequirements items={requirements} />}
+          </div>
 
+          <div className="grid min-w-0 gap-6">
+          {isOpportunity && <OpportunitySummary pub={pub} deadline={deadline} formatDateTime={formatDateTime} />}
           <aside className="min-w-0 rounded-[24px] border border-[#e2d9ca] bg-[#fffaf2] p-6" aria-label="Detalles">
             {pub.start_date && (
               <Detail label={pub.end_date && pub.kind !== 'OPORTUNIDAD' ? 'Desde' : 'Fecha'}>{formatDateTime(pub.start_date)}</Detail>
             )}
             {pub.end_date && pub.kind !== 'OPORTUNIDAD' && <Detail label="Hasta">{formatDateTime(pub.end_date)}</Detail>}
-            {deadline && (
-              <Detail label="Plazo">
-                {formatDateTime(deadline)}
-                <span className="mt-1 block text-[13px] font-bold text-[var(--kind)]">{getDeadlineText(deadline)}</span>
-              </Detail>
-            )}
-            {pub.kind === 'OPORTUNIDAD' && pub.organization_name && <Detail label="Convoca">{pub.organization_name}</Detail>}
             <Detail label="Lugar">
               <span className="inline-flex items-start gap-1.5"><Icon name="pin" className="mt-1 size-4 shrink-0 text-muted" />{(pub.kind === 'EVENTO' && pub.venue) || pub.location || 'Caucasia'}</span>
             </Detail>
@@ -203,7 +208,7 @@ export default function PublicationScreen({ id, user, canGoBack }) {
               </Detail>
             )}
             {pub.link && (
-              <Detail label="Más información">
+              <Detail label={isOpportunity ? 'Enlace de postulación' : 'Más información'}>
                 <a className={`inline-flex items-center gap-1.5 font-bold text-river no-underline [overflow-wrap:anywhere] hover:underline ${FOCUS}`} href={pub.link} target="_blank" rel="noopener noreferrer">
                   Abrir enlace <Icon name="arrow-right" className="size-4" /><span className="sr-only"> (se abre en una pestaña nueva)</span>
                 </a>
@@ -225,7 +230,9 @@ export default function PublicationScreen({ id, user, canGoBack }) {
               </span>
             </Detail>
           </aside>
+          </div>
         </div>
+        {isOpportunity && pub.status === 'PUBLISHED' && <OpportunityApply key={`apply-${pub.id}-${user?.id ?? 'anon'}`} publication={pub} user={user} />}
       </div>
 
       {viewer !== null && <Lightbox photos={photos} index={viewer} onClose={() => setViewer(null)} onMove={move} />}

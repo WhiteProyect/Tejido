@@ -262,6 +262,45 @@ def build_talent_decision(to_name: str, talent_name: str, status: str, note: str
     return f"El talento necesita ajustes: {clip(talent_name, 80)}", html, body
 
 
+CITIZEN_SAVED_NOTE = ("Recibes este aviso porque guardaste esta oportunidad en TEJIDO. "
+                      "Si ya no te interesa, quítala de tus guardadas y no te escribiremos más sobre ella.")
+_MONTHS = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
+           "noviembre", "diciembre")
+_WEEKDAYS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+
+
+def closing_text(moment) -> str:
+    """"viernes 6 de noviembre de 2026", con la hora si no es 00:00 ("..., a las 5:30 p. m.")."""
+    text = f"{_WEEKDAYS[moment.weekday()]} {moment.day} de {_MONTHS[moment.month - 1]} de {moment.year}"
+    if (moment.hour, moment.minute) != (0, 0):
+        suffix = "a. m." if moment.hour < 12 else "p. m."
+        text += f", a las {moment.hour % 12 or 12}:{moment.minute:02d} {suffix}"
+    return text
+
+
+def build_opportunity_reminder(to_name: str | None, publication_id: int, title: str, closes_at, days_before: int,
+                               link: str | None):
+    first = (to_name or "").split()
+    when = "mañana" if days_before == 1 else f"en {days_before} días"
+    details = [("Oportunidad", title), ("Cierra", closing_text(closes_at))]
+    if link:
+        details.append(("Enlace de postulación", link, link))
+    html, body = render_email(
+        kicker="Recordatorio de cierre",
+        accent="orange" if days_before == 1 else "gold",
+        title="Una oportunidad que guardaste",
+        title_accent=f"cierra {when}.",
+        paragraphs=[f"Hola, {clip(first[0], 60)}:" if first else "Hola:",
+                    f"«{clip(title, 120)}» cierra {when}. Si todavía quieres postularte, este es el momento."],
+        details=details,
+        cta_label="Ver la oportunidad",
+        cta_url=_link(f"publicacion/{publication_id}"),
+        preheader=f"«{clip(title, 70)}» cierra {when}.",
+        footer_note=CITIZEN_SAVED_NOTE,
+    )
+    return f"Cierra {when}: {clip(title, 80)}", html, body
+
+
 def notify_suggestion(ticket: str, message: str) -> None:
     subject, html, text, reply_to = build_suggestion(ticket, message)
     _safely(f"sugerencia {ticket}", email_service.send_team_notification, subject, text, html=html, reply_to=reply_to)

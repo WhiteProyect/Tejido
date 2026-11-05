@@ -636,7 +636,8 @@ def test_my_saved(client, people):
     assert [t["id"] for t in saved["talent"]] == [t2, t1]  # el guardado mas reciente primero
     assert [p["id"] for p in saved["publications"]] == [pubs[1], pubs[0]]
     assert set(saved["talent"][0]) == PUBLIC_CARD_KEYS | {"saved_at"} and saved["talent"][0]["favorite"] is True
-    listed = next(p for p in client.get("/api/publications", headers=fan).json() if p["id"] == pubs[0])
+    # Mismo shape que el listado de esa misma publicacion (las OPORTUNIDAD traen ademas sus campos propios).
+    listed = next(p for p in client.get("/api/publications", headers=fan).json() if p["id"] == saved["publications"][0]["id"])
     assert set(saved["publications"][0]) == set(listed) | {"saved_at"}
     assert all(p["favorite"] is True for p in saved["publications"])
     assert saved["talent"][0]["saved_at"] > saved["talent"][1]["saved_at"]

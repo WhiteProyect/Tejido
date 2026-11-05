@@ -9,7 +9,7 @@ cualquier valor que no lo sea, en vez de guardarlo tal cual en la base de
 datos como pasaba antes.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, field_validator
 
@@ -35,6 +35,18 @@ class PublicationInput(BaseModel):
     # Obligatorio, pero se comprueba en el servicio (services/municipalities.py) para responder 422
     # con su propio codigo; aqui solo se normaliza.
     municipality: Optional[str] = None
+    # Opcionales. Se validan en el servicio (services/publications.py::clean_tagline/clean_tags) para
+    # responder 422 en español con un codigo por campo; aqui llegan tal cual.
+    tagline: Any = None
+    tags: Any = None
+    # Solo EVENTO (en otros tipos se ignora); se valida en services/publications.py::clean_tradition_text.
+    tradition_text: Any = None
+    # Solo OPORTUNIDAD (en otros tipos se ignoran); se validan en services/publications.py::clean_opportunity.
+    opportunity_type_id: Any = None
+    organizer: Any = None
+    requirements: Any = None
+    prize: Any = None
+    audience: Any = None
 
     @field_validator("municipality", mode="before")
     @classmethod

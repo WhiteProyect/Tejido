@@ -5,7 +5,7 @@ esconden el contenido sembrado, insertan el suyo y llaman al servicio. Nada qued
 """
 import json
 import uuid
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 from sqlalchemy import delete, func, select, update
@@ -19,6 +19,9 @@ from backend.service.services.auth import now_utc
 
 PRIVATE_KEYS = {"author_id", "user_id", "created_by", "representative_user_id", "email", "moderation_note",
                 "status", "deleted", "act_number", "author"}
+TODAY = date(2026, 11, 3)
+BRANCHES = ["MUSICA", "DANZA", "TEATRO", "LITERATURA", "ARTESANIAS", "CINE_AUDIOVISUAL", "PATRIMONIO_MEMORIA",
+            "ARTES_VISUALES", "GASTRONOMIA_CULTURAL", "EMPRENDIMIENTO_CULTURAL"]
 
 
 @pytest.fixture
@@ -49,27 +52,28 @@ class Content:
 
     def publication(self, kind="HISTORIA", branch="MUSICA", status="PUBLISHED", image="https://img.test/p.jpg", **extra):
         at = self._tick()
-        row = Publication(author_id=self.user_id, category_id=self.categories[kind], kind=kind,
-                          title=f"Pub {uuid.uuid4().hex[:6]}", summary="Resumen", content="Contenido", image=image,
+        values = {"title": f"Pub {uuid.uuid4().hex[:6]}", "summary": "Resumen", "content": "Contenido", **extra}
+        row = Publication(author_id=self.user_id, category_id=self.categories[kind], kind=kind, image=image,
                           status=status, cultural_category=branch, created_at=at, updated_at=at,
-                          moderation_note="nota privada", **extra)
+                          moderation_note="nota privada", **values)
         self.db.add(row)
         self.db.flush()
         return row
 
-    def talent(self, status="PUBLISHED", branch="DANZA", cover="https://img.test/t.jpg"):
+    def talent(self, status="PUBLISHED", branch="DANZA", cover="https://img.test/t.jpg", **extra):
         at = self._tick()
-        row = TalentProfile(slug=f"talento-{uuid.uuid4().hex[:8]}", name="Grupo de prueba", category=branch,
-                            origin="caucasia", tagline="Bullerengue", cover_url=cover, created_by=self.user_id,
-                            representative_user_id=self.user_id, status=status, created_at=at, updated_at=at,
-                            published_at=at if status == "PUBLISHED" else None)
+        values = {"slug": f"talento-{uuid.uuid4().hex[:8]}", "name": "Grupo de prueba", "category": branch,
+                  "origin": "caucasia", "tagline": "Bullerengue", "cover_url": cover, "created_by": self.user_id,
+                  "representative_user_id": self.user_id, "status": status, "created_at": at, "updated_at": at,
+                  "published_at": at if status == "PUBLISHED" else None, **extra}
+        row = TalentProfile(**values)
         self.db.add(row)
         self.db.flush()
         return row
 
-    def artist(self, name, featured=False, active=True, image="https://img.test/a.jpg"):
+    def artist(self, name, featured=False, active=True, image="https://img.test/a.jpg", bio="Bio"):
         row = Artist(user_id=self.user_id, name=name, stage_name=name, slug=f"{name.lower()}-{uuid.uuid4().hex[:6]}",
-                     bio="Bio", image=image, featured=featured, active=active, created_at=self._tick())
+                     bio=bio, image=image, featured=featured, active=active, created_at=self._tick())
         self.db.add(row)
         self.db.flush()
         return row
@@ -84,140 +88,214 @@ def keys(slides):
     return [slide["key"] for slide in slides]
 
 
-def branch_of(slide):
-    """Rama visible de una diapositiva: la de la insignia de la publicacion o la del talento."""
-    if slide["type"] == "PUBLICATION":
-        parts = slide["badge"].split(" · ")
-        return parts[1] if len(parts) > 1 else None
-    return slide.get("category_label")
+def build(db):
+    return home_carousel.build_carousel(db, today=TODAY)
 
 
-def assert_no_repeated_branch(slides):
-    branches = [branch_of(slide) for slide in slides]
-    assert all(not (a and a == b) for a, b in zip(branches, branches[1:])), branches
+def by_key(slides):
+    return {slide["key"]: slide for slide in slides}
+
+
+def at(day, hour=0):
+    return datetime.combine(day, datetime.min.time()) + timedelta(hours=hour)
 
 
 def test_empty_database_returns_no_slides(db):
-    assert home_carousel.build_carousel(db) == []
+    assert build(db) == []
 
 
 def test_only_public_content(db, content):
     visible = content.publication()
-    hidden = [content.publication(status=status) for status in ("DRAFT", "REVIEW", "REJECTED")]
-    hidden.append(content.publication(deleted=True))
-    hidden.append(content.publication(kind="TALENTO"))  # tipo legado
+    hidden = [content.publication(status=status, branch=branch)
+              for status, branch in (("DRAFT", "DANZA"), ("REVIEW", "TEATRO"), ("REJECTED", "LITERATURA"))]
+    hidden.append(content.publication(deleted=True, branch="ARTESANIAS"))
+    hidden.append(content.publication(kind="TALENTO", branch="CINE_AUDIOVISUAL"))  # tipo legado
     talent = content.talent()
     draft_talent = content.talent(status="REVIEW")
     content.artist("Activo", featured=True)
     inactive = content.artist("Inactivo", active=False)
 
-    slides = home_carousel.build_carousel(db)
-    found = keys(slides)
+    found = keys(build(db))
     assert f"publication-{visible.id}" in found and f"talent-{talent.id}" in found
     assert not {f"publication-{p.id}" for p in hidden} & set(found)
     assert f"talent-{draft_talent.id}" not in found and f"artist-{inactive.id}" not in found
 
 
-def test_composition_limits_and_order(db, content):
-    branches = ["MUSICA", "DANZA", "TEATRO", "LITERATURA", "ARTESANIAS", "CINE_AUDIOVISUAL", "PATRIMONIO_MEMORIA"]
-    for index, kind in enumerate(["HISTORIA"] * 4 + ["EVENTO"] * 3 + ["LUGAR"] * 3):
-        content.publication(kind=kind, branch=branches[index % len(branches)])
-    for _ in range(3):
-        content.talent(branch="ARTES_VISUALES")
-    featured = content.artist("Destacado", featured=True)
-    content.artist("Segundo")
-    content.artist("Tercero")
-
-    slides = home_carousel.build_carousel(db)
-    assert len(slides) == home_carousel.MAX_SLIDES
-    assert slides[0]["key"] == f"artist-{featured.id}" and slides[0]["artist"]["stage_name"] == "Destacado"
-    types = [slide["type"] for slide in slides]
-    assert types.count("ARTIST") == 2 and types.count("TALENT") <= 2 and types.count("PUBLICATION") <= 5
-    kinds = {}
-    for slide in slides:
-        if slide["type"] == "PUBLICATION":
-            kind = slide["badge"].split(" · ")[0]
-            kinds[kind] = kinds.get(kind, 0) + 1
-    assert max(kinds.values()) <= home_carousel.MAX_PER_KIND
-    assert_no_repeated_branch(slides)
-    # Intercalado: las publicaciones no van todas juntas.
-    assert types[:4] == ["ARTIST", "PUBLICATION", "TALENT", "PUBLICATION"]
+def test_one_publication_per_category_featured_then_most_recent(db, content):
+    featured_old = content.publication(branch="MUSICA", featured=True)
+    content.publication(branch="MUSICA")  # mas reciente pero sin destacar
+    content.publication(branch="DANZA")
+    newest_dance = content.publication(branch="DANZA")
+    without_category = content.publication(branch=None)
+    slides = build(db)
+    publications = [s for s in slides if s["type"] == "PUBLICATION"]
+    assert keys(publications) == [f"publication-{featured_old.id}", f"publication-{newest_dance.id}"]
+    assert f"publication-{without_category.id}" not in keys(slides)
 
 
-def test_no_two_consecutive_slides_share_a_branch(db, content):
-    for _ in range(4):
-        content.publication(kind="HISTORIA", branch="MUSICA")
-        content.publication(kind="EVENTO", branch="MUSICA")
-    slides = home_carousel.build_carousel(db)
-    assert slides
-    assert_no_repeated_branch(slides)
+def test_one_per_each_of_the_ten_categories_plus_one_talent(db, content):
+    for branch in BRANCHES:
+        content.publication(branch=branch)
+        content.publication(branch=branch)
+    first_talent = content.talent()
+    featured_talent = content.talent(featured=True)
+    slides = build(db)
+    assert len(slides) == home_carousel.MAX_CONTENT == 11
+    assert sorted(s["category_label"] for s in slides if s["type"] == "PUBLICATION") == sorted(
+        home_carousel.CULTURAL_CATEGORY_LABELS[b] for b in BRANCHES)
+    talents = [s for s in slides if s["type"] == "TALENT"]
+    assert keys(talents) == [f"talent-{featured_talent.id}"] and f"talent-{first_talent.id}" not in keys(slides)
+    # Orden del contenido: destacado primero y luego del mas reciente al mas antiguo.
+    assert slides[0]["key"] == f"talent-{featured_talent.id}"
+    assert all(s["type"] != "ARTIST" for s in slides)
 
 
-def test_featured_publications_go_first(db, content):
-    older_featured = content.publication(kind="HISTORIA", branch="DANZA", featured=True)
-    for branch in ("MUSICA", "TEATRO", "LITERATURA"):
-        content.publication(kind="EVENTO", branch=branch)
-    publications = [s for s in home_carousel.build_carousel(db) if s["type"] == "PUBLICATION"]
-    assert publications[0]["key"] == f"publication-{older_featured.id}"
+def test_interleaves_artists_in_cycle_starting_with_content(db, content):
+    pubs = [content.publication(branch=branch) for branch in BRANCHES[:4]]
+    talent = content.talent()
+    a = content.artist("Uno", featured=True)
+    b = content.artist("Dos")
+    c = content.artist("Tres")
+    slides = build(db)
+    types = [s["type"] for s in slides]
+    assert types == ["TALENT", "ARTIST", "PUBLICATION", "ARTIST", "PUBLICATION", "ARTIST",
+                     "PUBLICATION", "ARTIST", "PUBLICATION", "ARTIST"]
+    # Contenido del mas reciente al mas antiguo (el talento es lo ultimo creado).
+    assert keys([s for s in slides if s["type"] != "ARTIST"]) == [f"talent-{talent.id}"] + [f"publication-{p.id}" for p in reversed(pubs)]
+    artists = [s["key"] for s in slides if s["type"] == "ARTIST"]
+    assert artists[:3] == [f"artist-{a.id}", f"artist-{b.id}", f"artist-{c.id}"]
+    # Nunca el mismo artista dos veces seguidas, tampoco al dar la vuelta.
+    cycle = artists + artists[:1]
+    assert all(x != y for x, y in zip(cycle, cycle[1:])), artists
 
 
-def test_badge_tags_and_sheet(db, content):
-    with_sheet = content.publication(kind="EVENTO", branch="MUSICA", location="Parque principal",
-                                     start_date=now_utc().replace(tzinfo=None))
-    without_sheet = content.publication(kind="HISTORIA", branch=None)
-    talent = content.talent(branch="DANZA")
-    by_key = {slide["key"]: slide for slide in home_carousel.build_carousel(db)}
-    event = by_key[f"publication-{with_sheet.id}"]
-    assert event["badge"] == "Evento · Música" and event["cta_label"] == "Leer más"
-    assert event["location"] == "Parque principal" and event["start_date"] and "end_date" not in event
-    assert not set(event["tags"]) & {"Evento", "Música"}  # las etiquetas no repiten la insignia
-    story = by_key[f"publication-{without_sheet.id}"]
-    assert story["badge"] == "Historia" and not {"location", "start_date", "end_date"} & set(story)
-    profile = by_key[f"talent-{talent.id}"]
-    assert profile["badge"] == "Talento · Caucasia" and profile["tags"] == ["Danza"]
-    assert profile["municipality"] == "Caucasia" and profile["category_label"] == "Danza" and profile["cta_label"] == "Ver perfil"
+def test_alternation_by_theme_counts_only_content(db, content):
+    for branch in BRANCHES[:3]:
+        content.publication(branch=branch)
+    content.artist("Solo", featured=True)
+    slides = build(db)
+    # El frontend alterna A/B contando solo las que no son de artista: A, artista, B, artista, A, artista.
+    content_positions = [i for i, s in enumerate(slides) if s["type"] != "ARTIST"]
+    assert content_positions == [0, 2, 4] and [s["type"] for s in slides].count("ARTIST") == 3
 
 
-def test_without_featured_artist_the_carousel_still_works(db, content):
+def test_without_artists_only_content_and_without_content_only_artists(db, content):
     publication = content.publication()
     talent = content.talent()
-    slides = home_carousel.build_carousel(db)
-    assert keys(slides) == [f"publication-{publication.id}", f"talent-{talent.id}"]
-    assert all(slide["type"] != "ARTIST" for slide in slides)
+    assert {s["type"] for s in build(db)} == {"PUBLICATION", "TALENT"}
+    db.execute(update(Publication).values(deleted=True))
+    db.execute(update(TalentProfile).values(deleted=True))
+    a = content.artist("Uno", featured=True)
+    b = content.artist("Dos")
+    assert keys(build(db)) == [f"artist-{a.id}", f"artist-{b.id}"]
+    assert publication and talent
 
 
-def test_image_falls_back_to_branch_cover_or_is_skipped(db, content):
+def test_validity_by_bogota_date(db, content):
+    yesterday, tomorrow = TODAY - timedelta(days=1), TODAY + timedelta(days=1)
+    cases = {
+        "past_event": ("EVENTO", "MUSICA", {"start_date": at(yesterday - timedelta(days=2)), "end_date": at(yesterday, 22)}, False),
+        "past_single_day": ("EVENTO", "DANZA", {"start_date": at(yesterday, 18)}, False),
+        "ongoing_event": ("EVENTO", "TEATRO", {"start_date": at(yesterday), "end_date": at(tomorrow)}, True),
+        "event_today": ("EVENTO", "LITERATURA", {"start_date": at(TODAY, 19)}, True),
+        "event_without_dates": ("EVENTO", "ARTESANIAS", {}, True),
+        "closed_opportunity": ("OPORTUNIDAD", "CINE_AUDIOVISUAL", {"end_date": at(yesterday, 23)}, False),
+        "closes_today": ("OPORTUNIDAD", "PATRIMONIO_MEMORIA", {"end_date": at(TODAY, 23)}, True),
+        "open_without_close": ("OPORTUNIDAD", "ARTES_VISUALES", {}, True),
+        "old_history": ("HISTORIA", "GASTRONOMIA_CULTURAL", {"start_date": at(yesterday - timedelta(days=90))}, True),
+    }
+    rows = {name: content.publication(kind=kind, branch=branch, **dates) for name, (kind, branch, dates, _) in cases.items()}
+    found = set(keys(build(db)))
+    for name, (_, _, _, expected) in cases.items():
+        assert (f"publication-{rows[name].id}" in found) is expected, name
+
+
+def test_an_expired_event_lets_the_next_one_of_its_category_in(db, content):
+    still_open = content.publication(kind="EVENTO", start_date=at(TODAY + timedelta(days=5)))
+    content.publication(kind="EVENTO", start_date=at(TODAY - timedelta(days=5)))  # mas reciente pero vencido
+    assert keys(build(db)) == [f"publication-{still_open.id}"]
+
+
+def test_badge_tags_tagline_and_sheet(db, content):
+    event = content.publication(kind="EVENTO", branch="MUSICA", municipality="caucasia", location="Malecón de Caucasia",
+                                start_date=at(TODAY + timedelta(days=4)), tagline="Una frase breve",
+                                tags=["Música", "Río", "Comunidad"])
+    story = content.publication(kind="HISTORIA", branch="DANZA", location=" ")
+    talent = content.talent(branch="TEATRO", tagline="Teatro de calle", description="Descripcion larga")
+    slides = by_key(build(db))
+    ev = slides[f"publication-{event.id}"]
+    assert ev["kind"] == "EVENTO" and ev["badge"] == "Evento · Caucasia" and ev["municipality"] == "Caucasia"
+    assert ev["tags"] == ["Música", "Río", "Comunidad"][:1] + ["Río", "Comunidad"]  # sin repetir la categoria
+    assert ev["tagline"] == "Una frase breve" and ev["category_label"] == "Música"
+    assert ev["location"] == "Malecón de Caucasia" and ev["start_date"].startswith("2026-11-07") and "end_date" not in ev
+    st = slides[f"publication-{story.id}"]
+    assert st["badge"] == "Historia" and st["tags"] == ["Danza"]
+    assert not {"municipality", "tagline", "location", "start_date", "end_date"} & set(st)
+    tal = slides[f"talent-{talent.id}"]
+    assert tal["kind"] == "TALENT" and tal["badge"] == "Talento · Caucasia" and tal["tags"] == ["Teatro"]
+    assert tal["tagline"] == "Teatro de calle" and tal["summary"] == "Descripcion larga" and tal["municipality"] == "Caucasia"
+
+
+def test_cta_by_kind(db, content):
+    expected = {"EVENTO": "Ver evento", "OPORTUNIDAD": "Ver convocatoria", "HISTORIA": "Leer historia",
+                "INICIATIVA": "Conocer iniciativa", "LUGAR": "Ver lugar"}
+    rows = {kind: content.publication(kind=kind, branch=branch) for kind, branch in zip(expected, BRANCHES)}
+    talent = content.talent()
+    content.artist("Uno", featured=True)
+    slides = by_key(build(db))
+    for kind, row in rows.items():
+        assert slides[f"publication-{row.id}"]["cta_label"] == expected[kind]
+    assert slides[f"talent-{talent.id}"]["cta_label"] == "Ver perfil"
+    assert [s["cta_label"] for s in slides.values() if s["type"] == "ARTIST"] == ["Ver perfil"]
+
+
+def test_summary_falls_back_to_a_plain_excerpt_of_the_content(db, content):
+    row = content.publication(summary="", content="<p>Primer <b>parrafo</b></p> " + "texto " * 300)
+    slide = by_key(build(db))[f"publication-{row.id}"]
+    assert slide["summary"].startswith("Primer parrafo texto") and "<" not in slide["summary"]
+    assert len(slide["summary"]) <= home_carousel.SUMMARY_LIMIT == 240
+
+
+def test_artist_slide_payload_is_unchanged(db, content):
+    artist = content.artist("Mauro", featured=True, bio="Bio " * 80)
+    content.publication()
+    slide = next(s for s in build(db) if s["type"] == "ARTIST")
+    assert list(slide) == ["type", "key", "title", "summary", "image", "badge", "tags", "href", "cta_label", "artist",
+                           "featured_track"]
+    assert slide["key"] == f"artist-{artist.id}" and slide["badge"] == "Artista destacado"
+    assert slide["tags"] == ["Moneystack", "Bajo Cauca", "Música Urbana"] and slide["cta_label"] == "Ver perfil"
+    assert len(slide["summary"]) <= 180 and slide["href"] == f"#artista/{artist.slug}"
+    assert set(slide["artist"]) == set(home_carousel.ARTIST_FIELDS) and slide["featured_track"] is None
+
+
+def test_image_falls_back_to_branch_cover(db, content):
     db.execute(delete(CulturalCategoryCover).where(CulturalCategoryCover.category_key.in_(("DANZA", "TEATRO"))))
     db.add(CulturalCategoryCover(category_key="DANZA", image_url="https://img.test/portada-danza.jpg", updated_at=now_utc()))
     with_cover = content.publication(branch="DANZA", image=None)
     static = content.publication(kind="EVENTO", branch="TEATRO", image=None)
-    nothing = content.publication(kind="LUGAR", branch=None, image=None)
-    slides = {slide["key"]: slide for slide in home_carousel.build_carousel(db)}
+    slides = by_key(build(db))
     assert slides[f"publication-{with_cover.id}"]["image"] == "https://img.test/portada-danza.jpg"
     assert slides[f"publication-{static.id}"]["image"] == "/images/categorias/teatro.jpg"
-    assert f"publication-{nothing.id}" not in slides
 
 
 def test_slides_have_public_fields_only(db, content):
-    publication = content.publication(kind="EVENTO")
+    publication = content.publication(kind="EVENTO", tags=["Uno"], tagline="Eslogan")
     publication.summary = "<b>Texto</b> " + "largo " * 80
     talent = content.talent()
     artist = content.artist("Publico", featured=True)
     db.flush()
-    slides = home_carousel.build_carousel(db)
-    by_key = {slide["key"]: slide for slide in slides}
-    pub = by_key[f"publication-{publication.id}"]
-    assert pub["href"] == f"#publicacion/{publication.id}" and pub["badge"] == "Evento · Música"
+    slides = build(db)
+    keyed = by_key(slides)
+    pub = keyed[f"publication-{publication.id}"]
+    assert pub["href"] == f"#publicacion/{publication.id}"
     assert "<b>" not in pub["summary"] and len(pub["summary"]) <= home_carousel.SUMMARY_LIMIT
-    assert by_key[f"talent-{talent.id}"]["href"] == f"#talento/{talent.slug}"
-    assert by_key[f"talent-{talent.id}"]["municipality"] == "Caucasia"
-    assert by_key[f"artist-{artist.id}"]["href"] == f"#artista/{artist.slug}"
-    assert by_key[f"artist-{artist.id}"]["badge"] == "Artista destacado"
+    assert keyed[f"talent-{talent.id}"]["href"] == f"#talento/{talent.slug}"
+    assert keyed[f"artist-{artist.id}"]["href"] == f"#artista/{artist.slug}"
 
     def walk(value):
         if isinstance(value, dict):
             for key, item in value.items():
-                assert key not in PRIVATE_KEYS, key
+                assert key not in PRIVATE_KEYS and not key.startswith("_"), key
                 walk(item)
         elif isinstance(value, list):
             for item in value:
@@ -228,12 +306,175 @@ def test_slides_have_public_fields_only(db, content):
     assert '"id"' not in dumped
 
 
-def test_endpoint_is_public_and_cacheable(client):
+def test_endpoint_is_public_and_revalidated_with_etag(client):
     resp = client.get("/api/home/carousel")
-    assert resp.status_code == 200
-    assert resp.headers["cache-control"] == "public, max-age=120"
+    assert resp.status_code == 200 and resp.headers["content-type"].startswith("application/json")
+    assert resp.headers["cache-control"] == "public, no-cache"
+    etag = resp.headers["etag"]
     slides = resp.json()["slides"]
-    assert len(slides) <= home_carousel.MAX_SLIDES
     assert "@" not in resp.text
     for slide in slides:
         assert {"type", "key", "title", "summary", "image", "badge", "tags", "href", "cta_label"} <= set(slide)
+    same = client.get("/api/home/carousel", headers={"If-None-Match": etag})
+    assert same.status_code == 304 and same.content == b"" and same.headers["etag"] == etag
+    other = client.get("/api/home/carousel", headers={"If-None-Match": '"otra"'})
+    assert other.status_code == 200 and other.headers["etag"] == etag
+
+
+def test_featuring_or_archiving_an_artist_is_seen_on_the_next_load(client):
+    # Sesion aparte que confirma (como el editor del admin); el artista se borra al final.
+    gen = app.dependency_overrides[get_db]()
+    session = next(gen)
+    user_id = session.execute(select(func.min(User.id))).scalar_one()
+    artist = Artist(user_id=user_id, name="Etag", stage_name="Etag", slug=f"etag-{uuid.uuid4().hex[:6]}", bio="Bio",
+                    featured=False, active=True, created_at=now_utc())
+    session.add(artist)
+    session.commit()
+    try:
+        def load(etag=None):
+            resp = client.get("/api/home/carousel", headers={"If-None-Match": etag} if etag else {})
+            return resp.status_code, resp.headers["etag"]
+
+        _, plain = load()
+        artist.featured = True
+        session.commit()
+        status, featured = load(plain)
+        assert status == 200 and featured != plain
+        assert load(featured)[0] == 304
+        artist.active = False
+        session.commit()
+        status, archived = load(featured)
+        assert status == 200 and archived != featured
+        artist.active, artist.featured = True, False
+        session.commit()
+        assert load(featured) == (200, plain)
+    finally:
+        session.delete(artist)
+        session.commit()
+        gen.close()
+
+
+# ───────────── artistas destacados: siempre presentes ─────────────
+
+def artist_keys(slides):
+    return [s["key"] for s in slides if s["type"] == "ARTIST"]
+
+
+def types(slides):
+    return [s["type"] for s in slides]
+
+
+def assert_never_same_twice(slides):
+    """Ningun artista justo despues de si mismo (entre artistas), tampoco al dar la vuelta."""
+    sequence = artist_keys(slides)
+    if len(sequence) < 2:
+        return
+    cycle = sequence + sequence[:1]
+    assert all(x != y for x, y in zip(cycle, cycle[1:])), sequence
+
+
+@pytest.mark.parametrize("pieces", [0, 1, 2])
+def test_featured_artist_present_with_little_content(db, content, pieces):
+    for branch in BRANCHES[:pieces]:
+        content.publication(branch=branch)
+    others = [content.artist(name) for name in ("Ana", "Beto", "Caro")]
+    star = content.artist("Zeta", featured=True)  # ultimo por nombre, primero por destacado
+    slides = build(db)
+    if pieces:
+        assert types(slides) == ["PUBLICATION", "ARTIST"] * pieces
+        assert artist_keys(slides) == [f"artist-{a.id}" for a in [star, *others][:pieces]]
+    else:
+        assert artist_keys(slides) == [f"artist-{a.id}" for a in [star, *others]]
+    assert_never_same_twice(slides)
+
+
+def test_three_featured_with_one_content_slide(db, content):
+    pub = content.publication()
+    stars = [content.artist(name, featured=True) for name in ("Ana", "Beto", "Caro")]
+    content.artist("Dani")
+    slides = build(db)
+    assert keys(slides) == [f"publication-{pub.id}"] + [f"artist-{a.id}" for a in stars]
+    assert_never_same_twice(slides)
+
+
+def test_extra_featured_are_spread_evenly(db, content):
+    pubs = [content.publication(branch=branch) for branch in BRANCHES[:2]]
+    stars = [content.artist(name, featured=True) for name in ("Ana", "Beto", "Caro", "Dino", "Eva")]
+    slides = build(db)
+    assert types(slides) == ["PUBLICATION", "ARTIST", "ARTIST", "ARTIST", "PUBLICATION", "ARTIST", "ARTIST"]
+    assert artist_keys(slides) == [f"artist-{a.id}" for a in stars]
+    assert keys([s for s in slides if s["type"] != "ARTIST"]) == [f"publication-{p.id}" for p in reversed(pubs)]
+
+
+def test_featured_and_regular_with_little_content(db, content):
+    for branch in BRANCHES[:3]:
+        content.publication(branch=branch)
+    stars = [content.artist(name, featured=True) for name in ("Beto", "Ana")]
+    regular = [content.artist(name) for name in ("Caro", "Dino", "Eva")]
+    slides = build(db)
+    # Sobra un hueco: es del primer no destacado.
+    assert types(slides) == ["PUBLICATION", "ARTIST"] * 3
+    assert artist_keys(slides) == [f"artist-{a.id}" for a in (stars[1], stars[0], regular[0])]
+    # Con mas destacados que contenido, los no destacados no entran.
+    more = [content.artist(name, featured=True) for name in ("Fito", "Gina")]
+    slides = build(db)
+    assert types(slides) == ["PUBLICATION", "ARTIST", "ARTIST", "PUBLICATION", "ARTIST", "PUBLICATION", "ARTIST"]
+    assert artist_keys(slides) == [f"artist-{a.id}" for a in (stars[1], stars[0], *more)]
+
+
+def test_more_than_the_featured_cap(db, content):
+    content.publication()
+    stars = [content.artist(f"Estrella{i}", featured=True) for i in range(home_carousel.MAX_FEATURED_ARTISTS + 2)]
+    regular = content.artist("Zzz")
+    slides = build(db)
+    assert home_carousel.MAX_FEATURED_ARTISTS == 6
+    assert types(slides)[0] == "PUBLICATION" and artist_keys(slides) == [f"artist-{a.id}" for a in stars[:6]]
+    # Con mas huecos, los que pasan del tope rellenan como cualquier otro artista.
+    for branch in BRANCHES[1:9]:
+        content.publication(branch=branch)
+    slides = build(db)
+    assert types(slides) == ["PUBLICATION", "ARTIST"] * 9
+    assert artist_keys(slides) == [f"artist-{a.id}" for a in [*stars, regular]]
+    assert_never_same_twice(slides)
+
+
+@pytest.mark.parametrize("pieces,artists", [(1, 1), (2, 2), (3, 2), (4, 2), (3, 3), (5, 3), (7, 3), (6, 4), (10, 4)])
+def test_never_the_same_artist_twice_in_a_row(db, content, pieces, artists):
+    for branch in BRANCHES[:pieces]:
+        content.publication(branch=branch)
+    for i in range(artists):
+        content.artist(f"Art{i}", featured=i == 0)
+    slides = build(db)
+    sequence = artist_keys(slides)
+    # Un artista por hueco: contenido y artista alternan, empezando por contenido.
+    assert [s["type"] == "ARTIST" for s in slides] == [False, True] * pieces
+    if artists == 1:
+        return  # un solo artista: se repite por fuerza
+    assert all(x != y for x, y in zip(sequence, sequence[1:])), sequence
+    if not (artists == 2 and pieces % 2):  # dos artistas y huecos impares: la vuelta repite por fuerza
+        assert_never_same_twice(slides)
+
+
+def test_no_content_only_artists_featured_first(db, content):
+    regular = content.artist("Ana")
+    stars = [content.artist(name, featured=True) for name in ("Zeta", "Yuli")]
+    assert keys(build(db)) == [f"artist-{a.id}" for a in (stars[1], stars[0], regular)]
+
+
+def test_no_artists_only_content(db, content):
+    pubs = [content.publication(branch=branch) for branch in BRANCHES[:2]]
+    content.artist("Archivado", featured=True, active=False)
+    assert keys(build(db)) == [f"publication-{p.id}" for p in reversed(pubs)]
+
+
+def test_two_artists_together_keep_the_artist_card(db, content):
+    content.publication()
+    content.artist("Ana", featured=True, bio="Bio " * 80)
+    content.artist("Beto", featured=True)
+    slides = build(db)
+    assert types(slides) == ["PUBLICATION", "ARTIST", "ARTIST"]
+    for slide in slides[1:]:
+        assert list(slide) == ["type", "key", "title", "summary", "image", "badge", "tags", "href", "cta_label",
+                               "artist", "featured_track"]
+        assert slide["badge"] == "Artista destacado" and slide["tags"] == ["Moneystack", "Bajo Cauca", "Música Urbana"]
+        assert len(slide["summary"]) <= 180 and slide["featured_track"] is None

@@ -13,7 +13,7 @@ Identidad visual y filosofía de diseño: [docs/MANUAL_ESENCIA_TEJIDO.md](docs/M
 | Backend | FastAPI, SQLAlchemy 2.0, Alembic, Pydantic v2 (pydantic-settings), Uvicorn |
 | Base de datos | PostgreSQL (Neon), esquema versionado con Alembic |
 | Frontend | React, Vite, framer-motion |
-| Tests / CI | pytest (esquema temporal aislado en Postgres) + GitHub Actions |
+| Tests / CI | pytest (esquema temporal en una base de pruebas aparte: rama de Neon `TEST_DATABASE_URL`) + GitHub Actions |
 
 ## Estructura
 
@@ -58,6 +58,7 @@ Verificación: `curl http://127.0.0.1:8765/api/health` → `{"status":"ok","data
 
 ```bash
 DATABASE_URL=postgresql+psycopg://usuario:password@host:5432/tejido?sslmode=require  # requerido
+TEST_DATABASE_URL=postgresql+psycopg://...   # solo pytest: rama de Neon de pruebas (ver Tests)
 HOST=127.0.0.1
 PORT=8765
 ENVIRONMENT=development   # "production" oculta /docs, /redoc y /openapi.json
@@ -79,9 +80,21 @@ Todo cambio de esquema pasa por Alembic. El seed (`backend/service/seed.py`) es 
 
 ## Tests
 
+La suite **nunca** corre contra la base principal: usa `TEST_DATABASE_URL`, una rama de Neon dedicada a pruebas.
+
+1. En la consola de Neon: *Branches → Create branch* (p. ej. `pruebas`, desde `main`). Copia su cadena de conexión (la del endpoint de esa rama, con `postgresql+psycopg://` y `?sslmode=require`).
+2. Ponla en tu `.env` (o en el entorno) como `TEST_DATABASE_URL=...`. No la copies en archivos versionados.
+3. Corre:
+
 ```bash
 py -m pytest backend/tests_fastapi -v
 ```
+
+`conftest.py` se niega a correr (código de salida 4) si falta `TEST_DATABASE_URL` o si apunta a la misma base que `DATABASE_URL` (mismo host, con o sin `-pooler`, y misma base de datos). Antes de importar la app cambia `settings.database_url` por la de pruebas: la app, el seed, los scripts y las pruebas de migración solo ven esa rama.
+
+Cada corrida crea un schema `test_<12 hex>` con una tabla `_test_meta` (hora, proceso y equipo que lo creó) y lo borra al terminar. Si una corrida muere antes (proceso cortado, equipo suspendido), la siguiente borra al iniciar los `test_<12 hex>` con `_test_meta` de más de 6 horas que nadie esté usando; nunca toca otros schemas.
+
+En GitHub Actions, `TEST_DATABASE_URL` apunta al Postgres del propio job (`.github/workflows/tests.yml`).
 
 ## Roles
 
