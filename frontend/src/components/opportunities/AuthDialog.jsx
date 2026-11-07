@@ -7,7 +7,8 @@ import { TS } from '../territory/territoryStyles.js';
 // el foco vuelve a quien lo abrio (lo hace el padre). "Iniciar sesion" y "Crear mi cuenta gratis" dejan
 // pedido el regreso (sessionStorage tejido_return_to, que usa App.handleLogin) y, el segundo, la pestaña
 // de registro (tejido_login_mode).
-export default function AuthDialog({ returnTo, onClose }) {
+// title/text cambian el mensaje (p. ej. reportar un dato de un lugar); por defecto, guardar o postularse.
+export default function AuthDialog({ returnTo, onClose, title = null, text = null }) {
   const titleId = useId();
   const textId = useId();
   const ref = useRef(null);
@@ -41,10 +42,10 @@ export default function AuthDialog({ returnTo, onClose }) {
         </button>
         <p className={TS.kicker}>Tu cuenta TEJIDO</p>
         <h2 id={titleId} className="mt-2 mb-0 pr-10 font-sans text-[26px] font-extrabold leading-[1.15] tracking-[-0.02em] max-[767px]:text-[23px]">
-          Inicia sesión para guardar o <span className={TS.heroItalic}>postularte</span>
+          {title || <>Inicia sesión para guardar o <span className={TS.heroItalic}>postularte</span></>}
         </h2>
         <p id={textId} className="mt-3 mb-0 text-[16px] leading-[1.5] text-[#3f514a]">
-          Tu cuenta en TEJIDO te permite guardar eventos y postularte a las convocatorias del Bajo Cauca.
+          {text || 'Tu cuenta en TEJIDO te permite guardar eventos y postularte a las convocatorias del Bajo Cauca.'}
         </p>
         <div className="mt-6 grid grid-cols-2 gap-3 max-[480px]:grid-cols-1">
           <button type="button" data-primero className={TS.btnSolid} onClick={() => go('login')}>Iniciar sesión</button>

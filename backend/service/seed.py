@@ -27,11 +27,13 @@ from backend.service.models.tables import (
     Opportunity,
     OpportunityType,
     Organization,
+    PlaceCategory,
     Publication,
     Role,
     Track,
     User,
 )
+from backend.service.schemas.places import INITIAL_PLACE_CATEGORIES
 
 # Fotos de los artistas de ejemplo: las mismas que scripts/migrar_imagenes_a_cloudinary.py subio a
 # Cloudinary (frontend/public/assets/artistas/ ya no existe). og-mauro/hero.jpg nunca existio:
@@ -45,6 +47,13 @@ OG_MAURO_GALERIA = [
     f"{_CLOUDINARY}/v1792789285/tejido/artistas/og-mauro/gabemhg20xfpe93xjtud.jpg",
 ]
 DJ_APOLO_PERFIL = f"{_CLOUDINARY}/v1792789276/tejido/artistas/dj-apolo/zyak2wujnekz96bri3el.jpg"
+
+
+# Puntos de los eventos de ejemplo (Caucasia): malecon y Parque de las Banderas, aproximados.
+EVENT_POINTS = {
+    "Festival Rio y Sabana 2026": (7.9862, -75.1968),
+    "Mercado Hecho en Caucasia": (7.9838, -75.1940),
+}
 
 
 def now_utc():
@@ -76,6 +85,11 @@ def seed_database(db: Session):
         for index, (slug, label, color) in enumerate((("convocatoria", "Convocatoria", "ocre"), ("taller", "Taller", "menta"),
                                                       ("audicion", "Audición", "morado"), ("concurso", "Concurso", "amarillo"),
                                                       ("curso", "Curso", "crema")))
+    ], ["slug"])
+    # Las 7 categorias de lugar que siembra la migracion c7e2a4f6b8d1.
+    _upsert_ignore(db, PlaceCategory, [
+        {"slug": slug, "label": label, "icon": icon, "color": color, "sort_order": index, "active": True}
+        for index, (slug, label, icon, color) in enumerate(INITIAL_PLACE_CATEGORIES)
     ], ["slug"])
 
     demo_users = [
@@ -221,6 +235,8 @@ def seed_database(db: Session):
             db.flush()
             if row["kind"] == "EVENTO":
                 db.add(Event(publication_id=publication.id, venue=venue, capacity=300))
+                # Los eventos llevan punto exacto (Mapa vivo): en Caucasia.
+                publication.latitude, publication.longitude = EVENT_POINTS[row["title"]]
             if row["kind"] == "OPORTUNIDAD":
                 db.add(Opportunity(publication_id=publication.id, organizer=organization_name, deadline=deadline))
 

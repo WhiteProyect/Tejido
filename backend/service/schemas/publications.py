@@ -11,7 +11,7 @@ datos como pasaba antes.
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES
 
@@ -22,9 +22,12 @@ class PublicationInput(BaseModel):
     kind: str = "HISTORIA"
     category_id: int
     title: str
-    summary: str
-    content: str
-    location: str = "Caucasia"
+    # Obligatorios salvo en LUGAR (ahi son opcionales): se comprueban en _check_texts.
+    summary: str = ""
+    content: str = ""
+    # Vacio = "Caucasia", salvo en LUGAR: ahi es la direccion o referencia, obligatoria y de hasta 160
+    # (services/publications.py::clean_place responde 422).
+    location: str = ""
     image: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
@@ -41,12 +44,21 @@ class PublicationInput(BaseModel):
     tags: Any = None
     # Solo EVENTO (en otros tipos se ignora); se valida en services/publications.py::clean_tradition_text.
     tradition_text: Any = None
+    # Solo EVENTO y LUGAR (obligatorias; en otros tipos se descartan): services/publications.py::clean_point.
+    latitude: Any = None
+    longitude: Any = None
     # Solo OPORTUNIDAD (en otros tipos se ignoran); se validan en services/publications.py::clean_opportunity.
     opportunity_type_id: Any = None
     organizer: Any = None
     requirements: Any = None
     prize: Any = None
     audience: Any = None
+    # Solo LUGAR (en otros tipos se ignoran); se validan en services/publications.py::clean_place.
+    place_category_id: Any = None
+    phone: Any = None
+    whatsapp: Any = None
+    opening_hours: Any = None
+    website: Any = None
 
     @field_validator("municipality", mode="before")
     @classmethod
@@ -88,29 +100,23 @@ class PublicationInput(BaseModel):
             raise ValueError("El título debe tener entre 5 y 180 caracteres")
         return v
 
-    @field_validator("summary")
+    @field_validator("summary", "content", "location", mode="before")
     @classmethod
-    def _check_summary(cls, v):
-        v = (v or "").strip()
-        if not 10 <= len(v) <= 500:
-            raise ValueError("El resumen debe tener entre 10 y 500 caracteres")
-        return v
+    def _strip(cls, v):
+        return str(v if v is not None else "").strip()
 
-    @field_validator("content")
-    @classmethod
-    def _check_content(cls, v):
-        v = (v or "").strip()
-        if not 20 <= len(v) <= 20000:
-            raise ValueError("El contenido debe tener entre 20 y 20000 caracteres")
-        return v
-
-    @field_validator("location", mode="before")
-    @classmethod
-    def _check_location(cls, v):
-        v = str(v if v is not None else "Caucasia").strip() or "Caucasia"
-        if len(v) > 180:
-            raise ValueError("El lugar es demasiado largo")
-        return v
+    @model_validator(mode="after")
+    def _check_texts(self):
+        place = self.kind == "LUGAR"
+        if not (0 if place else 10) <= len(self.summary) <= 500:
+            raise ValueError("El resumen puede tener hasta 500 caracteres" if place else "El resumen debe tener entre 10 y 500 caracteres")
+        if not (0 if place else 20) <= len(self.content) <= 20000:
+            raise ValueError("La descripción puede tener hasta 20000 caracteres" if place else "El contenido debe tener entre 20 y 20000 caracteres")
+        if not place:
+            self.location = self.location or "Caucasia"
+            if len(self.location) > 180:
+                raise ValueError("El lugar es demasiado largo")
+        return self
 
 
 class PublicationStatusInput(BaseModel):

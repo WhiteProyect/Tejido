@@ -7,6 +7,7 @@ import PublicationForm from '../components/PublicationForm.jsx';
 import PillTabs from '../components/admin/PillTabs.jsx';
 import { LeaderBadge } from '../components/gestor/GestorHeader.jsx';
 import ParticipantsPanel from '../components/gestor/leader/ParticipantsPanel.jsx';
+import PlacesFilter from '../components/admin/PlacesFilter.jsx';
 import RequestsPanel from '../components/gestor/leader/RequestsPanel.jsx';
 import ReviewQueuePanel from '../components/gestor/leader/ReviewQueuePanel.jsx';
 import { confirmDiscard } from '../components/admin/artist/unsavedChanges.js';
@@ -37,6 +38,8 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 //   Talento (#gestor-dashboard/talento[/<id>[/<pestana>]]): el talento contratable de su rama
 //   (components/talent/manage/TalentManager.jsx). En Mi categoria, ademas, "Portada de mi rama"
 //   (components/CategoryCoverEditor.jsx; solo el lider la ve y el backend solo le deja su rama).
+// - Lugares (directorio): solo el lider los crea (canCreatePlaces; tipo Lugar en el formulario) y los ve
+//   con el filtro "Solo lugares" de su lista. Los aprueba siempre el admin, nunca un lider.
 // La pestana va en la URL con replaceState (sin hashchange: App subiria la pagina).
 
 const CATEGORY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label, slug]) => [key, { label, slug }]));
@@ -111,7 +114,7 @@ function PublicationItem({ publication, user, branch, busy, onEdit, onAction }) 
   const [statusLabel, statusTone] = STATUS_LABELS[publication.status] || [publication.status, STATUS_LABELS.DRAFT[1]];
   const date = formatDateShort(publication.start_date || publication.created_at);
   const removeLabel = publication.status === 'PUBLISHED' ? 'Archivar' : 'Borrar';
-  const outside = branch && publication.cultural_category !== branch;
+  const outside = branch && publication.kind !== 'LUGAR' && publication.cultural_category !== branch;
 
   const removeButtons = confirming === 'delete' ? (
     <>
@@ -156,6 +159,7 @@ function PublicationItem({ publication, user, branch, busy, onEdit, onAction }) 
         <div className="min-w-0 flex-1 basis-[320px]">
           <p className="m-0 mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold uppercase tracking-[.08em] text-muted">
             <span>{KIND_LABELS[publication.kind] || publication.kind}</span>
+            {publication.kind === 'LUGAR' && publication.place_category && <><span aria-hidden="true">·</span><span>{publication.place_category.label}</span></>}
             {publication.cultural_category && <><span aria-hidden="true">·</span><span>{CATEGORY[publication.cultural_category]?.label}</span></>}
             {date && <><span aria-hidden="true">·</span><span className="normal-case tracking-normal font-semibold">{date}</span></>}
             {outside && <span className={OUTSIDE_TAG}>Fuera de tu categoría</span>}
@@ -165,6 +169,9 @@ function PublicationItem({ publication, user, branch, busy, onEdit, onAction }) 
             <p className="mt-2 mb-0 text-[14px] leading-[1.5] text-[#a8431f]"><strong>Motivo:</strong> {publication.moderation_note || 'El equipo no dejó una nota.'}</p>
           )}
           {publication.status === 'REVIEW' && <p className="mt-2 mb-0 text-[14px] text-muted">Esperando la revisión del equipo de TEJIDO; podrás editarla cuando responda.</p>}
+          {publication.kind === 'LUGAR' && publication.status !== 'REVIEW' && (
+            <p className="mt-2 mb-0 text-[14px] text-muted">Los lugares los aprueba el equipo de TEJIDO.</p>
+          )}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 max600:justify-start">
           <span className={`rounded-full py-1 px-3 text-[12px] font-bold ${statusTone}`}>{statusLabel}</span>
@@ -270,6 +277,7 @@ export default function GestorDashboard({ user, section }) {
   const [subpath, setSubpath] = useState(() => subpathFrom(section));
   const [leader, setLeader] = useState({ loaded: false, error: '', queue: [], requests: [], participants: [] });
   const [filter, setFilter] = useState('ALL');
+  const [kindFilter, setKindFilter] = useState('ALL');
   const [state, setState] = useState({ loading: true, error: '', publications: [], categories: [], category: null });
   const [editor, setEditor] = useState(null); // null | { publication: null | objeto }
   const [busyId, setBusyId] = useState(null);
@@ -355,7 +363,9 @@ export default function GestorDashboard({ user, section }) {
   const { publications, category } = state;
   const branch = category?.branch || null;
   const info = branch ? { label: category.label || CATEGORY[branch]?.label, slug: CATEGORY[branch]?.slug } : null;
-  const visible = filter === 'ALL' ? publications : publications.filter((publication) => publication.status === filter);
+  const byStatus = filter === 'ALL' ? publications : publications.filter((publication) => publication.status === filter);
+  const visible = kindFilter === 'LUGAR' ? byStatus.filter((publication) => publication.kind === 'LUGAR') : byStatus;
+  const placeCount = publications.filter((publication) => publication.kind === 'LUGAR').length;
   const ready = !state.loading && !state.error && category;
   const showLeader = isLeader && ready && branch;
   const leaderCounts = leader.loaded && !leader.error
@@ -422,6 +432,7 @@ export default function GestorDashboard({ user, section }) {
                     categories={state.categories}
                     allowPublish={false}
                     fixedCategory={branch}
+                    canCreatePlaces={isLeader}
                     onCancel={() => setEditor(null)}
                     onSaved={() => { setEditor(null); load(); }}
                   />
@@ -434,6 +445,7 @@ export default function GestorDashboard({ user, section }) {
                     )}
                   </div>
                   {filter !== 'ALL' && <p className="mt-2 mb-0 text-[14px] text-muted">Mostrando: {COUNT_LABELS[filter].toLowerCase()}.</p>}
+                  {isLeader && <div className="mt-4"><PlacesFilter value={kindFilter} onChange={setKindFilter} count={placeCount} /></div>}
                   {actionError && <p className={ALERT} role="alert">{actionError}</p>}
                   {visible.length ? (
                     <ul className="mt-2 mb-0 list-none p-0">
@@ -441,6 +453,8 @@ export default function GestorDashboard({ user, section }) {
                         <PublicationItem key={publication.id} publication={publication} user={user} branch={branch} busy={busyId === publication.id} onEdit={openEditor} onAction={handleAction} />
                       ))}
                     </ul>
+                  ) : kindFilter === 'LUGAR' ? (
+                    <div className="mt-6"><EmptyNote icon="pin" title="Aún no tienes lugares" text="Crea uno con «Nueva publicación» y el tipo Lugar: lo revisa el equipo de TEJIDO." /></div>
                   ) : filter !== 'ALL' ? (
                     <div className="mt-6"><EmptyNote icon="book" title={`Sin publicaciones en «${COUNT_LABELS[filter]}»`} text="Elige otro estado o mira todas." /></div>
                   ) : (

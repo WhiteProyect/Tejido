@@ -7,6 +7,8 @@ import ArtistasPanel from '../components/admin/ArtistasPanel.jsx';
 import BandejaPanel from '../components/admin/BandejaPanel.jsx';
 import GestoresPanel from '../components/admin/GestoresPanel.jsx';
 import OpportunityTypesPanel from '../components/admin/OpportunityTypesPanel.jsx';
+import PlaceCategoriesPanel from '../components/admin/PlaceCategoriesPanel.jsx';
+import PlacesFilter from '../components/admin/PlacesFilter.jsx';
 import TalentManager from '../components/talent/manage/TalentManager.jsx';
 import { MODERATION_TOASTS, ModerationButtons, RejectForm, moderatePublication } from '../components/Moderation.jsx';
 import PillTabs from '../components/admin/PillTabs.jsx';
@@ -18,7 +20,7 @@ import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
 import { formatDateShort } from '../utils/dateUtils.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
-// Dashboard del Admin (#admin-dashboard[/publicaciones[/<id>]|gestores|artistas[/<id>[/<pestana>]]|talento[/<id>[/<pestana>]]|oportunidades|portadas|bandeja]):
+// Dashboard del Admin (#admin-dashboard[/publicaciones[/<id>]|gestores|artistas[/<id>[/<pestana>]]|talento[/<id>[/<pestana>]]|oportunidades|lugares|portadas|bandeja]):
 // - Pulso: GET /api/admin/stats (incluye gestores_activos), visible en todas las pestanas. Los
 //   mosaicos de reportes y mensajes enlazan a la Bandeja.
 // - Pestanas: solo se monta el panel activo. La pestana va en la URL con replaceState (sin
@@ -34,6 +36,9 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 // - Talento: components/talent/manage/TalentManager.jsx (todas las ramas; lista y editor). Su
 //   contador es stats.talent_review.
 // - Oportunidades: los tipos de oportunidad (components/admin/OpportunityTypesPanel.jsx).
+// - Lugares: las categorias de lugar (components/admin/PlaceCategoriesPanel.jsx). Los lugares mismos se
+//   crean, editan y moderan en Publicaciones (filtro "Solo lugares"); los que envia un lider llegan a la
+//   cola de revision como cualquier otra publicacion y solo el admin los aprueba.
 // - Portadas: la portada de cada una de las 10 categorias (components/CategoryCoverEditor.jsx).
 // - Bandeja: components/admin/BandejaPanel.jsx (mensajes de Nosotros y reportes).
 const STATUSES = ['REVIEW', 'DRAFT', 'REJECTED', 'PUBLISHED'];
@@ -45,6 +50,7 @@ const TABS = [
   ['artistas', 'Artistas', 'music'],
   ['talento', 'Talento', 'mic'],
   ['oportunidades', 'Oportunidades', 'compass'],
+  ['lugares', 'Lugares', 'pin'],
   ['portadas', 'Portadas', 'palette'],
   ['bandeja', 'Bandeja', 'inbox'],
 ];
@@ -117,8 +123,11 @@ function AdminPublicationItem({ publication, busy, onEdit, onAction }) {
         <div className="min-w-0 flex-1 basis-[320px]">
           <p className="m-0 mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold uppercase tracking-[.08em] text-muted">
             <span>{KIND_LABELS[publication.kind] || publication.kind}</span>
+            {publication.kind === 'LUGAR' && (
+              <><span aria-hidden="true">·</span><span>{publication.place_category?.label || 'Sin categoría de lugar'}</span></>
+            )}
             <span aria-hidden="true">·</span>
-            <span>{CATEGORY_LABELS[publication.cultural_category] || 'Sin categoría'}</span>
+            <span>{CATEGORY_LABELS[publication.cultural_category] || (publication.kind === 'LUGAR' ? 'Sin categoría cultural' : 'Sin categoría')}</span>
             {date && <><span aria-hidden="true">·</span><span className="font-semibold normal-case tracking-normal">{date}</span></>}
           </p>
           <h3 className="m-0 font-sans text-[19px] font-bold leading-[1.25] tracking-[-0.02em] text-ink">{publication.title}</h3>
@@ -157,6 +166,7 @@ export default function AdminDashboard({ section }) {
   const [editor, setEditor] = useState(null); // null | { publication: null | objeto }
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState('');
+  const [kindFilter, setKindFilter] = useState('ALL');
 
   const load = useCallback(async () => {
     try {
@@ -228,6 +238,8 @@ export default function AdminDashboard({ section }) {
 
   const { publications } = state;
   const pending = publications.filter((item) => item.status === 'REVIEW').length;
+  const placeCount = publications.filter((item) => item.kind === 'LUGAR').length;
+  const listed = kindFilter === 'LUGAR' ? publications.filter((item) => item.kind === 'LUGAR') : publications;
   const inboxPending = (stats?.reports || 0) + (stats?.suggestions || 0) + (stats?.join_requests || 0);
 
   return (
@@ -267,6 +279,7 @@ export default function AdminDashboard({ section }) {
                     publication={editor.publication}
                     categories={state.categories}
                     allowPublish
+                    canCreatePlaces
                     onCancel={() => setEditor(null)}
                     onSaved={() => { setEditor(null); load(); }}
                   />
@@ -281,15 +294,18 @@ export default function AdminDashboard({ section }) {
                   </div>
                   {!editor && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}><Icon name="pen" className="size-4" /> Nueva publicación</button>}
                 </div>
+                {!state.loading && !state.error && <div className="mt-4"><PlacesFilter value={kindFilter} onChange={setKindFilter} count={placeCount} /></div>}
                 {actionError && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{actionError}</p>}
                 {state.loading && <p className="m-0 py-6 text-[14px] text-muted" aria-busy="true">Cargando...</p>}
                 {state.error && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{state.error}</p>}
-                {!state.loading && !state.error && (publications.length ? (
+                {!state.loading && !state.error && (listed.length ? (
                   <ul className="mt-4 mb-0 grid list-none gap-1 p-0">
-                    {publications.map((publication) => (
+                    {listed.map((publication) => (
                       <AdminPublicationItem key={publication.id} publication={publication} busy={busyId === publication.id} onEdit={openEditor} onAction={handleAction} />
                     ))}
                   </ul>
+                ) : kindFilter === 'LUGAR' ? (
+                  <div className="mt-6"><EmptyNote icon="pin" title="Aún no hay lugares" text="Crea uno con «Nueva publicación» y el tipo Lugar, o espera a que un líder envíe el suyo." /></div>
                 ) : (
                   <div className="mt-6"><EmptyNote icon="book" title="Aún no hay publicaciones" text="Crea la primera o espera a que los gestores envíen las suyas." /></div>
                 ))}
@@ -300,6 +316,7 @@ export default function AdminDashboard({ section }) {
           {tab === 'artistas' && <ArtistasPanel subpath={subpath} />}
           {tab === 'talento' && <TalentManager role="ADMIN" subpath={subpath} onChanged={loadStats} />}
           {tab === 'oportunidades' && <OpportunityTypesPanel />}
+          {tab === 'lugares' && <PlaceCategoriesPanel />}
           {tab === 'portadas' && <CoversPanel />}
           {tab === 'bandeja' && <BandejaPanel onChange={loadStats} />}
         </div>

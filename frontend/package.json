@@ -7,11 +7,13 @@
     "dev": "vite",
     "dev:backend": "nodemon --config ../backend/nodemon.json",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:header": "node scripts/header-stacking.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "framer-motion": "^13.3.0",
+    "leaflet": "1.9.4",
     "ogl": "^1.0.11",
     "react": "latest",
     "react-dom": "latest",
@@ -20,6 +22,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "nodemon": "latest",
+    "playwright": "1.49.1",
     "tailwindcss": "^4.3.3"
   }
 }

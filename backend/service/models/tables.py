@@ -36,11 +36,12 @@ rechaza con 400 antes de tocar la base de datos.
 """
 from datetime import date, datetime
 
-from sqlalchemy import CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, text
+from sqlalchemy import CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from backend.service.schemas.municipalities import MUNICIPALITY_LABELS
+from backend.service.schemas.places import PLACE_COLORS, PLACE_ICONS
 
 
 class Base(DeclarativeBase):
@@ -167,6 +168,8 @@ class Publication(Base):
         # y no borradas (list_publications, admin/stats, artist profile).
         Index("ix_publications_status_deleted", "status", "deleted"),
         _municipality_check("publications"),
+        # Punto exacto: las dos coordenadas juntas (o ninguna) y en rango.
+        CheckConstraint("(latitude IS NULL AND longitude IS NULL) OR (latitude IS NOT NULL AND longitude IS NOT NULL AND latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180)", name="ck_publications_point"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -200,6 +203,10 @@ class Publication(Base):
     # Fecha habitual de un EVENTO que se repite ("Cada 20 de julio"), hasta 80 caracteres. Opcional; en
     # otros tipos se guarda NULL. Lo usa la Agenda (services/agenda.py) para el bloque de tradiciones.
     tradition_text: Mapped[str | None] = mapped_column(String(80))
+    # Punto exacto en el mapa (Mapa vivo). Obligatorio para EVENTO y LUGAR al crear y editar (la API lo
+    # exige, dentro del Bajo Cauca); en los demas tipos queda NULL. Las filas antiguas se completan al editarlas.
+    latitude: Mapped[float | None] = mapped_column(Numeric(9, 6))
+    longitude: Mapped[float | None] = mapped_column(Numeric(9, 6))
 
     category: Mapped["Category"] = relationship()
     author: Mapped["User"] = relationship()
@@ -249,6 +256,47 @@ class Opportunity(Base):
     requirements: Mapped[list] = mapped_column(JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb"))
     prize: Mapped[str | None] = mapped_column(String(120))  # premio o monto
     audience: Mapped[str | None] = mapped_column(String(160))  # a quien va dirigida
+
+
+def _closed_set(column: str, values) -> str:
+    return f"{column} IN ({', '.join(repr(value) for value in values)})"
+
+
+class PlaceCategory(Base):
+    """Categorias de lugar (Restaurantes, Hoteles, Miradores...), administrables por el ADMIN. El slug nace
+    de la etiqueta y no cambia al renombrar; icono y color de conjuntos cerrados (schemas/places.py). Una
+    en uso no se borra: se desactiva (deja de ofrecerse, los lugares que la tienen la conservan)."""
+    __tablename__ = "place_categories"
+    __table_args__ = (
+        CheckConstraint(_closed_set("icon", PLACE_ICONS), name="ck_place_categories_icon"),
+        CheckConstraint(_closed_set("color", PLACE_COLORS), name="ck_place_categories_color"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
+    label: Mapped[str] = mapped_column(String(60), nullable=False)
+    icon: Mapped[str] = mapped_column(String(20), nullable=False)
+    color: Mapped[str] = mapped_column(String(12), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class Place(Base):
+    """Detalle de una publicacion LUGAR (una fila por publicacion; se actualiza, no se recrea). La
+    direccion es publications.location y el punto, publications.latitude/longitude."""
+    __tablename__ = "places"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    publication_id: Mapped[int] = mapped_column(
+        ForeignKey("publications.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    # NULL solo en los lugares antiguos sin completar: la API la exige al crear y editar.
+    place_category_id: Mapped[int | None] = mapped_column(ForeignKey("place_categories.id", ondelete="RESTRICT"), index=True)
+    phone: Mapped[str | None] = mapped_column(String(30))
+    whatsapp: Mapped[str | None] = mapped_column(String(30))  # solo digitos, con indicativo (57...)
+    opening_hours: Mapped[str | None] = mapped_column(String(200))
+    website: Mapped[str | None] = mapped_column(String(200))
 
 
 class OpportunityReminder(Base):

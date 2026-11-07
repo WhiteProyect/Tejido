@@ -175,7 +175,7 @@ def test_edit_upserts_and_keeps_the_row(client, admin, category_ids):
 
 
 def test_event_detail_is_also_upserted(client, admin, category_ids):
-    payload = opportunity_payload(category_ids, kind="EVENTO", category_id=category_ids["EVENTO"], location="Malecón")
+    payload = opportunity_payload(category_ids, kind="EVENTO", category_id=category_ids["EVENTO"], location="Malecón", **{"latitude": 7.9847, "longitude": -75.1953})
     pub = client.post("/api/publications", json=payload, headers=admin).json()["id"]
     with schema_session() as session:
         session.execute(update(Event).where(Event.publication_id == pub).values(capacity=250))

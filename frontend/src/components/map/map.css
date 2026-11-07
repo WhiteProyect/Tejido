@@ -1,0 +1,24 @@
+/* Estilos de los elementos que crea Leaflet (pines, popups, controles), que Tailwind no alcanza.
+   Colores del sistema TEJIDO (uiStyles.js::TERRITORY). Sin degradados. El contenedor del mapa lleva
+   `isolation: isolate`, asi los z-index altos de Leaflet (400-1000) no salen a tapar el header. */
+.tejido-map { isolation: isolate; font-family: inherit; background: #f3e4c8; }
+.tejido-map .leaflet-container { font-family: inherit; }
+.tejido-pin { background: none; border: 0; }
+.tejido-pin svg { display: block; filter: drop-shadow(0 2px 3px rgba(12, 36, 30, .35)); }
+.tejido-pin:focus { outline: none; }
+.tejido-pin:focus-visible { outline: 3px solid #173f36; outline-offset: 2px; border-radius: 50%; box-shadow: 0 0 0 6px #f4b942; }
+.tejido-map .leaflet-popup-content-wrapper { border-radius: 18px; padding: 0; border: 2px solid #173f36; background: #fff9ec; box-shadow: 0 14px 34px rgba(12, 36, 30, .25); }
+.tejido-map .leaflet-popup-content { margin: 0; width: 300px !important; font-size: 15px; line-height: 1.45; }
+.tejido-map .leaflet-popup-tip { background: #fff9ec; border: 2px solid #173f36; }
+/* La hoja de Leaflet pinta los enlaces de azul (.leaflet-container a) y separa los parrafos: en la tarjeta
+   mandan los colores y espacios de TEJIDO. */
+.tejido-map [data-tarjeta-mapa] p { margin: 0; }
+.tejido-map [data-tarjeta-mapa] a[href^="#"] { color: #fff9ec; }
+.tejido-map [data-tarjeta-mapa] a[target="_blank"] { color: #173f36; }
+.tejido-map .leaflet-control-attribution { font-size: 12px; background: rgba(255, 249, 236, .92); color: #173f36; }
+.tejido-map .leaflet-control-attribution a { color: #173f36; text-decoration: underline; }
+.tejido-map .leaflet-control-zoom a { width: 44px; height: 44px; line-height: 44px; font-size: 22px; color: #173f36; }
+.tejido-map .leaflet-control-zoom a:focus-visible { outline: 3px solid #173f36; outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) {
+  .tejido-map .leaflet-fade-anim .leaflet-popup, .tejido-map .leaflet-zoom-anim .leaflet-zoom-animated { transition: none !important; }
+}

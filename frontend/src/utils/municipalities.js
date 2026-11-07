@@ -21,6 +21,9 @@
 // - memory { title (subtítulo de la tarjeta), text, quote } y facts { location, altitudeClimate,
 //   population, founded }: opcionales; lo que venga vacío no se muestra.
 //
+// - center: [lat, lng] de la cabecera, para el Mapa vivo y el selector de punto (PROVISIONAL: coinciden
+//   con las cabeceras conocidas, sin verificar contra el DANE).
+//
 // PROVISIONAL: los textos de memory y casi todos los facts son de relleno, verosímiles pero NO
 // verificados. Cada campo provisional lleva el comentario PROVISIONAL; reemplázalos por los
 // datos reales (fuente: DANE, alcaldías) y borra el comentario.
@@ -28,6 +31,7 @@
 export const MUNICIPALITY_LIST = [
   {
     slug: 'caucasia',
+    center: [7.9847, -75.1953], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'Caucasia',
     emoji: '🏰',
     color: '#d4a843',
@@ -60,6 +64,7 @@ export const MUNICIPALITY_LIST = [
   },
   {
     slug: 'caceres',
+    center: [7.5782, -75.3514], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'Cáceres',
     emoji: '🏛',
     color: '#1d8fa3',
@@ -92,6 +97,7 @@ export const MUNICIPALITY_LIST = [
   },
   {
     slug: 'taraza',
+    center: [7.5758, -75.4003], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'Tarazá',
     emoji: '☕',
     color: '#75b79b',
@@ -124,6 +130,7 @@ export const MUNICIPALITY_LIST = [
   },
   {
     slug: 'nechi',
+    center: [8.0941, -74.7788], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'Nechí',
     emoji: '🌊',
     color: '#1d8fa3',
@@ -156,6 +163,7 @@ export const MUNICIPALITY_LIST = [
   },
   {
     slug: 'elbagre',
+    center: [7.5973, -74.8120], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'El Bagre',
     emoji: '⭐',
     color: '#d4a843',
@@ -188,6 +196,7 @@ export const MUNICIPALITY_LIST = [
   },
   {
     slug: 'zaragoza',
+    center: [7.4889, -74.8667], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'Zaragoza',
     emoji: '⚓',
     color: '#8a4f7d',
@@ -225,3 +234,7 @@ export const MUNICIPALITY_BY_SLUG = Object.fromEntries(MUNICIPALITY_LIST.map((mu
 export function getMunicipality(slug) {
   return MUNICIPALITY_BY_SLUG[slug] || null;
 }
+
+// Centro de un municipio para los mapas reales (Leaflet); Caucasia si no hay o no existe.
+export const DEFAULT_MAP_CENTER = MUNICIPALITY_BY_SLUG.caucasia.center;
+export const municipalityCenter = (slug) => MUNICIPALITY_BY_SLUG[slug]?.center || DEFAULT_MAP_CENTER;

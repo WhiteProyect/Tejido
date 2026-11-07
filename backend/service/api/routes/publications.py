@@ -46,16 +46,16 @@ def get_publication_detail(publication_id: int, user: Optional[dict] = Depends(g
     if not row:
         raise AppError(404, "NOT_FOUND", "Contenido no encontrado")
     if row["status"] != "PUBLISHED" and (not user or (user["role"] != "ADMIN" and row["author_id"] != user["id"])):
-        # El lider de la rama ve lo que esta en revision de sus participantes (nada mas).
+        # El lider de la rama ve lo que esta en revision de sus participantes (nada mas; nunca lugares).
         if not (row["status"] == "REVIEW" and branch_service.can_moderate(db, user, row)):
             raise AppError(403, "FORBIDDEN", "No tienes acceso a este contenido")
     return row
 
 
-def _review_leader(db: Session, author_id: int, cultural_category: str | None) -> dict | None:
+def _review_leader(db: Session, author_id: int, cultural_category: str | None, kind: str) -> dict | None:
     """Destinatario del aviso de revision: el lider de la rama si el autor es participante y hay
-    lider activo; None = al equipo (como siempre)."""
-    moderator = branch_service.moderator_for(db, {"author_id": author_id, "cultural_category": cultural_category})
+    lider activo; None = al equipo (como siempre, y siempre en los lugares)."""
+    moderator = branch_service.moderator_for(db, {"author_id": author_id, "cultural_category": cultural_category, "kind": kind})
     if moderator == "ADMIN":
         return None
     return {"email": moderator.email, "name": moderator.name, "branch_label": CULTURAL_CATEGORY_LABELS[cultural_category]}
@@ -70,13 +70,15 @@ def get_publication_images(publication_id: int, user: Optional[dict] = Depends(g
         # Igual que el detalle: el lider ve lo que esta en revision de sus participantes.
         category = db.execute(select(Publication.cultural_category).where(Publication.id == publication_id)).scalar_one()
         if not (pub["status"] == "REVIEW" and branch_service.can_moderate(
-                db, user, {"author_id": pub["author_id"], "cultural_category": category})):
+                db, user, {"author_id": pub["author_id"], "cultural_category": category, "kind": pub["kind"]})):
             raise AppError(403, "FORBIDDEN", "No tienes acceso a este contenido")
     return svc.list_publication_images(db, publication_id)
 
 
 @router.post("/api/publications", status_code=201)
 def create_publication(item: PublicationInput, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    if item.kind == "LUGAR":
+        svc.require_place_author(db, user)
     if not user or user["role"] not in ("GESTOR", "ADMIN"):
         raise AppError(403, "FORBIDDEN", "Se requiere rol Gestor o Administrador")
     publication_id = svc.create_publication(db, user, item)
@@ -93,6 +95,9 @@ def update_publication(publication_id: int, item: PublicationInput, background_t
         raise AppError(403, "FORBIDDEN", "Acceso denegado")
     if current["author_id"] != user["id"] and user["role"] != "ADMIN":
         raise AppError(403, "FORBIDDEN", "No puedes editar este contenido")
+    # Un lugar (o convertir algo en lugar) solo lo editan el admin y un lider (el suyo).
+    if "LUGAR" in (item.kind, current["kind"]):
+        svc.require_place_author(db, user)
     # Una publicada se puede editar (vuelve a revision); una en revision espera la respuesta del equipo.
     if user["role"] == "GESTOR" and current["status"] == "REVIEW":
         raise AppError(409, "INVALID_STATE", "Esta publicación está en revisión: espera la respuesta del equipo para editarla")
@@ -100,7 +105,7 @@ def update_publication(publication_id: int, item: PublicationInput, background_t
     status = svc.update_publication(db, user, publication_id, current["status"], item)
     if current["status"] == "PUBLISHED" and status == "REVIEW":
         category = db.execute(select(Publication.cultural_category).where(Publication.id == publication_id)).scalar_one()
-        leader = _review_leader(db, current["author_id"], category)
+        leader = _review_leader(db, current["author_id"], category, item.kind)
         # Commit antes del aviso: el correo solo sale con el cambio ya guardado.
         db.commit()
         background_tasks.add_task(notifications.notify_review, item.title, user["name"], leader)
@@ -111,7 +116,7 @@ def update_publication(publication_id: int, item: PublicationInput, background_t
 def moderate_publication(publication_id: int, payload: PublicationStatusInput, background_tasks: BackgroundTasks,
                          user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
     # ADMIN modera todo; un GESTOR solo si es el lider de la rama y el autor es participante de
-    # ella (services/branches.py::can_moderate). La rama sale de la base.
+    # ella (services/branches.py::can_moderate). La rama sale de la base. Los lugares, solo el ADMIN.
     if not user or user["role"] not in ("ADMIN", "GESTOR"):
         raise AppError(403, "FORBIDDEN", "Solo un administrador o el líder de la rama pueden moderar")
     if payload.status not in ("PUBLISHED", "REJECTED"):
@@ -120,7 +125,7 @@ def moderate_publication(publication_id: int, payload: PublicationStatusInput, b
         raise AppError(400, "VALIDATION", "Escribe un motivo de rechazo claro")
 
     publication = db.execute(
-        select(Publication.status, Publication.title, Publication.author_id, Publication.cultural_category,
+        select(Publication.status, Publication.title, Publication.author_id, Publication.cultural_category, Publication.kind,
                User.email, User.name, Role.name.label("author_role"))
         .join(User, User.id == Publication.author_id)
         .join(Role, Role.id == User.role_id)
@@ -128,7 +133,8 @@ def moderate_publication(publication_id: int, payload: PublicationStatusInput, b
     ).first()
     if not publication:
         raise AppError(404, "NOT_FOUND", "Contenido no encontrado")
-    if not branch_service.can_moderate(db, user, {"author_id": publication.author_id, "cultural_category": publication.cultural_category}):
+    if not branch_service.can_moderate(db, user, {"author_id": publication.author_id, "cultural_category": publication.cultural_category,
+                                                  "kind": publication.kind}):
         raise AppError(403, "FORBIDDEN", "No puedes moderar esta publicación")
     if publication.status != "REVIEW":
         raise AppError(409, "INVALID_STATE", "Solo se puede moderar contenido que este en revision")
@@ -147,6 +153,9 @@ def moderate_publication(publication_id: int, payload: PublicationStatusInput, b
 def delete_publication(publication_id: int, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
     if not user or user["role"] not in ("GESTOR", "ADMIN"):
         raise AppError(403, "FORBIDDEN", "Acceso denegado")
+    current = svc.get_publication_owner_state(db, publication_id)
+    if current and current["kind"] == "LUGAR":
+        svc.require_place_author(db, user)
     q = db.query(Publication).filter(Publication.id == publication_id)
     if user["role"] != "ADMIN":
         q = q.filter(Publication.author_id == user["id"])
@@ -162,13 +171,15 @@ def submit_publication(publication_id: int, background_tasks: BackgroundTasks,
     if not user or user["role"] not in ("GESTOR", "ADMIN"):
         raise AppError(403, "FORBIDDEN", "Acceso denegado")
     publication = db.execute(
-        select(Publication.author_id, Publication.status, Publication.title, User.name, Publication.cultural_category)
+        select(Publication.author_id, Publication.status, Publication.title, User.name, Publication.cultural_category, Publication.kind)
         .join(User, User.id == Publication.author_id)
         .where(Publication.id == publication_id, Publication.deleted.is_(False))
     ).first()
     if not publication:
         raise AppError(404, "NOT_FOUND", "Contenido no encontrado")
-    author_id, status, title, author_name, cultural_category = publication
+    author_id, status, title, author_name, cultural_category, kind = publication
+    if kind == "LUGAR":
+        svc.require_place_author(db, user)
     if author_id != user["id"] and user["role"] != "ADMIN":
         raise AppError(403, "FORBIDDEN", "No puedes enviar contenido de otro autor")
     if status not in ("DRAFT", "REJECTED"):
@@ -176,7 +187,7 @@ def submit_publication(publication_id: int, background_tasks: BackgroundTasks,
     db.query(Publication).filter(Publication.id == publication_id).update(
         {"status": "REVIEW", "moderation_note": None, "updated_at": now_utc()}
     )
-    leader = _review_leader(db, author_id, cultural_category)
+    leader = _review_leader(db, author_id, cultural_category, kind)
     db.commit()
     background_tasks.add_task(notifications.notify_review, title, author_name, leader)
     return {"message": "Enviado a revision"}

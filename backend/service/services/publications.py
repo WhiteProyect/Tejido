@@ -1,5 +1,6 @@
 import re
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -7,10 +8,11 @@ from sqlalchemy import DateTime, and_, cast, exists, func, literal, or_, select
 from sqlalchemy.orm import Session
 
 from backend.service.errors import AppError
-from backend.service.models.tables import (Category, Event, Favorite, Opportunity, OpportunityType, Organization,
-                                           Publication, Role, User)
+from backend.service.models.tables import (Category, Event, Favorite, Opportunity, OpportunityType, Organization, Place,
+                                           PlaceCategory, Publication, Role, User)
 from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS
 from backend.service.schemas.publications import PublicationInput
+from backend.service.services.branches import leader_of
 from backend.service.services.municipalities import PUBLICATION_MESSAGE, require_municipality
 from backend.service.services.org_profiles import visible_slug
 from backend.service.services.serialization import row_to_dict, rows_to_dicts
@@ -26,6 +28,16 @@ REQUIREMENT_MAX = 160
 PRIZE_MAX = 120
 AUDIENCE_MAX = 160
 LINK_MAX = 500
+# Caja del Bajo Cauca con margen (lat 6.8 a 8.8, lng -76.0 a -74.0): los seis municipios caben con
+# 0,2 a 0,5 grados de holgura. Fuera de ella el punto se rechaza (422).
+BAJO_CAUCA_BOX = {"lat": (Decimal("6.8"), Decimal("8.8")), "lng": (Decimal("-76.0"), Decimal("-74.0"))}
+POINT_MISSING = {"EVENTO": "Marca el punto exacto del evento en el mapa", "LUGAR": "Marca el punto exacto del lugar en el mapa"}
+ADDRESS_MAX = 160
+PHONE_MAX = 30
+OPENING_HOURS_MAX = 200
+WEBSITE_MAX = 200
+PLACE_FORBIDDEN = "Solo el equipo de TEJIDO y los líderes pueden agregar lugares"
+_PHONE = re.compile(r"^[0-9+\-() ]+$")
 _HTML = re.compile(r"<[^>]*>")
 
 
@@ -94,6 +106,33 @@ def _optional_text(value, limit: int, code: str, message: str) -> str | None:
     return text or None
 
 
+def _coordinate(value) -> Decimal:
+    if isinstance(value, bool) or value is None or (isinstance(value, str) and not value.strip()):
+        raise ValueError
+    number = Decimal(str(value).strip())
+    if not number.is_finite():
+        raise ValueError
+    return number.quantize(Decimal("0.000001"))
+
+
+def clean_point(latitude, longitude, kind: str) -> tuple[Decimal | None, Decimal | None]:
+    """Punto exacto (latitud, longitud). EVENTO y LUGAR: obligatorio, las dos juntas, numericas y dentro
+    del Bajo Cauca (422). Otros tipos: se descartan (None, None); no llevan punto ni van al mapa."""
+    if kind not in POINT_MISSING:
+        return None, None
+    missing = [value in (None, "") for value in (latitude, longitude)]
+    if any(missing):
+        raise AppError(422, "POINT_REQUIRED", POINT_MISSING[kind])
+    try:
+        lat, lng = _coordinate(latitude), _coordinate(longitude)
+    except (ValueError, InvalidOperation, TypeError):
+        raise AppError(422, "INVALID_POINT", "Las coordenadas del punto deben ser números")
+    (lat_min, lat_max), (lng_min, lng_max) = BAJO_CAUCA_BOX["lat"], BAJO_CAUCA_BOX["lng"]
+    if not (lat_min <= lat <= lat_max and lng_min <= lng <= lng_max):
+        raise AppError(422, "POINT_OUT_OF_AREA", "El punto debe estar dentro del Bajo Cauca")
+    return lat, lng
+
+
 def clean_requirements(values) -> list[str]:
     """Requisitos: sin HTML, recortados, sin vacios ni repetidos (sin distinguir mayusculas); hasta
     REQUIREMENTS_MAX de REQUIREMENT_MAX caracteres (422)."""
@@ -160,6 +199,128 @@ def clean_opportunity(db: Session, item: PublicationInput, current_type_id: int 
     }
 
 
+def _single_value(value, code: str, message: str) -> str | None:
+    """Texto de una linea (espacios colapsados) de un valor suelto; None si no llega."""
+    if value is None:
+        return None
+    if isinstance(value, (list, dict, tuple, bool)):
+        raise AppError(422, code, message)
+    return " ".join(str(value).split())
+
+
+def clean_phone(value) -> str | None:
+    """Telefono opcional: recortado, hasta PHONE_MAX, solo digitos y + - ( ) y espacios, con 7 digitos o mas."""
+    message = "Escribe el teléfono solo con números y los signos + - ( )"
+    text = _single_value(value, "INVALID_PHONE", message)
+    if not text:
+        return None
+    if len(text) > PHONE_MAX:
+        raise AppError(422, "INVALID_PHONE", f"El teléfono puede tener hasta {PHONE_MAX} caracteres")
+    if not _PHONE.match(text) or sum(char.isdigit() for char in text) < 7:
+        raise AppError(422, "INVALID_PHONE", message)
+    return text
+
+
+def clean_whatsapp(value) -> str | None:
+    """WhatsApp opcional, guardado como digitos con indicativo (lo que pide https://wa.me/<numero>).
+    Acepta los mismos signos que el telefono. Con "+" o "00" delante se toma tal cual; 10 digitos sin
+    indicativo = numero de Colombia (se antepone 57); 12 digitos que empiezan por 57 ya lo traen. El
+    resultado debe tener entre 8 y 15 digitos (E.164)."""
+    text = _single_value(value, "INVALID_WHATSAPP", "Escribe el WhatsApp solo con números y los signos + - ( )")
+    if not text:
+        return None
+    if len(text) > PHONE_MAX:
+        raise AppError(422, "INVALID_WHATSAPP", f"El WhatsApp puede tener hasta {PHONE_MAX} caracteres")
+    if not _PHONE.match(text):
+        raise AppError(422, "INVALID_WHATSAPP", "Escribe el WhatsApp solo con números y los signos + - ( )")
+    digits = "".join(char for char in text if char.isdigit())
+    if text.startswith("+"):
+        number = digits
+    elif digits.startswith("00"):
+        number = digits[2:]
+    elif len(digits) == 12 and digits.startswith("57"):
+        number = digits
+    elif len(digits) == 10:
+        number = "57" + digits
+    else:
+        number = ""
+    if not 8 <= len(number) <= 15:
+        raise AppError(422, "INVALID_WHATSAPP",
+                       "Escribe el WhatsApp con 10 dígitos (celular de Colombia) o con su indicativo, p. ej. +57 300 123 4567")
+    return number
+
+
+def clean_website(value) -> str | None:
+    """Sitio web opcional: http(s) con dominio, sin espacios, hasta WEBSITE_MAX."""
+    message = "El sitio web debe ser una dirección que empiece por http:// o https://"
+    if value is None:
+        return None
+    if isinstance(value, (list, dict, tuple, bool)):
+        raise AppError(422, "INVALID_WEBSITE", message)
+    text = str(value).strip()
+    if not text:
+        return None
+    parsed = urlparse(text)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc or any(char.isspace() for char in text):
+        raise AppError(422, "INVALID_WEBSITE", message)
+    if len(text) > WEBSITE_MAX:
+        raise AppError(422, "INVALID_WEBSITE", f"El sitio web puede tener hasta {WEBSITE_MAX} caracteres")
+    return text
+
+
+def clean_place(db: Session, item: PublicationInput, current_category_id: int | None = None) -> dict | None:
+    """Campos de un LUGAR (None en otros tipos: ahi se ignoran). Categoria de lugar obligatoria y activa
+    (al editar se puede conservar la que ya tenia aunque luego se haya desactivado); direccion o referencia
+    obligatoria (publications.location, hasta ADDRESS_MAX); telefono, WhatsApp, horario y sitio web
+    opcionales. Devuelve solo los opcionales que llegaron en la peticion (y siempre la categoria y la
+    direccion): lo que no se manda se conserva al editar (UPSERT en _sync_publication_detail)."""
+    if item.kind != "LUGAR":
+        return None
+    raw = item.place_category_id
+    if raw in (None, ""):
+        raise AppError(422, "PLACE_CATEGORY_REQUIRED", "Elige la categoría del lugar")
+    try:
+        if isinstance(raw, bool):
+            raise ValueError
+        category_id = int(raw)
+    except (TypeError, ValueError):
+        raise AppError(422, "INVALID_PLACE_CATEGORY", "Esa categoría de lugar no existe o está desactivada")
+    active = db.execute(select(PlaceCategory.active).where(PlaceCategory.id == category_id)).scalar_one_or_none()
+    if active is None or (not active and category_id != current_category_id):
+        raise AppError(422, "INVALID_PLACE_CATEGORY", "Esa categoría de lugar no existe o está desactivada")
+    address = _plain(item.location)
+    if not address:
+        raise AppError(422, "ADDRESS_REQUIRED", "Escribe la dirección o una referencia para llegar")
+    if len(address) > ADDRESS_MAX:
+        raise AppError(422, "INVALID_ADDRESS", f"La dirección o referencia puede tener hasta {ADDRESS_MAX} caracteres")
+    sent = item.model_fields_set
+    values = {"place_category_id": category_id, "address": address}
+    if "phone" in sent:
+        values["phone"] = clean_phone(item.phone)
+    if "whatsapp" in sent:
+        values["whatsapp"] = clean_whatsapp(item.whatsapp)
+    if "opening_hours" in sent:
+        values["opening_hours"] = _optional_text(item.opening_hours, OPENING_HOURS_MAX, "INVALID_OPENING_HOURS",
+                                                 f"El horario puede tener hasta {OPENING_HOURS_MAX} caracteres")
+    if "website" in sent:
+        values["website"] = clean_website(item.website)
+    return values
+
+
+def can_author_places(db: Session, user: Optional[dict]) -> bool:
+    """Crean y editan lugares solo el ADMIN y el GESTOR lider de su rama (organizations.is_leader)."""
+    if not user:
+        return False
+    if user["role"] == "ADMIN":
+        return True
+    return user["role"] == "GESTOR" and leader_of(db, user["id"]) is not None
+
+
+def require_place_author(db: Session, user: Optional[dict]) -> None:
+    if not can_author_places(db, user):
+        raise AppError(403, "FORBIDDEN", PLACE_FORBIDDEN)
+
+
 # Columnas del detalle de oportunidad que viajan con cada publicacion (listados, guardadas y
 # detalle). En las que no son OPORTUNIDAD se quitan (with_opportunity_fields).
 _OPPORTUNITY_KEYS = ("opportunity_type_id", "opportunity_type_slug", "opportunity_type_label", "opportunity_type_color", "organizer",
@@ -174,8 +335,41 @@ def _opportunity_columns():
 
 
 def _join_opportunity(stmt):
+    """Detalle de oportunidad y de lugar (outer joins: una fila por publicacion)."""
     return (stmt.join(Opportunity, Opportunity.publication_id == Publication.id, isouter=True)
-                .join(OpportunityType, OpportunityType.id == Opportunity.type_id, isouter=True))
+                .join(OpportunityType, OpportunityType.id == Opportunity.type_id, isouter=True)
+                .join(Place, Place.publication_id == Publication.id, isouter=True)
+                .join(PlaceCategory, PlaceCategory.id == Place.place_category_id, isouter=True))
+
+
+# Lo mismo para el detalle de un LUGAR (with_place_fields). La direccion es location.
+_PLACE_KEYS = ("place_category_id", "place_category_slug", "place_category_label", "place_category_icon",
+               "place_category_color", "place_category_active", "phone", "whatsapp", "opening_hours", "website")
+
+
+def _place_columns():
+    return (Place.place_category_id, PlaceCategory.slug.label("place_category_slug"),
+            PlaceCategory.label.label("place_category_label"), PlaceCategory.icon.label("place_category_icon"),
+            PlaceCategory.color.label("place_category_color"), PlaceCategory.active.label("place_category_active"),
+            Place.phone, Place.whatsapp, Place.opening_hours, Place.website)
+
+
+def with_place_fields(row: dict | None) -> dict | None:
+    """LUGAR: place_category ({id, slug, label, icon, color, active} o None si es un lugar antiguo sin
+    completar), address (= location), phone, whatsapp, opening_hours y website. Las demas, sin estas claves."""
+    if row is None:
+        return None
+    values = {key: row.pop(key, None) for key in _PLACE_KEYS}
+    if row.get("kind") != "LUGAR":
+        return row
+    category_id = values["place_category_id"]
+    row["place_category"] = ({"id": category_id, "slug": values["place_category_slug"], "label": values["place_category_label"],
+                              "icon": values["place_category_icon"], "color": values["place_category_color"],
+                              "active": values["place_category_active"]}
+                             if category_id is not None else None)
+    row.update(address=row.get("location"), phone=values["phone"], whatsapp=values["whatsapp"],
+               opening_hours=values["opening_hours"], website=values["website"])
+    return row
 
 
 def with_opportunity_fields(row: dict | None) -> dict | None:
@@ -183,6 +377,7 @@ def with_opportunity_fields(row: dict | None) -> dict | None:
     prize y audience. Las demas publicaciones quedan como siempre (sin estas claves)."""
     if row is None:
         return None
+    with_place_fields(row)
     values = {key: row.pop(key, None) for key in _OPPORTUNITY_KEYS}
     if row.get("kind") != "OPORTUNIDAD":
         return row
@@ -239,7 +434,7 @@ def list_publications(
 
     stmt = _join_opportunity(
         select(Publication.__table__, Category.name.label("category"), Category.color.label("color"),
-               User.name.label("author"), favorite_expr, *_opportunity_columns())
+               User.name.label("author"), favorite_expr, *_opportunity_columns(), *_place_columns())
         .join(Category, Category.id == Publication.category_id)
         .join(User, User.id == Publication.author_id)
     ).where(*conditions).order_by(
@@ -258,7 +453,7 @@ def saved_publications(db: Session, user_id: int) -> list[dict]:
     stmt = _join_opportunity(
         select(Publication.__table__, Category.name.label("category"), Category.color.label("color"),
                User.name.label("author"), literal(True).label("favorite"), Favorite.created_at.label("saved_at"),
-               *_opportunity_columns())
+               *_opportunity_columns(), *_place_columns())
         .join(Favorite, and_(Favorite.publication_id == Publication.id, Favorite.user_id == user_id))
         .join(Category, Category.id == Publication.category_id)
         .join(User, User.id == Publication.author_id)
@@ -275,7 +470,7 @@ def get_publication(db: Session, user: Optional[dict], publication_id: int):
     )
     stmt = _join_opportunity(
         select(Publication.__table__, Category.name.label("category"), Category.color.label("color"),
-               User.name.label("author"), favorite_expr, *_opportunity_columns())
+               User.name.label("author"), favorite_expr, *_opportunity_columns(), *_place_columns())
         .join(Category, Category.id == Publication.category_id)
         .join(User, User.id == Publication.author_id)
     ).where(Publication.id == publication_id, Publication.deleted.is_(False))
@@ -312,7 +507,7 @@ def get_publication_detail(db: Session, user: Optional[dict], publication_id: in
 
 def get_publication_owner_state(db: Session, publication_id: int):
     row = db.execute(
-        select(Publication.id, Publication.status, Publication.author_id)
+        select(Publication.id, Publication.status, Publication.author_id, Publication.kind)
         .where(Publication.id == publication_id, Publication.deleted.is_(False))
     ).first()
     return row_to_dict(row)
@@ -353,11 +548,18 @@ def gestor_branch(db: Session, user_id: int) -> str | None:
     return branch if branch in CULTURAL_CATEGORIES else None
 
 
-def resolve_cultural_category(db: Session, user: dict, requested: str | None) -> str | None:
+def resolve_cultural_category(db: Session, user: dict, requested: str | None, kind: str | None = None) -> str | None:
     """Un GESTOR solo publica en su rama: vacia se le asigna, otra es 403, sin rama 409.
-    El ADMIN elige cualquiera (o ninguna)."""
+    El ADMIN elige cualquiera (o ninguna). Excepcion de LUGAR (solo lo crea el lider; la ruta ya lo
+    comprobo): la categoria es opcional, ninguna o la de su rama (otra, 403)."""
     if user["role"] != "GESTOR":
         return requested
+    if kind == "LUGAR":
+        branch = leader_of(db, user["id"])
+        if requested and requested != branch:
+            label = CULTURAL_CATEGORY_LABELS.get(branch, "tu rama")
+            raise AppError(403, "FORBIDDEN", f"En un lugar solo puedes elegir tu rama ({label}) o dejarlo sin categoría cultural")
+        return requested or None
     branch = gestor_branch(db, user["id"])
     if branch is None:
         raise AppError(409, "NO_CATEGORY", "Todavía no tienes una categoría asignada; escríbele al equipo de TEJIDO")
@@ -417,9 +619,11 @@ def category_overview(db: Session, user_id: int) -> dict:
     return result
 
 
-def _sync_publication_detail(db: Session, publication_id: int, item: PublicationInput, opportunity: dict | None):
+def _sync_publication_detail(db: Session, publication_id: int, item: PublicationInput, opportunity: dict | None,
+                             place: dict | None = None):
     """Fila de detalle segun el tipo: se actualiza si ya existe (UPSERT: lo que la API no manda, como el
-    cupo de un evento, sobrevive a las ediciones) y se borra si la publicacion cambio de tipo."""
+    cupo de un evento o un dato opcional de un lugar que no viene en la peticion, sobrevive a las
+    ediciones) y se borra si la publicacion cambio de tipo."""
     event = db.execute(select(Event).where(Event.publication_id == publication_id)).scalar_one_or_none()
     if item.kind == "EVENTO":
         if event:
@@ -441,14 +645,27 @@ def _sync_publication_detail(db: Session, publication_id: int, item: Publication
     elif detail:
         db.delete(detail)
 
+    place_row = db.execute(select(Place).where(Place.publication_id == publication_id)).scalar_one_or_none()
+    if item.kind == "LUGAR":
+        values = {key: value for key, value in place.items() if key != "address"}
+        if place_row:
+            for key, value in values.items():
+                setattr(place_row, key, value)
+        else:
+            db.add(Place(publication_id=publication_id, **values))
+    elif place_row:
+        db.delete(place_row)
+
 
 def create_publication(db: Session, user: dict, item: PublicationInput) -> int:
     municipality = require_municipality(item.municipality, PUBLICATION_MESSAGE)
     tagline, tags = clean_tagline(item.tagline), clean_tags(item.tags)
     tradition_text = clean_tradition_text(item.tradition_text, item.kind)
     opportunity = clean_opportunity(db, item)
+    place = clean_place(db, item)
     validate_category(db, item.category_id, item.kind)
-    cultural_category = resolve_cultural_category(db, user, item.cultural_category)
+    latitude, longitude = clean_point(item.latitude, item.longitude, item.kind)
+    cultural_category = resolve_cultural_category(db, user, item.cultural_category, item.kind)
     image = item.image
     status = "PUBLISHED" if user["role"] == "ADMIN" and item.publish else "DRAFT"
     ts = now_utc()
@@ -460,7 +677,7 @@ def create_publication(db: Session, user: dict, item: PublicationInput) -> int:
         summary=item.summary,
         content=item.content,
         image=image,
-        location=item.location,
+        location=place["address"] if place else item.location,
         start_date=item.start_date,
         end_date=item.end_date,
         link=opportunity["link"] if opportunity else item.link,
@@ -469,6 +686,8 @@ def create_publication(db: Session, user: dict, item: PublicationInput) -> int:
         tagline=tagline,
         tags=tags,
         tradition_text=tradition_text,
+        latitude=latitude,
+        longitude=longitude,
         featured=bool(item.featured) if user["role"] == "ADMIN" else False,
         status=status,
         created_at=ts,
@@ -476,7 +695,7 @@ def create_publication(db: Session, user: dict, item: PublicationInput) -> int:
     )
     db.add(publication)
     db.flush()
-    _sync_publication_detail(db, publication.id, item, opportunity)
+    _sync_publication_detail(db, publication.id, item, opportunity, place)
     return publication.id
 
 
@@ -487,7 +706,10 @@ def update_publication(db: Session, user: dict, publication_id: int, current_sta
     tradition_text = clean_tradition_text(item.tradition_text, item.kind)
     current_type = db.execute(select(Opportunity.type_id).where(Opportunity.publication_id == publication_id)).scalar_one_or_none()
     opportunity = clean_opportunity(db, item, current_type_id=current_type)
-    cultural_category = resolve_cultural_category(db, user, item.cultural_category)
+    current_place = db.execute(select(Place.place_category_id).where(Place.publication_id == publication_id)).scalar_one_or_none()
+    place = clean_place(db, item, current_category_id=current_place)
+    latitude, longitude = clean_point(item.latitude, item.longitude, item.kind)
+    cultural_category = resolve_cultural_category(db, user, item.cultural_category, item.kind)
     status, clear_note = status_after_edit(user, current_status, item.publish)
     changes = {
         "category_id": item.category_id,
@@ -496,7 +718,7 @@ def update_publication(db: Session, user: dict, publication_id: int, current_sta
         "summary": item.summary,
         "content": item.content,
         "image": item.image,
-        "location": item.location,
+        "location": place["address"] if place else item.location,
         "start_date": item.start_date,
         "end_date": item.end_date,
         "link": opportunity["link"] if opportunity else item.link,
@@ -505,11 +727,13 @@ def update_publication(db: Session, user: dict, publication_id: int, current_sta
         "tagline": tagline,
         "tags": tags,
         "tradition_text": tradition_text,
+        "latitude": latitude,
+        "longitude": longitude,
         "status": status,
         "updated_at": now_utc(),
     }
     if clear_note:
         changes["moderation_note"] = None
     db.query(Publication).filter(Publication.id == publication_id).update(changes)
-    _sync_publication_detail(db, publication_id, item, opportunity)
+    _sync_publication_detail(db, publication_id, item, opportunity, place)
     return status

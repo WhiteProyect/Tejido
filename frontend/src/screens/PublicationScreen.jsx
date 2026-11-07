@@ -2,15 +2,18 @@ import { useEffect, useState } from 'react';
 import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import Lightbox from '../components/Lightbox.jsx';
+import PlaceIcon, { PlaceFallback } from '../components/PlaceIcon.jsx';
 import PublicationActions from '../components/PublicationActions.jsx';
+import ReportDataLink from '../components/ReportDataLink.jsx';
 import OpportunityApply from '../components/opportunities/OpportunityApply.jsx';
 import { OpportunityPills, OpportunityRequirements, OpportunitySummary } from '../components/opportunities/OpportunityDetail.jsx';
-import { BTN_INK_OUTLINE_MD, SECTION } from '../components/uiStyles.js';
+import { BTN_INK_OUTLINE_MD, SECTION, placeColors } from '../components/uiStyles.js';
 import { apiRequest } from '../utils/api.js';
 import { cdnImage } from '../utils/cloudinaryUrl.js';
 import { BRANCH_LABELS, CULTURAL_CATEGORIES, KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
 import { formatDate } from '../utils/dateUtils.js';
 import { getInitials } from '../utils/initials.js';
+import { directionsUrl, eventMapHref, placeMapHref, telHref, whatsappHref } from '../utils/mapConfig.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
 // Pagina de una publicacion (#publicacion/<id>), la que abren los enlaces compartidos y
@@ -18,6 +21,10 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 // oportunidad (venue, capacity / tipo, quien convoca, requisitos, premio, dirigida a y plazo), la organizacion publica del autor
 // y la galeria (images). Una publicada es publica; otro estado solo lo ven su autor o un admin
 // (403/404 -> "no disponible"), que ademas ven una nota con el estado.
+// LUGAR (directorio): su categoria de lugar (icono y color), direccion, telefono (tel:), WhatsApp (wa.me),
+// horario, sitio web, "Ver en el mapa vivo" (#mapa?lugar=<id>), "Como llegar", "Actualizado <mes año>" y
+// "Reportar un dato incorrecto" (flujo de reportes). Solo se muestra lo que existe; sin foto, el icono de
+// su categoria sobre crema (sin portadas inventadas).
 const CATEGORY_BY_KEY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label, slug]) => [key, { label, slug }]));
 const DETAIL_LABEL = 'm-0 text-[11px] font-bold uppercase tracking-[.14em] text-muted';
 const DETAIL_VALUE = 'mt-1 mb-0 text-[15px] leading-[1.5] text-ink';
@@ -25,6 +32,21 @@ const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visi
 
 // Las publicaciones viejas guardan un estilo CSS en image (no un enlace): no es una foto.
 const isRealImage = (url) => /^(https?:\/\/|\/)/.test(url || '');
+const MAP_BUTTON = `flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-[#173f36] px-4 text-[15px] font-bold no-underline`;
+
+// "noviembre de 2026" (zona de Bogota).
+const monthYear = (iso) => (iso ? new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric', timeZone: 'America/Bogota' }).format(new Date(iso)) : '');
+
+function PlacePill({ category }) {
+  if (!category) return null;
+  const colors = placeColors(category.color);
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border py-1 pr-3 pl-1.5 text-[14px] font-semibold" data-categoria-lugar
+      style={{ backgroundColor: colors.bg, color: colors.text, borderColor: colors.border || colors.bg }}>
+      <PlaceIcon icon={category.icon} className="size-5" /> {category.label}
+    </span>
+  );
+}
 
 // "sabado 7 de noviembre de 2026 · 3:00 p. m." (la hora solo si la fecha trae una distinta de 00:00).
 function formatDateTime(iso) {
@@ -118,6 +140,9 @@ export default function PublicationScreen({ id, user, canGoBack }) {
   const authorName = organization?.name || pub.author || 'Equipo TEJIDO';
   const branch = organization?.branch && BRANCH_LABELS[organization.branch];
   const isOpportunity = pub.kind === 'OPORTUNIDAD';
+  const isPlace = pub.kind === 'LUGAR';
+  const published = pub.status === 'PUBLISHED';
+  const hasPoint = pub.latitude != null && pub.longitude != null;
   const deadline = isOpportunity ? (pub.end_date || pub.deadline) : null;
   const requirements = isOpportunity && Array.isArray(pub.requirements) ? pub.requirements : [];
   const [statusLabel, statusTone] = STATUS_LABELS[pub.status] || [pub.status, STATUS_LABELS.DRAFT[1]];
@@ -150,18 +175,26 @@ export default function PublicationScreen({ id, user, canGoBack }) {
 
         <header className="max-w-[820px]">
           {isOpportunity ? <OpportunityPills pub={pub} /> : (
-            <span className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[.1em] text-white" style={{ backgroundColor: 'var(--kind)' }}>
-              {KIND_LABELS[pub.kind] || pub.kind}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[.1em] text-white" style={{ backgroundColor: isPlace ? '#146f80' : 'var(--kind)' }}>
+                {KIND_LABELS[pub.kind] || pub.kind}
+              </span>
+              {isPlace && <PlacePill category={pub.place_category} />}
+            </div>
           )}
           <h1 className="mt-4 mb-0 font-sans text-[length:clamp(36px,5vw,64px)] font-extrabold leading-[1.02] tracking-[-.045em] text-ink [overflow-wrap:anywhere]">{pub.title}</h1>
-          <p className="font-display mt-4 mb-0 text-[length:clamp(19px,2.2vw,24px)] font-bold italic leading-[1.4] text-[#2d5a3d]">{pub.summary}</p>
+          {pub.summary && <p className="font-display mt-4 mb-0 text-[length:clamp(19px,2.2vw,24px)] font-bold italic leading-[1.4] text-[#2d5a3d]">{pub.summary}</p>}
         </header>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <PublicationActions key={`${pub.id}-${user?.id ?? 'anon'}`} publication={pub} user={user} returnTo={`publicacion/${pub.id}`} withLabels menuUp={false} showFavorite={!isOpportunity} />
         </div>
 
+        {!cover && isPlace && (
+          <div className="mt-8 overflow-hidden rounded-[28px]" role="img" aria-label={pub.place_category ? `Lugar: ${pub.place_category.label}` : 'Lugar sin foto'}>
+            <PlaceFallback category={pub.place_category} className="h-[200px] max600:h-[160px]" />
+          </div>
+        )}
         {cover && (
           <div className="mt-8">
             {hasGallery ? (
@@ -187,27 +220,80 @@ export default function PublicationScreen({ id, user, canGoBack }) {
 
         <div className="mt-10 grid grid-cols-[minmax(0,1fr)_320px] items-start gap-10 max900:grid-cols-[minmax(0,1fr)] max900:gap-8">
           <div className="min-w-0">
-            <div className="whitespace-pre-line text-[17px] leading-[1.75] text-[#3f514a] [overflow-wrap:anywhere]">{pub.content}</div>
+            {pub.content && <div className="whitespace-pre-line text-[17px] leading-[1.75] text-[#3f514a] [overflow-wrap:anywhere]">{pub.content}</div>}
+            {isPlace && published && <div className={pub.content ? 'mt-8' : ''}><ReportDataLink publication={pub} user={user} /></div>}
             {isOpportunity && <OpportunityRequirements items={requirements} />}
           </div>
 
           <div className="grid min-w-0 gap-6">
           {isOpportunity && <OpportunitySummary pub={pub} deadline={deadline} formatDateTime={formatDateTime} />}
           <aside className="min-w-0 rounded-[24px] border border-[#e2d9ca] bg-[#fffaf2] p-6" aria-label="Detalles">
-            {pub.start_date && (
+            {pub.start_date && !isPlace && (
               <Detail label={pub.end_date && pub.kind !== 'OPORTUNIDAD' ? 'Desde' : 'Fecha'}>{formatDateTime(pub.start_date)}</Detail>
             )}
-            {pub.end_date && pub.kind !== 'OPORTUNIDAD' && <Detail label="Hasta">{formatDateTime(pub.end_date)}</Detail>}
+            {pub.end_date && pub.kind !== 'OPORTUNIDAD' && !isPlace && <Detail label="Hasta">{formatDateTime(pub.end_date)}</Detail>}
+            {isPlace ? (
+              <>
+                {pub.place_category && (
+                  <Detail label="Categoría de lugar">
+                    <span className="inline-flex items-center gap-2 font-bold"><PlaceIcon icon={pub.place_category.icon} className="size-5 text-[#173f36]" />{pub.place_category.label}</span>
+                  </Detail>
+                )}
+                <Detail label="Dirección">
+                  <span className="inline-flex items-start gap-1.5" data-direccion><Icon name="pin" className="mt-1 size-4 shrink-0 text-muted" />{pub.address || pub.location}</span>
+                  {hasPoint && published && (
+                    <span className="mt-3 grid gap-2">
+                      <a href={placeMapHref(pub.id)} data-ver-mapa className={`${MAP_BUTTON} bg-white text-[#173f36] hover:bg-[#f3e4c8] ${FOCUS}`}>
+                        <Icon name="compass" className="size-4" /> Ver en el mapa vivo
+                      </a>
+                      <a href={directionsUrl(pub.latitude, pub.longitude)} target="_blank" rel="noopener noreferrer" data-como-llegar
+                        className={`${MAP_BUTTON} bg-[#173f36] text-[#fff9ec] hover:bg-[#0f2c25] ${FOCUS}`}>
+                        Cómo llegar<span className="sr-only"> (abre las direcciones en una pestaña nueva)</span>
+                      </a>
+                    </span>
+                  )}
+                </Detail>
+                {pub.phone && (
+                  <Detail label="Teléfono">
+                    <a href={telHref(pub.phone)} className={`font-bold text-[#173f36] underline underline-offset-4 ${FOCUS}`} data-telefono>{pub.phone}</a>
+                  </Detail>
+                )}
+                {pub.whatsapp && (
+                  <Detail label="WhatsApp">
+                    <a href={whatsappHref(pub.whatsapp)} target="_blank" rel="noopener noreferrer" data-whatsapp
+                      className={`${MAP_BUTTON} border-[#173f36] bg-[#75b79b] text-[#173f36] hover:bg-[#8cc6ad] ${FOCUS}`}>
+                      Escribir por WhatsApp<span className="sr-only"> (abre WhatsApp en una pestaña nueva)</span>
+                    </a>
+                  </Detail>
+                )}
+                {pub.opening_hours && <Detail label="Horario"><span data-horario>{pub.opening_hours}</span></Detail>}
+                {pub.website && (
+                  <Detail label="Sitio web">
+                    <a className={`inline-flex items-center gap-1.5 font-bold text-[#173f36] underline underline-offset-4 [overflow-wrap:anywhere] ${FOCUS}`} href={pub.website}
+                      target="_blank" rel="noopener noreferrer" data-sitio-web>
+                      {pub.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}<span className="sr-only"> (se abre en una pestaña nueva)</span>
+                    </a>
+                  </Detail>
+                )}
+              </>
+            ) : (
             <Detail label="Lugar">
               <span className="inline-flex items-start gap-1.5"><Icon name="pin" className="mt-1 size-4 shrink-0 text-muted" />{(pub.kind === 'EVENTO' && pub.venue) || pub.location || 'Caucasia'}</span>
+              {pub.kind === 'EVENTO' && pub.latitude != null && pub.status === 'PUBLISHED' && (
+                <a href={eventMapHref(pub.id)} data-ver-mapa
+                  className={`mt-3 flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-[#173f36] bg-white px-4 text-[15px] font-bold text-[#173f36] no-underline hover:bg-[#f3e4c8] ${FOCUS}`}>
+                  <Icon name="compass" className="size-4" /> Ver en el mapa vivo
+                </a>
+              )}
             </Detail>
+            )}
             {pub.kind === 'EVENTO' && pub.capacity ? <Detail label="Cupo">{pub.capacity} personas</Detail> : null}
             {category && (
               <Detail label="Categoría cultural">
                 <a className={`font-bold text-river no-underline hover:underline ${FOCUS}`} href={`#categoria/${category.slug}`}>{category.label}</a>
               </Detail>
             )}
-            {pub.link && (
+            {pub.link && !isPlace && (
               <Detail label={isOpportunity ? 'Enlace de postulación' : 'Más información'}>
                 <a className={`inline-flex items-center gap-1.5 font-bold text-river no-underline [overflow-wrap:anywhere] hover:underline ${FOCUS}`} href={pub.link} target="_blank" rel="noopener noreferrer">
                   Abrir enlace <Icon name="arrow-right" className="size-4" /><span className="sr-only"> (se abre en una pestaña nueva)</span>
@@ -229,6 +315,7 @@ export default function PublicationScreen({ id, user, canGoBack }) {
                 </span>
               </span>
             </Detail>
+            {isPlace && pub.updated_at && <Detail label="Actualizado"><span data-actualizado>{monthYear(pub.updated_at)}</span></Detail>}
           </aside>
           </div>
         </div>

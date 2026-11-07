@@ -27,7 +27,8 @@ def create(client, headers, category_ids, kind, title, **extra):
         "kind": kind, "category_id": category_ids[kind], "title": title,
         "summary": "Resumen para la pagina de la publicacion.",
         "content": "Primer parrafo del contenido.\n\nSegundo parrafo del contenido.",
-        "location": "Malecon de Caucasia", "municipality": "caucasia", **extra,
+        "location": "Malecon de Caucasia", "municipality": "caucasia",
+        **({"latitude": 7.9847, "longitude": -75.1953} if kind == "EVENTO" else {}), **extra,
     }
     resp = client.post("/api/publications", json=payload, headers=headers)
     assert resp.status_code == 201, resp.text

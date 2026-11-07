@@ -27,7 +27,8 @@ export default function EditableFrame({ label, title, onEdit, buttonRef, empty =
     );
   }
   return (
-    <div className="relative rounded-[24px] border-2 border-dashed border-transparent p-4 transition-colors duration-200 hover:border-[#d9cfbe] focus-within:border-[#d9cfbe] motion-reduce:transition-none max600:p-2">
+    // isolate: el lapiz (z-5, el mismo del header) no le gana al header por venir despues en el DOM.
+    <div className="relative isolate rounded-[24px] border-2 border-dashed border-transparent p-4 transition-colors duration-200 hover:border-[#d9cfbe] focus-within:border-[#d9cfbe] motion-reduce:transition-none max600:p-2">
       {!readOnly && <div className="absolute top-3 right-3 z-[5] max600:top-2 max600:right-2">
         {action || (
           <button ref={buttonRef} type="button" className={EDIT_BUTTON} onClick={onEdit} aria-label={`Editar ${label}`} title={`Editar ${label}`}>

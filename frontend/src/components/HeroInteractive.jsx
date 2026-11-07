@@ -268,7 +268,8 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
   const bgClass = getSceneBackground(scene);
 
   return (
-    <section className={`relative overflow-hidden flex flex-col items-center ${isGreeting ? 'justify-start pt-[72px]' : 'justify-center pt-[100px]'} text-center min-h-screen px-[7vw] pb-[60px] text-ink transition-[background] duration-[1.2s] ease-[ease] max768:pt-20 max768:px-[5vw] max768:pb-10 max768:min-h-[auto] ${isGreeting ? 'bg-[#f8f4ea]' : HERO_BG[bgClass] || HERO_BG['hero-bg-default']}`} id="inicio">
+    // isolate: el boton Volver (z-10) no sale a competir con el header (z-5).
+    <section className={`relative isolate overflow-hidden flex flex-col items-center ${isGreeting ? 'justify-start pt-[72px]' : 'justify-center pt-[100px]'} text-center min-h-screen px-[7vw] pb-[60px] text-ink transition-[background] duration-[1.2s] ease-[ease] max768:pt-20 max768:px-[5vw] max768:pb-10 max768:min-h-[auto] ${isGreeting ? 'bg-[#f8f4ea]' : HERO_BG[bgClass] || HERO_BG['hero-bg-default']}`} id="inicio">
       {/* Obra tejida (sol + arbol + raices) aclarada sobre el crema: cubre toda la seccion, anclada
           abajo para que las raices queden al pie. El JPG es a todo color; el aclarado es CSS (opacidad
           + multiply, que funde su blanco con el crema) y un velo radial crema deja respirar el centro

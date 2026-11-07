@@ -59,6 +59,8 @@ def create_publication(client, tokens, category_ids, who="gestor", kind="HISTORI
             "que antes no tenian ningun test.",
         ),
         "municipality": overrides.pop("municipality", "caucasia"),
+        # Los eventos exigen punto exacto en el Bajo Cauca (Mapa vivo).
+        **({"latitude": 7.9847, "longitude": -75.1953} if kind == "EVENTO" else {}),
         **overrides,
     }
     resp = hit(

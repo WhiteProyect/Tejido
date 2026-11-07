@@ -248,7 +248,7 @@ def admin(tokens):
 def payload(category_ids, kind="EVENTO", **extra):
     return {"kind": kind, "category_id": category_ids[kind], "title": "Fiestas del río", "summary": "Resumen del evento de prueba.",
             "content": "Contenido suficiente del evento de prueba.", "location": "Caucasia", "municipality": "caucasia",
-            "publish": True, **extra}
+            "publish": True, **({"latitude": 7.9847, "longitude": -75.1953} if kind == "EVENTO" else {}), **extra}
 
 
 def create(client, headers, category_ids, **extra):

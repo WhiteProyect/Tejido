@@ -1,235 +1,307 @@
-/**
- * MAPSCREEN.JSX — Mapa Interactivo del Bajo Cauca
- *
- * Pantalla que muestra un mapa real de OpenStreetMap con:
- * - Filtros por tipo de publicación (Eventos, Historias, Talento, etc.)
- * - Sidebar con lista de publicaciones filtradas
- * - Tarjeta de detalle al seleccionar un punto
- * - Coordenadas reales de lugares conocidos de Caucasia
- *
- * Basado en el módulo legacy map.js del frontend vanilla JS.
- * Portado a React como parte de la FASE 1 del plan de magia.
- */
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import Icon from '../components/Icon.jsx';
+import PlaceIcon from '../components/PlaceIcon.jsx';
+import MapCard from '../components/map/MapCard.jsx';
+import '../components/map/map.css';
+import { TS } from '../components/territory/territoryStyles.js';
+import { apiRequest } from '../utils/api.js';
+import { dateLine } from '../utils/agenda.js';
+import {
+  BOX_BOUNDS, MUNICIPALITY_ZOOM, TILE_ATTRIBUTION, TILE_URL, linkedKey, loadLeaflet, mapHash, moveMap, parseMapHash, pinIcon, pointHash,
+} from '../utils/mapConfig.js';
+import { DEFAULT_MAP_CENTER, MUNICIPALITY_LIST, municipalityCenter } from '../utils/municipalities.js';
 
-import { useState, useMemo } from 'react';
-import EmptyNote from '../components/EmptyNote.jsx';
-import ScreenIntro from '../components/ScreenIntro.jsx';
-import { SCREEN_SECTION } from '../components/uiStyles.js';
-import { KIND_COLORS, KIND_LABELS, normalizeText } from '../utils/constants.js';
+// Mapa vivo (#mapa): mapa real (Leaflet + teselas de OpenStreetMap, cargados de forma perezosa) con los
+// puntos de GET /api/map/points: eventos vigentes y lugares del directorio con punto exacto. Los lugares
+// llevan el icono y el color de su categoria de lugar (sin filtros ni agrupacion todavia). Vista inicial
+// en Caucasia; #mapa?municipio=<slug> centra alli y #mapa?evento=<id> o #mapa?lugar=<id> abren ese
+// punto. Clic o Enter en un marcador abre su tarjeta (popup anclado en
+// escritorio, panel inferior en movil); Esc y Cerrar la cierran y el foco vuelve al marcador. "Ver como
+// lista" es la alternativa accesible. Gestos: la rueda del raton solo hace zoom despues de hacer clic o
+// enfocar el mapa (asi la pagina se desplaza al pasar por encima); en movil el mapa ocupa el 62 % del
+// alto y deja franjas arriba y abajo para desplazar la pagina. El contenedor aisla los z-index de
+// Leaflet (map.css) para que nunca tapen el header ni el menu.
+const POINT_ZOOM = 16;
 
-const KNOWN_PLACES = [
-  { name: 'malecón de caucasia', coords: [7.9892, -75.1987] },
-  { name: 'el pando', coords: [7.9768, -75.2052] },
-  { name: 'parque de las banderas', coords: [7.9828, -75.1998] },
-  { name: 'parques de caucasia', coords: [7.9817, -75.1879] },
-];
-
-const CAUCASIA_CENTER = [7.9865, -75.1935];
-
-const MAP_FILTERS = [
-  { key: 'TODOS', label: 'Todo' },
-  { key: 'HISTORIA', label: 'Historias' },
-  { key: 'EVENTO', label: 'Eventos' },
-  { key: 'OPORTUNIDAD', label: 'Oportunidades' },
-  { key: 'TALENTO', label: 'Talento' },
-  { key: 'INICIATIVA', label: 'Iniciativas' },
-];
-
-/**
- * Obtiene coordenadas GPS para una publicación basándose en su campo location.
- * Busca coincidencias parciales en los lugares conocidos.
- * Si no hay coincidencia, retorna el centro de Caucasia.
- */
-function getPublicationCoords(pub) {
-  const location = normalizeText(pub.location || 'Caucasia');
-  const match = KNOWN_PLACES.find((place) =>
-    location.includes(normalizeText(place.name))
-  );
-  return match ? match.coords : CAUCASIA_CENTER;
+function useSheet() {
+  const query = '(max-width: 767px)';
+  const [sheet, setSheet] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
+  useEffect(() => {
+    const list = window.matchMedia(query);
+    const onChange = () => setSheet(list.matches);
+    list.addEventListener('change', onChange);
+    return () => list.removeEventListener('change', onChange);
+  }, []);
+  return sheet;
 }
 
-/**
- * Genera la URL del embed de OpenStreetMap.
- * Calcula un bounding box alrededor de las coordenadas para encuadre óptimo.
- */
-function getMapEmbedUrl(coords = CAUCASIA_CENTER) {
-  const [lat, lon] = coords;
-  // Bounding box: ±0.008 grados de longitud, ±0.005 de latitud
-  const bbox = [lon - 0.008, lat - 0.005, lon + 0.008, lat + 0.005].join(',');
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(`${lat},${lon}`)}`;
+const TYPE_NOUN = { EVENTO: 'Evento', LUGAR: 'Lugar' };
+
+function decorate(marker, point, selected) {
+  const el = marker.getElement();
+  if (!el) return;
+  const details = [point.place_category?.label, point.municipality_label].filter(Boolean).join(', ');
+  el.setAttribute('role', 'button');
+  el.setAttribute('aria-label', `${TYPE_NOUN[point.type] || 'Punto'}: ${point.title}${details ? `, ${details}` : ''}. Abrir tarjeta`);
+  el.setAttribute('aria-expanded', selected ? 'true' : 'false');
+  el.dataset.punto = point.key;
 }
 
-/**
- * Genera la URL para abrir la ubicación en OpenStreetMap (nueva pestaña).
- */
-function getOsmUrl(coords = CAUCASIA_CENTER) {
-  const [lat, lon] = coords;
-  return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=16/${lat}/${lon}`;
-}
+export default function MapScreen() {
+  const [state, setState] = useState({ loading: true, error: '', points: [] });
+  const [selected, setSelected] = useState(null);
+  const [listOpen, setListOpen] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [mapError, setMapError] = useState(false);
+  const [tileError, setTileError] = useState(false);
+  const sheet = useSheet();
+  const titleId = useId();
+  const mapEl = useRef(null);
+  const mapRef = useRef(null);
+  const LRef = useRef(null);
+  const markers = useRef(new Map());
+  const popupRef = useRef(null);
+  const [popupNode] = useState(() => (typeof document !== 'undefined' ? document.createElement('div') : null));
+  const initial = useRef(parseMapHash());
+  const deepLinked = useRef(false);
+  const focusAfter = useRef(null);
+  const sheetRef = useRef(null);
 
-/**
- * Genera la URL del embed por defecto (vista general de Caucasia).
- */
-function getDefaultEmbedUrl() {
-  return 'https://www.openstreetmap.org/export/embed.html?bbox=-75.222%2C7.964%2C-75.166%2C8.006&layer=mapnik';
-}
+  const byKey = useMemo(() => new Map(state.points.map((p) => [p.key, p])), [state.points]);
+  const point = selected ? byKey.get(selected) : null;
 
-// Chip de filtro y fila del sidebar: base + estado excluyente. En el legado `:hover` y
-// `.active` compartian regla, asi que el hover va en la base.
-const CHIP = 'border border-[rgba(23,58,49,0.25)] rounded-[999px] cursor-pointer text-[12px] font-extrabold py-[9px] px-[15px] transition-[background,color] duration-150 ease-[ease] hover:bg-ink hover:text-white max600:whitespace-nowrap';
-const ITEM = 'items-start border rounded-[14px] cursor-pointer flex gap-2.5 py-3 px-3.5 transition-[background,border-color] duration-150 ease-[ease] text-left hover:bg-[#eef6f0] hover:border-[rgba(23,58,49,0.12)] max600:py-2.5 max600:px-3';
-// Parrafos del detalle. En el legado `.map-detail-card p` (0,1,1) le ganaba a
-// `.map-detail-meta` (0,1,0): la linea de metadatos tambien sale a 14 px y con este margen.
-const DETAIL_P = 'text-muted text-[14px] leading-[1.5] mt-0 mx-0 mb-3';
+  useEffect(() => { document.title = 'Mapa vivo del Bajo Cauca · TEJIDO'; }, []);
 
-export default function MapScreen({ publications = [] }) {
-  /** Filtro activo: 'TODOS' por defecto, o el kind seleccionado */
-  const [activeFilter, setActiveFilter] = useState('TODOS');
+  const load = useCallback(async () => {
+    setState((current) => ({ ...current, loading: true, error: '' }));
+    try {
+      const data = await apiRequest('/api/map/points');
+      setState({ loading: false, error: '', points: Array.isArray(data.points) ? data.points : [] });
+    } catch (error) {
+      setState({ loading: false, error: error.message || 'No pudimos cargar los puntos del mapa.', points: [] });
+    }
+  }, []);
 
-  /** ID de la publicación seleccionada en el sidebar */
-  const [selectedId, setSelectedId] = useState(null);
+  useEffect(() => { load(); }, [load]);
 
-  /**
-   * Publicaciones filtradas según el filtro activo.
-   * Se recalcula solo cuando cambia publications o activeFilter.
-   */
-  const filteredPubs = useMemo(() => {
-    if (activeFilter === 'TODOS') return publications;
-    return publications.filter((p) => p.kind === activeFilter);
-  }, [publications, activeFilter]);
+  // Mapa (una vez).
+  useEffect(() => {
+    let alive = true;
+    loadLeaflet().then((L) => {
+      if (!alive || !mapEl.current || mapRef.current) return;
+      LRef.current = L;
+      const start = initial.current.municipio ? municipalityCenter(initial.current.municipio) : DEFAULT_MAP_CENTER;
+      const map = L.map(mapEl.current, {
+        center: start, zoom: MUNICIPALITY_ZOOM, minZoom: 8, maxZoom: 18,
+        maxBounds: L.latLngBounds(BOX_BOUNDS).pad(0.15), maxBoundsViscosity: 0.9,
+        scrollWheelZoom: false, zoomAnimation: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      });
+      map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener noreferrer">Leaflet</a>');
+      L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).on('tileerror', () => setTileError(true)).addTo(map);
+      map.on('focus click', () => map.scrollWheelZoom.enable());
+      map.on('blur mouseout', () => map.scrollWheelZoom.disable());
+      mapRef.current = map;
+      setReady(true);
+    }).catch(() => { if (alive) setMapError(true); });
+    return () => {
+      alive = false;
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
+  }, []);
 
-  /**
-   * Publicación actualmente seleccionada.
-   * Se busca por ID para obtener sus datos completos.
-   */
-  const selectedPub = useMemo(() => {
-    if (!selectedId) return null;
-    return publications.find((p) => p.id === selectedId) || null;
-  }, [publications, selectedId]);
+  // Marcadores.
+  useEffect(() => {
+    if (!ready) return;
+    const L = LRef.current;
+    const map = mapRef.current;
+    markers.current.forEach((marker) => marker.remove());
+    markers.current.clear();
+    state.points.forEach((p) => {
+      const marker = L.marker([p.lat, p.lng], { icon: pinIcon(L, p.type, { category: p.place_category }), keyboard: true, riseOnHover: true }).addTo(map);
+      marker.on('click', () => setSelected(p.key));
+      // Leaflet solo abre con Enter los popups propios (bindPopup); este lo maneja la pantalla.
+      marker.on('keypress', (event) => {
+        const { key } = event.originalEvent;
+        if (key === 'Enter' || key === ' ') { event.originalEvent.preventDefault(); setSelected(p.key); }
+      });
+      decorate(marker, p, false);
+      markers.current.set(p.key, marker);
+    });
+    const wanted = linkedKey(initial.current);
+    if (!deepLinked.current && wanted && state.points.length) {
+      deepLinked.current = true;
+      const target = state.points.find((p) => p.key === wanted);
+      if (target) {
+        map.setView([target.lat, target.lng], POINT_ZOOM, { animate: false });
+        setSelected(target.key);
+      }
+    }
+  }, [ready, state.points]);
 
-  /**
-   * URL del iframe del mapa.
-   * Si hay una publicación seleccionada, centra en sus coordenadas.
-   * Si no, muestra la vista general de Caucasia.
-   */
-  const mapUrl = selectedPub
-    ? getMapEmbedUrl(getPublicationCoords(selectedPub))
-    : getDefaultEmbedUrl();
+  // Seleccion: pin destacado, popup (escritorio) o panel (movil) y la URL compartible.
+  useEffect(() => {
+    const map = mapRef.current;
+    const L = LRef.current;
+    if (!map || !L) return;
+    markers.current.forEach((marker, key) => {
+      const p = byKey.get(key);
+      if (!p) return;
+      marker.setIcon(pinIcon(L, p.type, { selected: key === selected, category: p.place_category }));
+      decorate(marker, p, key === selected);
+    });
+    popupRef.current?.remove();
+    popupRef.current = null;
+    const current = window.location.hash;
+    const next = selected && byKey.get(selected) ? pointHash(byKey.get(selected)) : mapHash({ municipio: parseMapHash().municipio });
+    if (current.startsWith('#mapa') && current !== next) window.history.replaceState(window.history.state, '', next);
+    if (!selected || !byKey.get(selected)) return;
+    const p = byKey.get(selected);
+    if (!sheet) {
+      const popup = L.popup({ closeButton: false, autoPan: true, autoPanPadding: [24, 24], maxWidth: 320, minWidth: 300, className: 'tejido-popup' })
+        .setLatLng([p.lat, p.lng]).setContent(popupNode).openOn(map);
+      popup.on('remove', () => setSelected((cur) => (cur === p.key && popupRef.current === popup ? null : cur)));
+      popupRef.current = popup;
+      requestAnimationFrame(() => popup.update());
+    }
+    // El foco entra a la tarjeta (su boton Cerrar) para que el teclado y el lector la encuentren.
+    requestAnimationFrame(() => document.querySelector(`[data-tarjeta-mapa="${p.key}"] button`)?.focus({ preventScroll: true }));
+  }, [selected, sheet, byKey, popupNode]);
 
-  /**
-   * Maneja el clic en una publicación del sidebar.
-   * Actualiza la selección y centra el mapa en esa ubicación.
-   */
-  function handleSelectPub(id) {
-    setSelectedId(id === selectedId ? null : id);
+  const close = useCallback(() => {
+    const key = selected;
+    focusAfter.current = key;
+    setSelected(null);
+  }, [selected]);
+
+  // Tras cerrar, el foco vuelve al marcador.
+  useEffect(() => {
+    if (selected || !focusAfter.current) return;
+    const marker = markers.current.get(focusAfter.current);
+    focusAfter.current = null;
+    requestAnimationFrame(() => marker?.getElement()?.focus({ preventScroll: true }));
+  }, [selected]);
+
+  // Panel inferior abierto: reserva su alto y lo publica para que el lanzador de Hilo suba.
+  useEffect(() => {
+    if (!sheet || !selected || !sheetRef.current) return undefined;
+    const apply = () => {
+      const height = `${sheetRef.current?.offsetHeight || 0}px`;
+      document.body.style.paddingBottom = height;
+      document.documentElement.style.setProperty('--barra-inferior', height);
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(sheetRef.current);
+    return () => {
+      observer.disconnect();
+      document.body.style.paddingBottom = '';
+      document.documentElement.style.removeProperty('--barra-inferior');
+    };
+  }, [sheet, selected]);
+
+  useEffect(() => {
+    if (!selected) return undefined;
+    const onKey = (event) => { if (event.key === 'Escape') { event.preventDefault(); close(); } };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [selected, close]);
+
+  function goMunicipality(slug) {
+    setSelected(null);
+    if (mapRef.current) moveMap(mapRef.current, municipalityCenter(slug), MUNICIPALITY_ZOOM);
+    window.history.replaceState(window.history.state, '', mapHash({ municipio: slug }));
   }
 
-  return (
-    <section className={SCREEN_SECTION}>
-      {/* Encabezado de la pantalla */}
-      <ScreenIntro
-        eyebrow="Memoria, río y comunidad"
-        title="Mapa vivo"
-        description="Descubre dónde nacen las historias, eventos y talentos de Caucasia y el Bajo Cauca."
-      />
+  function choose(p) {
+    if (mapRef.current) moveMap(mapRef.current, [p.lat, p.lng], POINT_ZOOM);
+    setSelected(p.key);
+  }
 
-      {/* Barra de filtros por tipo de publicación */}
-      <div className="flex flex-wrap gap-2 mb-6 max600:flex-nowrap max600:overflow-x-auto max600:pb-[5px] max600:[scrollbar-width:none] max600:[&::-webkit-scrollbar]:hidden">
-        {MAP_FILTERS.map((filter) => (
-          <button
-            key={filter.key}
-            className={`${CHIP} ${activeFilter === filter.key ? 'bg-ink text-white' : 'bg-[rgba(255,255,255,0.65)] text-ink'}`}
-            onClick={() => {
-              setActiveFilter(filter.key);
-              setSelectedId(null); // Limpiar selección al cambiar filtro
-            }}
-          >
-            {filter.label}
+  const count = state.points.length;
+  const countText = state.loading || state.error ? '' : `${count} ${count === 1 ? 'punto' : 'puntos'} en el mapa`;
+  const listId = `${titleId}-lista`;
+  const overlay = 'absolute inset-x-4 top-4 z-[500] mx-auto max-w-[420px] rounded-[16px] border border-[#ddd5c7] bg-[#fff9ec] p-4 text-center text-[15px] text-[#173f36] [box-shadow:0_8px_24px_rgba(12,36,30,.18)]';
+
+  return (
+    <div className={`${TS.page} !pt-8`}>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className={TS.kicker}>Mapa vivo · Bajo Cauca</p>
+          <h1 className="mt-2 mb-0 font-sans text-[32px] font-extrabold leading-[1.1] tracking-[-0.03em] text-[#173f36] max-[767px]:text-[26px]">
+            Lo que pasa en <span className={TS.heroItalic}>el territorio</span>
+          </h1>
+        </div>
+        <p className="m-0 text-[15px] font-semibold text-[#3f514a]" aria-live="polite" data-contador>{countText}</p>
+      </header>
+
+      <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]" role="group" aria-label="Ir a un municipio">
+        {MUNICIPALITY_LIST.map(({ slug, name }) => (
+          <button key={slug} type="button" className={`${TS.togglePill} ${TS.togglePillOff}`} onClick={() => goMunicipality(slug)} data-ir-municipio={slug}>
+            {name}
           </button>
         ))}
+        <button type="button" className={`${TS.togglePill} ${listOpen ? TS.togglePillOn : TS.togglePillOff} ml-auto`} aria-expanded={listOpen} aria-controls={listId}
+          onClick={() => setListOpen((open) => !open)}>
+          <Icon name="book" className="size-4" /> {listOpen ? 'Ocultar lista' : 'Ver como lista'}
+        </button>
       </div>
 
-      {/* Layout principal: mapa + sidebar */}
-      <div className="grid gap-[22px] grid-cols-[minmax(0,1.65fr)_minmax(280px,0.6fr)] max900:grid-cols-[1fr]">
-        {/* Mapa de OpenStreetMap embebido */}
-        <div className="min-h-[540px] rounded-[30px] relative overflow-hidden bg-[#d6e7d4] [box-shadow:inset_0_0_0_1px_rgba(23,58,49,0.1)] max900:min-h-[470px] max600:rounded-[22px] max600:min-h-[400px]">
-          <iframe
-            className="w-full h-full min-h-[540px] border-0 block max900:min-h-[470px] max600:min-h-[400px] max600:rounded-[22px]"
-            src={mapUrl}
-            title="Mapa interactivo de Caucasia"
-            loading="lazy"
-          />
-
-          {/* Leyenda de colores del mapa */}
-          <div className="absolute z-10 right-3.5 bottom-3.5 flex gap-2.5 py-2.5 px-3.5 bg-[rgba(255,253,248,0.94)] backdrop-blur-[8px] rounded-[14px] [box-shadow:0_5px_14px_rgba(23,58,49,0.12)] text-[10px] font-bold">
-            {Object.entries(KIND_COLORS).map(([kind, color]) => (
-              <div key={kind} className="flex items-center gap-[5px] whitespace-nowrap">
-                <span className="w-2.5 h-2.5 rounded-[50%] shrink-0" style={{ background: color }} />
-                <span>{KIND_LABELS[kind]}</span>
-              </div>
-            ))}
+      <div className="tejido-map relative mt-4 h-[calc(100svh-250px)] min-h-[460px] overflow-hidden rounded-[20px] border border-[#ddd5c7] max-[767px]:h-[62svh] max-[767px]:min-h-[340px]" data-mapa-vivo>
+        <div ref={mapEl} className="size-full" role="region" aria-label="Mapa de eventos y lugares del Bajo Cauca" />
+        {(state.loading || (!ready && !mapError)) && <p className={overlay} role="status" data-estado-mapa="cargando">Cargando el mapa...</p>}
+        {mapError && <p className={overlay} role="alert">No pudimos cargar el mapa. Revisa tu conexión y recarga la página.</p>}
+        {state.error && (
+          <div className={`${overlay} border-2 border-[#d85b36]`} role="alert" data-estado-mapa="error">
+            <p className="m-0 font-bold">Se nos enredó un hilo al cargar los puntos del mapa</p>
+            <button type="button" className={`${TS.btnSolid} mt-3`} onClick={load}>Reintentar</button>
           </div>
-        </div>
-
-        {/* Sidebar con lista de publicaciones filtradas */}
-        <aside className="bg-[rgba(255,255,255,0.95)] backdrop-blur-[16px] border border-[rgba(23,58,49,0.06)] rounded-[20px] [box-shadow:0_12px_40px_rgba(18,60,52,0.14)] flex flex-col max-h-[600px] overflow-hidden p-6 max900:max-h-[40vh] max600:rounded-[16px] max600:max-h-[35vh] max600:p-3.5">
-          <div className="border-b border-b-[rgba(23,58,49,0.08)] mb-[18px] pb-3.5">
-            <p className="text-[#6a7c75] text-[10px] font-extrabold tracking-[.18em] mt-0 mx-0 mb-1 uppercase">Puntos del territorio</p>
-            <h2 className="font-sans text-[22px] tracking-[-0.03em] leading-[1.15] mt-0 mx-0 mb-1.5 max900:text-[18px] max600:text-[16px]">{filteredPubs.length} lugar{filteredPubs.length !== 1 ? 'es' : ''}</h2>
-            <p className="text-muted text-[13px] leading-[1.4] m-0">
-              {activeFilter === 'TODOS'
-                ? 'Todos los contenidos publicados'
-                : `Filtrado por ${KIND_LABELS[activeFilter] || activeFilter}`}
-            </p>
-          </div>
-
-          {/* Lista scrolleable de publicaciones */}
-          <div className="grid gap-2 overflow-y-auto [scrollbar-width:thin]">
-            {filteredPubs.length === 0 && (
-              <EmptyNote compact icon="pin" title="Filtro sin coincidencias" text="Prueba con otra categoría o explora el resto del mapa." />
-            )}
-
-            {filteredPubs.map((pub) => (
-              <button
-                key={pub.id}
-                className={`${ITEM} ${selectedId === pub.id ? 'bg-[#eef6f0] border-[rgba(23,58,49,0.12)]' : 'bg-white border-[rgba(23,58,49,0.06)]'}`}
-                onClick={() => handleSelectPub(pub.id)}
-              >
-                {/* Punto de color según el tipo */}
-                <span
-                  className="rounded-[50%] shrink-0 h-2.5 mt-1 w-2.5"
-                  style={{ background: KIND_COLORS[pub.kind] || '#8a4f7d' }}
-                />
-                <div>
-                  <b className="block text-[13px] leading-[1.25] text-ink max600:text-[12px]">{pub.title}</b>
-                  <small className="text-muted text-[11px]">{pub.location || 'Caucasia'}</small>
-                </div>
-              </button>
-            ))}
-          </div>
-        </aside>
-      </div>
-
-      {/* Tarjeta de detalle: aparece cuando se selecciona una publicación */}
-      {selectedPub && (
-        <div className="bg-[rgba(255,255,255,0.95)] backdrop-blur-[14px] border border-[rgba(23,58,49,0.06)] rounded-[18px] [box-shadow:0_12px_36px_rgba(18,60,52,0.15)] mt-[22px] max-w-[480px] p-6 max600:rounded-[14px] max600:p-[18px]" role="complementary">
-          <span className="inline-block text-[18px] mb-2">{'\u2316'}</span>
-          <p className={`${DETAIL_P} font-extrabold tracking-[0.08em] uppercase`}>
-            {KIND_LABELS[selectedPub.kind] || selectedPub.kind} ·{' '}
-            {selectedPub.location || 'Caucasia'}
+        )}
+        {!state.loading && !state.error && count === 0 && ready && (
+          <p className={overlay} role="status" data-estado-mapa="vacio">Aún no hay eventos ni lugares con ubicación</p>
+        )}
+        {tileError && (
+          <p className="absolute bottom-8 left-3 z-[500] m-0 max-w-[calc(100%-24px)] rounded-[10px] bg-[#fff9ec] px-3 py-2 text-[14px] text-[#3f514a] [box-shadow:0_4px_12px_rgba(12,36,30,.15)]" role="status" data-teselas>
+            No pudimos cargar parte del mapa base. Los puntos siguen disponibles.
           </p>
-          <h3 className="font-sans tracking-[-.055em] text-[18px] leading-[1.2] mt-0 mx-0 mb-2">{selectedPub.title}</h3>
-          <p className={DETAIL_P}>{selectedPub.summary}</p>
-          <a
-            className="text-river text-[12px] font-semibold underline underline-offset-2"
-            href={getOsmUrl(getPublicationCoords(selectedPub))}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Abrir ubicación en OpenStreetMap
-          </a>
+        )}
+      </div>
+      {point && sheet && (
+        // Panel inferior fijo, fuera del contenedor aislado del mapa: queda bajo el header y el menu (z 60
+        // contra 90+) y el lanzador de Hilo sube sobre el (--barra-inferior), sin taparle los botones.
+        <div ref={sheetRef} className="fixed inset-x-0 bottom-0 z-[60] max-h-[70svh] overflow-y-auto rounded-t-[20px] border-t-2 border-[#173f36] bg-[#fff9ec] pb-[env(safe-area-inset-bottom)]" data-panel-mapa>
+          <MapCard key={point.key} point={point} titleId={titleId} onClose={close} sheet />
         </div>
       )}
-    </section>
+      <p className="mt-2 mb-0 text-[14px] text-[#53645c] max-[767px]:hidden">Haz clic en el mapa para acercarte con la rueda del ratón. Los marcadores también se abren con Tab y Enter.</p>
+      {point && !sheet && popupNode && createPortal(<MapCard key={point.key} point={point} titleId={titleId} onClose={close} />, popupNode)}
+
+      {listOpen && (
+        <section id={listId} className="mt-6" aria-labelledby={`${listId}-titulo`}>
+          <h2 id={`${listId}-titulo`} className="m-0 font-sans text-[22px] font-extrabold text-[#173f36]">Puntos en el mapa</h2>
+          {count ? (
+            <ul className="mt-3 mb-0 grid list-none gap-2 p-0">
+              {state.points.map((p) => (
+                <li key={p.key}>
+                  <button type="button" onClick={() => choose(p)} aria-current={selected === p.key ? 'true' : undefined}
+                    className={`flex w-full min-h-12 cursor-pointer flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-[14px] border border-[#ddd5c7] bg-white px-4 py-3 text-left font-sans text-[16px] text-[#173f36] hover:border-[#173f36] ${TS.focus}`}>
+                    <strong className="flex min-w-0 items-center gap-2 [overflow-wrap:anywhere]">
+                      {p.type === 'LUGAR' ? <PlaceIcon icon={p.place_category?.icon} className="size-5" /> : <Icon name="calendar" className="size-5" />}
+                      <span className="sr-only">{TYPE_NOUN[p.type]}: </span>{p.title}
+                    </strong>
+                    <span className="text-[15px] text-[#3f514a]">
+                      {(p.type === 'LUGAR'
+                        ? [p.place_category?.label || 'Lugar', p.municipality_label]
+                        : [p.municipality_label, p.tradition_text && !p.start_date ? p.tradition_text : dateLine(p.start_date, p.end_date)]).filter(Boolean).join(' · ')}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="mt-3 mb-0 text-[15px] text-[#3f514a]">Aún no hay eventos ni lugares con ubicación.</p>}
+        </section>
+      )}
+    </div>
   );
 }

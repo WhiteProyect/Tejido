@@ -114,6 +114,11 @@ function getRoute() {
     return { screen: 'agenda', slug: null };
   }
 
+  // Mapa vivo con deep link: #mapa?evento=<id> o #mapa?municipio=<slug> (MapScreen lo lee del hash).
+  if (hash.startsWith('mapa?')) {
+    return { screen: 'mapa', slug: null };
+  }
+
   // Oportunidades con filtros: #oportunidades?mun=...&tipo=...&cat=...&pronto=1 (OpportunitiesScreen).
   if (hash.startsWith('oportunidades?')) {
     return { screen: 'oportunidades', slug: null };
@@ -326,7 +331,7 @@ export default function App() {
       else content = user.role === 'GESTOR' ? <GestorDashboard user={user} section={route.slug} /> : <NotFoundScreen />;
       break;
     case 'mapa':
-      content = <MapScreen publications={publications} />;
+      content = <MapScreen />;
       break;
     case 'municipios':
       content = <MunicipalitiesScreen />;

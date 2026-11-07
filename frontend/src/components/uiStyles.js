@@ -120,6 +120,16 @@ export const TYPE_COLORS = {
 export const TYPE_COLOR_KEYS = Object.keys(TYPE_COLORS);
 export const typeColors = (color) => TYPE_COLORS[color] || TYPE_COLORS.crema;
 
+// Paleta cerrada de las categorias de lugar: la de los tipos mas rio y bosque (backend:
+// schemas/places.py::PLACE_COLORS). Rio es el tono oscuro (#146f80): el #1d8fa3 no llega a 4,5:1 con crema.
+export const PLACE_COLORS = {
+  ...TYPE_COLORS,
+  rio: { label: 'Río', bg: '#146f80', text: T.paper },
+  bosque: { label: 'Bosque', bg: '#2d5a3d', text: T.paper },
+};
+export const PLACE_COLOR_KEYS = Object.keys(PLACE_COLORS);
+export const placeColors = (color) => PLACE_COLORS[color] || PLACE_COLORS.crema;
+
 // Pildoras (texto >= 14 px, peso 600+).
 export const PILL_COLORS = {
   municipality: { bg: T.ink, text: T.paper },

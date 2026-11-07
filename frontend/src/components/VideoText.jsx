@@ -282,7 +282,8 @@ export default function VideoText({ text = 'TEJIDO', videoSrc = '/videos/tejido-
   const unitProps = { reduceMotion, entered, visible, progress: scrollYProgress };
 
   return (
-    <section ref={sectionRef} className={`relative w-full overflow-hidden bg-forest ${SECTION_HEIGHT} ${className}`}>
+    // isolate: la flora (z-10) y el svg (z-0) compiten solo dentro de la seccion, nunca con el header (z-5).
+    <section ref={sectionRef} className={`relative isolate w-full overflow-hidden bg-forest ${SECTION_HEIGHT} ${className}`}>
       <h2 className="sr-only">{text}</h2>
       <video
         ref={videoRef}

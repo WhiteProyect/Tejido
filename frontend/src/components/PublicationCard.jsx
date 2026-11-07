@@ -1,4 +1,5 @@
 import Icon from './Icon.jsx';
+import { PlaceFallback } from './PlaceIcon.jsx';
 import PublicationActions from './PublicationActions.jsx';
 import { BTN_INK_SM } from './uiStyles.js';
 import { KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
@@ -19,8 +20,9 @@ export default function PublicationCard({ publication, user, returnTo, onFavorit
   const hasRealImage = Boolean(image) && !image.startsWith('linear-gradient(');
 
   return (
+    // isolate: la etiqueta de tipo (z-10) queda dentro de la tarjeta y no tapa el header (z-5) al pasar debajo.
     <article
-      className={`group relative flex flex-col overflow-hidden rounded-[24px] border border-[#e2d9ca] bg-[#fffaf2] transition-[border-color,translate] duration-300 ${EASE} hover:border-[color-mix(in_srgb,var(--kind)_40%,#e2d9ca)] focus-within:border-[color-mix(in_srgb,var(--kind)_40%,#e2d9ca)] motion-safe:hover:-translate-y-0.5 md:flex-row`}
+      className={`group relative isolate flex flex-col overflow-hidden rounded-[24px] border border-[#e2d9ca] bg-[#fffaf2] transition-[border-color,translate] duration-300 ${EASE} hover:border-[color-mix(in_srgb,var(--kind)_40%,#e2d9ca)] focus-within:border-[color-mix(in_srgb,var(--kind)_40%,#e2d9ca)] motion-safe:hover:-translate-y-0.5 md:flex-row`}
       style={{ '--kind': KIND_COLORS[publication.kind] || 'var(--river)' }}
     >
       {/* Etiqueta de tipo en la esquina superior derecha de toda la tarjeta. En horizontal cae
@@ -41,6 +43,9 @@ export default function PublicationCard({ publication, user, returnTo, onFavorit
             className={`absolute inset-0 bg-cover bg-center transition-[scale] duration-500 ${EASE} motion-safe:group-hover:scale-[1.04]`}
             style={{ backgroundImage: `url("${cdnImage(image, { width: 960 })}")` }}
           />
+        ) : publication.kind === 'LUGAR' ? (
+          // Lugar sin foto: el icono de su categoria de lugar sobre crema (no hay portada inventada).
+          <PlaceFallback category={publication.place_category} className="absolute inset-0" />
         ) : (
           <div className="absolute inset-0 bg-[color-mix(in_srgb,var(--kind)_12%,#f3ece0)]" />
         )}
@@ -48,7 +53,7 @@ export default function PublicationCard({ publication, user, returnTo, onFavorit
 
       <div className="flex flex-1 flex-col px-6 py-5 md:pt-12">
         <h3 className="mt-0 mb-2 font-sans text-[22px] font-bold leading-[1.2] tracking-[-.03em] text-ink">{publication.title}</h3>
-        <p className="font-display m-0 mb-3 italic font-bold leading-[1.4] text-[17px] text-[#2d5a3d]">{publication.summary}</p>
+        {publication.summary && <p className="font-display m-0 mb-3 italic font-bold leading-[1.4] text-[17px] text-[#2d5a3d]">{publication.summary}</p>}
         <p className="m-0 mb-4 text-[13px] font-semibold uppercase tracking-[.06em] text-[#6c756f]">{publication.location || 'Caucasia'}</p>
 
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-t-line pt-3.5">

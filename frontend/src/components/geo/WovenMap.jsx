@@ -246,7 +246,8 @@ export default function WovenMap({ counts, narrow }) {
   const hoverable = () => window.matchMedia(FINE_HOVER).matches;
 
   return (
-    <div ref={rootRef} className="relative overflow-hidden rounded-3xl border border-[#ddd5c7]" style={{ backgroundColor: CANVAS }}>
+    // isolate: la vista previa (z-20) queda dentro del mapa y no tapa el header (z-5).
+    <div ref={rootRef} className="relative isolate overflow-hidden rounded-3xl border border-[#ddd5c7]" style={{ backgroundColor: CANVAS }}>
       {/* Textura de puntos: patron SVG de circulos planos, detras de todo (tambien de Hilo en movil). */}
       <svg aria-hidden="true" className="absolute inset-0 size-full">
         <defs>

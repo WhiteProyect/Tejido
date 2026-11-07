@@ -23,7 +23,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from backend.service.core.config import settings
 from backend.service.db.session import get_db
 from backend.service.main import app
-from backend.service.models.tables import Artist, OpportunityType, Publication, TalentProfile
+from backend.service.models.tables import Artist, OpportunityType, PlaceCategory, Publication, TalentProfile
 from backend.service.schemas.municipalities import deduce_municipality
 from backend.service.services import municipalities as municipality_service
 from backend.tests_fastapi.test_branches import admin, branch_cleanup, gestor, join, leader, sent  # noqa: F401
@@ -48,6 +48,12 @@ def load_script():
 def publication(category_ids, kind, title, **extra):
     data = body(category_ids, title, **extra)
     data.update(kind=kind, category_id=category_ids[kind])
+    if kind in ("EVENTO", "LUGAR"):  # punto exacto obligatorio
+        data.update({"latitude": 7.9847, "longitude": -75.1953})
+    if kind == "LUGAR":  # categoria de lugar y direccion obligatorias
+        with schema_session() as session:
+            data["place_category_id"] = session.execute(select(PlaceCategory.id).order_by(PlaceCategory.id).limit(1)).scalar_one()
+        data["location"] = "Calle 20 # 5-10"
     if kind == "OPORTUNIDAD":  # tipo, quien convoca y enlace son obligatorios en las oportunidades
         with schema_session() as session:
             data["opportunity_type_id"] = session.execute(select(OpportunityType.id).order_by(OpportunityType.id).limit(1)).scalar_one()
@@ -81,6 +87,10 @@ def test_publication_requires_valid_municipality_for_every_role_and_kind(client,
     for role, headers in roles.items():
         for kind in KINDS:
             title = f"Municipio {role} {kind} {uuid.uuid4().hex[:4]}"
+            if kind == "LUGAR" and role in ("gestor", "participante"):  # solo admin y lider crean lugares
+                resp = client.post("/api/publications", json=publication(category_ids, kind, title), headers=headers)
+                assert resp.status_code == 403 and resp.json()["message"] == "Solo el equipo de TEJIDO y los líderes pueden agregar lugares"
+                continue
             for bad in ({}, {"municipality": ""}, {"municipality": "medellin"}):
                 data = publication(category_ids, kind, title)
                 data.pop("municipality")

@@ -4,6 +4,8 @@ Modelo: "lider" no es un rol, es organizations.is_leader (maximo uno por rama, l
 Un gestor participante es un GESTOR cuya organizacion activa esta en la rama y no es lider.
 - Lo que publica un participante lo modera el lider de su rama; lo del lider, el admin.
 - Sin lider activo, todo lo que le tocaria al lider lo gestiona el admin.
+- Los lugares (kind LUGAR, los crean el admin y los lideres) los aprueba SIEMPRE el admin: ningun lider
+  los modera ni los ve en su cola, tampoco los de otro lider.
 - Todos los permisos se resuelven con la rama guardada en la base, nunca con la del cliente.
 """
 from datetime import datetime, timezone
@@ -93,12 +95,12 @@ def require_branch_manager(db: Session, user: Optional[dict], branch: str) -> st
 
 
 def can_moderate(db: Session, user: Optional[dict], publication: dict) -> bool:
-    """publication: dict con author_id y cultural_category (tal como estan en la base)."""
+    """publication: dict con author_id, cultural_category y kind (tal como estan en la base)."""
     if not user:
         return False
     if user["role"] == "ADMIN":
         return True
-    if user["role"] != "GESTOR" or publication["author_id"] == user["id"]:
+    if user["role"] != "GESTOR" or publication["author_id"] == user["id"] or publication.get("kind") == "LUGAR":
         return False
     branch = leader_of(db, user["id"])
     return (branch is not None and publication.get("cultural_category") == branch
@@ -107,7 +109,9 @@ def can_moderate(db: Session, user: Optional[dict], publication: dict) -> bool:
 
 def moderator_for(db: Session, publication: dict):
     """A quien le toca revisar: el lider (user_id, name, email) si el autor es participante y su
-    rama tiene lider activo; si no, "ADMIN"."""
+    rama tiene lider activo; si no (y siempre en los lugares), "ADMIN"."""
+    if publication.get("kind") == "LUGAR":
+        return "ADMIN"
     branch = participant_branch(db, publication["author_id"])
     if branch and publication.get("cultural_category") == branch:
         leader = branch_leader(db, branch)
@@ -366,7 +370,7 @@ def remove_participant(db: Session, branch: str, user_id: int, acting_user_id: i
 
 
 def review_queue(db: Session, user: dict, branch: str) -> list[dict]:
-    """REVIEW de la rama: el admin ve todas; el lider, solo las de sus participantes."""
+    """REVIEW de la rama: el admin ve todas; el lider, solo las de sus participantes (nunca lugares)."""
     query = (
         select(Publication.id, Publication.title, Publication.kind, Publication.status, Publication.created_at,
                Publication.updated_at, Publication.author_id, User.name.label("author"))
@@ -381,7 +385,8 @@ def review_queue(db: Session, user: dict, branch: str) -> list[dict]:
             .join(Role, Role.id == User.role_id)
             .where(Organization.branch == branch, Organization.is_leader.is_(False), Organization.active.is_(True), Role.name == "GESTOR")
         )
-        query = query.where(Publication.author_id.in_(participants), Publication.author_id != user["id"])
+        query = query.where(Publication.author_id.in_(participants), Publication.author_id != user["id"],
+                            Publication.kind != "LUGAR")
     return rows_to_dicts(db.execute(query).all())
 
 

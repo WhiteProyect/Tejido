@@ -2,9 +2,11 @@ import { useEffect, useId, useRef, useState } from 'react';
 import DatePicker from './DatePicker.jsx';
 import Icon from './Icon.jsx';
 import ImageField from './ImageField.jsx';
+import LocationPicker from './LocationPicker.jsx';
+import PlaceIcon from './PlaceIcon.jsx';
 import RequirementsInput from './RequirementsInput.jsx';
 import TagsInput from './TagsInput.jsx';
-import { BTN_GHOST, BTN_INK_MD, BTN_INK_OUTLINE_MD, FORM_INPUT, FORM_LABEL, PANEL, PANEL_TITLE } from './uiStyles.js';
+import { BTN_GHOST, BTN_INK_MD, BTN_INK_OUTLINE_MD, FORM_INPUT, FORM_LABEL, PANEL, PANEL_TITLE, placeColors } from './uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
 import { CULTURAL_CATEGORIES, KIND_LABELS, MUNICIPALITIES } from '../utils/constants.js';
@@ -24,16 +26,38 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 //   INVALID_TAGLINE / INVALID_TAGS) van en su campo.
 // - Fechas con el calendario (DatePicker): mismo formato que el antiguo datetime-local. Solo en
 //   EVENTO, "Fecha habitual o tradicion" (hasta 80; 422 INVALID_TRADITION_TEXT en su campo).
+// - Solo en EVENTO: "Punto exacto en el mapa" (LocationPicker), obligatorio al crear y al editar (un evento
+//   antiguo sin punto no se guarda hasta marcarlo); errores 422 POINT_* en su campo. Mapa vivo (#mapa).
 // - Solo en OPORTUNIDAD: tipo (GET /api/opportunity-types; al editar se conserva uno ya desactivado),
 //   quien convoca (al crear, el gestor lo trae precargado con su organizacion), dirigida a, premio,
 //   requisitos (hasta 8), enlace de postulacion obligatorio y la fecha de cierre (end_date) con el
 //   calendario de una sola fecha: sin fecha = convocatoria abierta. Errores por campo (422 de la API).
+// - LUGAR (directorio turistico): solo lo ofrecen el admin y el lider (canCreatePlaces; el backend
+//   responde 403 a los demas). Categoria de lugar (GET /api/place-categories; al editar se conserva una
+//   ya desactivada), direccion o referencia (obligatoria, hasta 160), punto exacto (LocationPicker),
+//   telefono, WhatsApp, horario y sitio web opcionales, y categoria cultural opcional: el admin elige
+//   cualquiera o ninguna; el lider, ninguna o la suya (fixedCategory). Sin fechas ni enlace generico;
+//   resumen y descripcion opcionales. Errores 422 en su campo.
 const EMPTY_FORM = {
   kind: 'HISTORIA', title: '', summary: '', content: '', location: 'Caucasia',
   start_date: '', end_date: '', link: '', image: '', cultural_category: '', municipality: '',
   tagline: '', tags: [], tradition_text: '',
-  opportunity_type_id: '', organizer: '', audience: '', prize: '', requirements: [],
+  opportunity_type_id: '', organizer: '', audience: '', prize: '', requirements: [], point: null,
+  place_category_id: '', phone: '', whatsapp: '', opening_hours: '', website: '',
 };
+const ADDRESS_MAX = 160;
+const PHONE_MAX = 30;
+const HOURS_MAX = 200;
+const WEBSITE_MAX = 200;
+// Codigos 422 de la API -> campo del lugar donde se muestra el error.
+const PLACE_ERRORS = {
+  PLACE_CATEGORY_REQUIRED: 'category', INVALID_PLACE_CATEGORY: 'category', ADDRESS_REQUIRED: 'address',
+  INVALID_ADDRESS: 'address', INVALID_PHONE: 'phone', INVALID_WHATSAPP: 'whatsapp', INVALID_OPENING_HOURS: 'hours',
+  INVALID_WEBSITE: 'website',
+};
+const PLACE_NOTE = 'Si eliges una, el lugar también aparecerá en Explorar en esa rama.';
+const POINT_ERRORS = new Set(['POINT_REQUIRED', 'INVALID_POINT', 'POINT_OUT_OF_AREA']);
+const DEFAULT_PLACE = 'Caucasia';
 const ORGANIZER_MAX = 120;
 const AUDIENCE_MAX = 160;
 const PRIZE_MAX = 120;
@@ -53,8 +77,10 @@ const PAST_HINT = {
 const MUNICIPALITY_MESSAGE = 'Elige el municipio de la publicación.';
 // El tipo TALENTO ya no se ofrece al crear: el talento contratable tiene su propio flujo (pestaña
 // Talento de los dashboards). Las publicaciones TALENTO que ya existen se siguen editando con su tipo.
+// LUGAR solo se ofrece a quien puede crear lugares (admin y lider).
 const KINDS = Object.entries(KIND_LABELS);
-const kindsFor = (publication) => KINDS.filter(([key]) => key !== 'TALENTO' || publication?.kind === 'TALENTO');
+const kindsFor = (publication, canCreatePlaces) => KINDS.filter(([key]) => (key !== 'TALENTO' || publication?.kind === 'TALENTO')
+  && (key !== 'LUGAR' || canCreatePlaces));
 
 const isImageUrl = (value) => /^(https?:\/\/|\/)/.test(value || '');
 
@@ -67,7 +93,7 @@ function formFromPublication(publication) {
     title: publication.title || '',
     summary: publication.summary || '',
     content: publication.content || '',
-    location: publication.location || 'Caucasia',
+    location: publication.location || (publication.kind === 'LUGAR' ? '' : 'Caucasia'),
     start_date: toLocalInput(publication.start_date),
     end_date: toLocalInput(publication.end_date),
     link: publication.link || '',
@@ -78,17 +104,26 @@ function formFromPublication(publication) {
     tagline: publication.tagline || '',
     tags: Array.isArray(publication.tags) ? publication.tags : [],
     tradition_text: publication.tradition_text || '',
+    point: publication.latitude != null && publication.longitude != null
+      ? { lat: Number(publication.latitude), lng: Number(publication.longitude) } : null,
     opportunity_type_id: publication.opportunity_type?.id ? String(publication.opportunity_type.id) : '',
     organizer: publication.organizer || '',
     audience: publication.audience || '',
     prize: publication.prize || '',
     requirements: Array.isArray(publication.requirements) ? publication.requirements : [],
+    place_category_id: publication.place_category?.id ? String(publication.place_category.id) : '',
+    phone: publication.phone || '',
+    whatsapp: publication.whatsapp ? `+${publication.whatsapp}` : '',
+    opening_hours: publication.opening_hours || '',
+    website: publication.website || '',
   };
 }
 
 // Mismas reglas que backend/service/schemas/publications.py, para avisar antes de enviar.
+// En LUGAR, resumen y descripcion son opcionales.
 function validate(form) {
   if (form.title.trim().length < 5) return 'El título debe tener al menos 5 caracteres.';
+  if (form.kind === 'LUGAR') return '';
   if (form.summary.trim().length < 10) return 'El resumen debe tener al menos 10 caracteres.';
   if (form.content.trim().length < 20) return 'El contenido debe tener al menos 20 caracteres.';
   if (form.start_date && form.end_date && form.end_date < form.start_date) return 'La fecha de fin no puede ser anterior a la de inicio.';
@@ -105,13 +140,23 @@ function validateOpportunity(form) {
   return errors;
 }
 
+// Lugar: lo obligatorio, campo por campo ({ campo: mensaje }).
+function validatePlace(form) {
+  const errors = {};
+  if (!form.place_category_id) errors.category = 'Elige la categoría del lugar.';
+  if (!form.location.trim()) errors.address = 'Escribe la dirección o una referencia para llegar.';
+  if (form.website.trim() && !HTTP_LINK.test(form.website.trim())) errors.website = 'El sitio web debe empezar por http:// o https://';
+  return errors;
+}
+
 // Campo de texto con contador y error accesible (aria-invalid + aria-describedby), como el eslogan.
-function CountedField({ id, label, value, onChange, max, error, hint, disabled, placeholder }) {
+function CountedField({ id, label, value, onChange, max, error, hint, disabled, placeholder, required, inputMode, autoComplete }) {
   return (
     <div className="grid content-start gap-1.5">
       <label className={FORM_LABEL} htmlFor={id}>{label}</label>
       <input id={id} className={`${FORM_INPUT} ${error ? 'border-[#b3442b]' : ''}`} value={value} onChange={(event) => onChange(event.target.value)}
-        maxLength={max} disabled={disabled} placeholder={placeholder} aria-invalid={error ? true : undefined}
+        maxLength={max} disabled={disabled} placeholder={placeholder} required={required} inputMode={inputMode} autoComplete={autoComplete}
+        aria-invalid={error ? true : undefined}
         aria-describedby={`${id}-hint${error ? ` ${id}-error` : ''}`} />
       <div className="flex justify-between gap-3 text-[13px] text-muted">
         <span id={`${id}-hint`}>{hint}</span>
@@ -142,7 +187,7 @@ function toastFor({ editing, allowPublish, publish, backToReview, status }) {
   return { tone: 'menta', eyebrow: 'Hilo ajustado', title: 'Cambios guardados', text: 'Queda como borrador hasta que la envíes.' };
 }
 
-export default function PublicationForm({ publication, categories, allowPublish = false, fixedCategory = null, onCancel, onSaved }) {
+export default function PublicationForm({ publication, categories, allowPublish = false, fixedCategory = null, canCreatePlaces = false, onCancel, onSaved }) {
   const { showToast } = useToast();
   const [form, setForm] = useState(() => (publication ? formFromPublication(publication) : EMPTY_FORM));
   const [saving, setSaving] = useState(false);
@@ -163,12 +208,24 @@ export default function PublicationForm({ publication, categories, allowPublish 
     prize: `${baseId}-premio`, requirements: `${baseId}-requisitos`, link: `${baseId}-enlace` };
   const editing = Boolean(publication);
   const isOpportunity = form.kind === 'OPORTUNIDAD';
+  const isEvent = form.kind === 'EVENTO';
+  const isPlace = form.kind === 'LUGAR';
+  const hasPoint = isEvent || isPlace;
+  const pointId = `${baseId}-punto`;
+  const [pointError, setPointError] = useState('');
+  const placeIds = { category: `${baseId}-categoria-lugar`, address: `${baseId}-direccion`, phone: `${baseId}-telefono`,
+    whatsapp: `${baseId}-whatsapp`, hours: `${baseId}-horario`, website: `${baseId}-sitio-web` };
+  const culturalId = `${baseId}-categoria-cultural`;
+  const [placeErrors, setPlaceErrors] = useState({});
+  const [placeCategories, setPlaceCategories] = useState(null);
+  const setPlace = (key, errorKey = key) => (value) => { set(key)(value); setPlaceErrors((current) => ({ ...current, [errorKey]: '' })); };
+  const placeError = (key) => placeErrors[key] || '';
   // Solo admin: publish: true en el mismo POST/PUT. Una ya publicada sigue publicada al editarla.
   const [publish, setPublish] = useState(false);
   const alreadyPublished = publication?.status === 'PUBLISHED';
   // Gestor editando una publicada: al guardar vuelve a revision.
   const backToReview = editing && !allowPublish && alreadyPublished;
-  const outsideBranch = Boolean(fixedCategory && editing && publication.cultural_category !== fixedCategory);
+  const outsideBranch = Boolean(fixedCategory && editing && publication.cultural_category !== fixedCategory && publication.kind !== 'LUGAR');
   const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
   const field = (key) => ({ value: form[key], onChange: (event) => set(key)(event.target.value), disabled: saving });
   const setOpp = (key, errorKey = key) => (value) => { set(key)(value); setOppErrors((current) => ({ ...current, [errorKey]: '' })); };
@@ -180,6 +237,29 @@ export default function PublicationForm({ publication, categories, allowPublish 
     if (!isOpportunity || types) return;
     apiRequest('/api/opportunity-types').then(setTypes).catch(() => setTypes([]));
   }, [isOpportunity, types]);
+  // Categorias de lugar activas, solo con LUGAR (igual que los tipos: se conserva una ya desactivada).
+  useEffect(() => {
+    if (!isPlace || placeCategories) return;
+    apiRequest('/api/place-categories').then(setPlaceCategories).catch(() => setPlaceCategories([]));
+  }, [isPlace, placeCategories]);
+  const currentPlaceCategory = publication?.place_category;
+  const placeOptions = currentPlaceCategory && placeCategories && !placeCategories.some((item) => item.id === currentPlaceCategory.id)
+    ? [...placeCategories, { ...currentPlaceCategory, label: `${currentPlaceCategory.label} (desactivada)` }] : (placeCategories || []);
+  const chosenPlaceCategory = placeOptions.find((item) => String(item.id) === form.place_category_id)
+    || (currentPlaceCategory && String(currentPlaceCategory.id) === form.place_category_id ? currentPlaceCategory : null);
+
+  // Cambiar a LUGAR deja la direccion vacia (no "Caucasia") y sin categoria cultural asignada; salir de
+  // LUGAR devuelve el lugar por defecto.
+  function changeKind(event) {
+    const kind = event.target.value;
+    setForm((current) => {
+      const next = { ...current, kind };
+      if (kind === 'LUGAR' && current.location.trim() === DEFAULT_PLACE) next.location = '';
+      if (kind !== 'LUGAR' && !current.location.trim()) next.location = DEFAULT_PLACE;
+      return next;
+    });
+  }
+
   const typeOptions = types || [];
   const currentType = publication?.opportunity_type;
   // Mientras cargan los tipos, el actual se muestra tal cual; ya cargados, si no esta entre los activos
@@ -210,6 +290,21 @@ export default function PublicationForm({ publication, categories, allowPublish 
     }
     const problem = validate(form);
     if (problem) { setError(problem); return; }
+    if (isPlace) {
+      const errors = validatePlace(form);
+      if (Object.keys(errors).length) {
+        setPlaceErrors(errors);
+        setError('');
+        document.getElementById(placeIds[Object.keys(errors)[0]])?.focus();
+        return;
+      }
+    }
+    if (hasPoint && !form.point) {
+      setPointError(isPlace ? 'Marca el punto exacto del lugar en el mapa.' : 'Marca el punto exacto del evento en el mapa.');
+      setError('');
+      document.getElementById(`${pointId}-lat`)?.focus();
+      return;
+    }
     if (isOpportunity) {
       const errors = validateOpportunity(form);
       if (Object.keys(errors).length) {
@@ -227,17 +322,25 @@ export default function PublicationForm({ publication, categories, allowPublish 
       title: form.title.trim(),
       summary: form.summary.trim(),
       content: form.content.trim(),
-      location: form.location.trim() || 'Caucasia',
-      start_date: form.start_date || null,
-      end_date: form.end_date || null,
-      link: form.link.trim() || null,
+      location: isPlace ? form.location.trim() : form.location.trim() || 'Caucasia',
+      start_date: isPlace ? null : form.start_date || null,
+      end_date: isPlace ? null : form.end_date || null,
+      link: isPlace ? null : form.link.trim() || null,
       // Si no hay enlace nuevo se conserva un degradado viejo (no se muestra en el formulario).
       image: form.image.trim() || (editing && publication.image && !isImageUrl(publication.image) ? publication.image : null),
-      cultural_category: fixedCategory || form.cultural_category || null,
+      cultural_category: (isPlace ? form.cultural_category : fixedCategory || form.cultural_category) || null,
       municipality: form.municipality,
       tagline: form.tagline.trim() || null,
       tags: form.tags,
       tradition_text: form.kind === 'EVENTO' ? form.tradition_text.trim() || null : null,
+      ...(hasPoint && form.point ? { latitude: form.point.lat, longitude: form.point.lng } : {}),
+      ...(isPlace ? {
+        place_category_id: Number(form.place_category_id),
+        phone: form.phone.trim() || null,
+        whatsapp: form.whatsapp.trim() || null,
+        opening_hours: form.opening_hours.trim() || null,
+        website: form.website.trim() || null,
+      } : {}),
       ...(isOpportunity ? {
         opportunity_type_id: Number(form.opportunity_type_id),
         organizer: form.organizer.trim(),
@@ -266,6 +369,13 @@ export default function PublicationForm({ publication, categories, allowPublish 
       } else if (saveError.code === 'INVALID_TRADITION_TEXT') {
         setTraditionError(saveError.message);
         focusLater(document.getElementById(traditionId));
+      } else if (PLACE_ERRORS[saveError.code] && isPlace) {
+        const key = PLACE_ERRORS[saveError.code];
+        setPlaceErrors((current) => ({ ...current, [key]: saveError.message }));
+        focusLater(document.getElementById(placeIds[key]));
+      } else if (POINT_ERRORS.has(saveError.code) && hasPoint) {
+        setPointError(saveError.message);
+        focusLater(document.getElementById(`${pointId}-lat`));
       } else if (OPPORTUNITY_ERRORS[saveError.code] && isOpportunity) {
         const key = OPPORTUNITY_ERRORS[saveError.code];
         setOppErrors((current) => ({ ...current, [key]: saveError.message }));
@@ -283,7 +393,7 @@ export default function PublicationForm({ publication, categories, allowPublish 
   return (
     <section className={PANEL} aria-labelledby="formulario-publicacion">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 id="formulario-publicacion" className={PANEL_TITLE}>{editing ? 'Editar publicación' : 'Nueva publicación'}</h2>
+        <h2 id="formulario-publicacion" className={PANEL_TITLE}>{isPlace ? (editing ? 'Editar lugar' : 'Nuevo lugar') : editing ? 'Editar publicación' : 'Nueva publicación'}</h2>
         <button type="button" className={BTN_GHOST} onClick={onCancel} disabled={saving}><Icon name="close" className="size-4" /> Cerrar</button>
       </div>
       {backToReview && (
@@ -297,11 +407,21 @@ export default function PublicationForm({ publication, categories, allowPublish 
       <form className="mt-6 grid gap-5" onSubmit={handleSubmit} noValidate>
         <div className="grid grid-cols-2 gap-5 max600:grid-cols-1">
           <label className={FORM_LABEL}>Tipo
-            <select className={FORM_INPUT} {...field('kind')}>
-              {kindsFor(publication).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            <select className={FORM_INPUT} value={form.kind} onChange={changeKind} disabled={saving}>
+              {kindsFor(publication, canCreatePlaces).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </select>
           </label>
-          {fixedCategory ? (
+          {isPlace ? (
+            <div className="grid content-start gap-1.5">
+              <label className={FORM_LABEL} htmlFor={culturalId}>Categoría cultural (opcional)</label>
+              <select id={culturalId} className={FORM_INPUT} {...field('cultural_category')} aria-describedby={`${culturalId}-hint`}>
+                <option value="">Sin categoría cultural</option>
+                {(fixedCategory ? CULTURAL_CATEGORIES.filter(([key]) => key === fixedCategory) : CULTURAL_CATEGORIES)
+                  .map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </select>
+              <span id={`${culturalId}-hint`} className="text-[13px] text-muted">{PLACE_NOTE}</span>
+            </div>
+          ) : fixedCategory ? (
             <label className={FORM_LABEL}>Categoría cultural
               <input className={FORM_INPUT} value={CATEGORY_LABELS[fixedCategory] || fixedCategory} disabled readOnly />
               <span className="text-[12px] font-medium normal-case tracking-normal text-muted">
@@ -340,11 +460,11 @@ export default function PublicationForm({ publication, categories, allowPublish 
           </div>
           {taglineError && <p id={`${taglineId}-error`} className="m-0 text-[13px] font-semibold text-[#b3442b]">{taglineError}</p>}
         </div>
-        <label className={FORM_LABEL}>Resumen
-          <input className={FORM_INPUT} {...field('summary')} maxLength={500} required />
+        <label className={FORM_LABEL}>{isPlace ? 'Resumen (opcional)' : 'Resumen'}
+          <input className={FORM_INPUT} {...field('summary')} maxLength={500} required={!isPlace} />
         </label>
-        <label className={FORM_LABEL}>Contenido
-          <textarea className={`${FORM_INPUT} min-h-[180px] resize-y leading-[1.55]`} {...field('content')} maxLength={20000} required />
+        <label className={FORM_LABEL}>{isPlace ? 'Descripción (opcional)' : 'Contenido'}
+          <textarea className={`${FORM_INPUT} ${isPlace ? 'min-h-[120px]' : 'min-h-[180px]'} resize-y leading-[1.55]`} {...field('content')} maxLength={20000} required={!isPlace} />
         </label>
         <TagsInput
           id={tagsId}
@@ -356,6 +476,40 @@ export default function PublicationForm({ publication, categories, allowPublish 
           error={tagsError}
           onError={setTagsError}
         />
+        {isPlace && (
+          <fieldset className="m-0 grid gap-5 rounded-[18px] border border-[#e2d9ca] bg-white/50 p-5 max600:p-4" data-campos-lugar>
+            <legend className="px-1 text-[13px] font-extrabold uppercase tracking-[.12em] text-ink">Datos del lugar</legend>
+            <div className="grid content-start gap-1.5">
+              <label className={FORM_LABEL} htmlFor={placeIds.category}>Categoría de lugar</label>
+              <div className="flex items-center gap-3">
+                {chosenPlaceCategory && (
+                  <span className="grid size-11 shrink-0 place-items-center rounded-full border-2" aria-hidden="true" data-muestra-categoria
+                    style={{ backgroundColor: placeColors(chosenPlaceCategory.color).bg, color: placeColors(chosenPlaceCategory.color).text,
+                      borderColor: '#173f36' }}>
+                    <PlaceIcon icon={chosenPlaceCategory.icon} className="size-6" />
+                  </span>
+                )}
+                <select id={placeIds.category} className={`${FORM_INPUT} ${placeError('category') ? 'border-[#b3442b]' : ''}`} value={form.place_category_id}
+                  onChange={(event) => setPlace('place_category_id', 'category')(event.target.value)} disabled={saving} required
+                  aria-invalid={placeError('category') ? true : undefined} aria-describedby={placeError('category') ? `${placeIds.category}-error` : undefined}>
+                  <option value="">{placeCategories ? 'Elige la categoría' : 'Cargando categorías...'}</option>
+                  {placeOptions.map((item) => <option key={item.id} value={String(item.id)}>{item.label}</option>)}
+                </select>
+              </div>
+              {placeError('category') && <p id={`${placeIds.category}-error`} className="m-0 text-[13px] font-semibold text-[#b3442b]">{placeError('category')}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-5 max600:grid-cols-1">
+              <CountedField id={placeIds.phone} label="Teléfono (opcional)" value={form.phone} onChange={setPlace('phone')} max={PHONE_MAX}
+                error={placeError('phone')} disabled={saving} inputMode="tel" autoComplete="off" hint="Números y los signos + - ( ). P. ej. 604 839 1234." />
+              <CountedField id={placeIds.whatsapp} label="WhatsApp (opcional)" value={form.whatsapp} onChange={setPlace('whatsapp')} max={PHONE_MAX}
+                error={placeError('whatsapp')} disabled={saving} inputMode="tel" autoComplete="off" hint="Celular de 10 dígitos o con indicativo (+57 300 123 4567)." />
+            </div>
+            <CountedField id={placeIds.hours} label="Horario (opcional)" value={form.opening_hours} onChange={setPlace('opening_hours', 'hours')} max={HOURS_MAX}
+              error={placeError('hours')} disabled={saving} hint="P. ej. «Lunes a sábado, 8 a. m. a 6 p. m.»." />
+            <CountedField id={placeIds.website} label="Sitio web (opcional)" value={form.website} onChange={setPlace('website')} max={WEBSITE_MAX}
+              error={placeError('website')} disabled={saving} inputMode="url" placeholder="https://..." hint="Empieza por https:// o http://." />
+          </fieldset>
+        )}
         {isOpportunity && (
           <fieldset className="m-0 grid gap-5 rounded-[18px] border border-[#e2d9ca] bg-white/50 p-5 max600:p-4" data-campos-oportunidad>
             <legend className="px-1 text-[13px] font-extrabold uppercase tracking-[.12em] text-ink">Datos de la oportunidad</legend>
@@ -408,11 +562,30 @@ export default function PublicationForm({ publication, categories, allowPublish 
             </select>
             {municipalityError && <p id={`${municipalityId}-error`} className="m-0 text-[13px] font-semibold text-[#b3442b]">{municipalityError}</p>}
           </div>
-          <label className={FORM_LABEL}>Ubicación
-            <input className={FORM_INPUT} {...field('location')} maxLength={180} />
-          </label>
+          {isPlace ? (
+            <CountedField id={placeIds.address} label="Dirección o referencia" value={form.location} onChange={setPlace('location', 'address')}
+              max={ADDRESS_MAX} error={placeError('address')} disabled={saving} required hint="Calle y número, o cómo llegar: «Frente al parque principal»." />
+          ) : (
+            <label className={FORM_LABEL}>Lugar (nombre o referencia)
+              <input className={FORM_INPUT} {...field('location')} maxLength={180} />
+            </label>
+          )}
         </div>
-        {isOpportunity ? (
+        {hasPoint && (
+          <LocationPicker
+            id={pointId}
+            label={isPlace ? 'Punto exacto del lugar en el mapa' : undefined}
+            value={form.point}
+            onChange={(point) => { set('point')(point); setPointError(''); }}
+            municipality={form.municipality}
+            error={pointError}
+            disabled={saving}
+            placeEmpty={!form.location.trim() || form.location.trim() === DEFAULT_PLACE}
+            onUsePlace={isPlace ? setPlace('location', 'address') : set('location')}
+            placeNoun={isPlace ? 'dirección' : 'lugar'}
+          />
+        )}
+        {isPlace ? null : isOpportunity ? (
           <DatePicker
             single
             label="Fecha de cierre (opcional)"
@@ -454,7 +627,7 @@ export default function PublicationForm({ publication, categories, allowPublish 
             {traditionError && <p id={`${traditionId}-error`} className="m-0 text-[13px] font-semibold text-[#b3442b]">{traditionError}</p>}
           </div>
         )}
-        {isOpportunity ? (
+        {isPlace ? null : isOpportunity ? (
           <div className="grid content-start gap-1.5">
             <label className={FORM_LABEL} htmlFor={ids.link}>Enlace de postulación</label>
             <input id={ids.link} className={`${FORM_INPUT} ${oppError('link') ? 'border-[#b3442b]' : ''}`} type="text" inputMode="url"
@@ -468,7 +641,7 @@ export default function PublicationForm({ publication, categories, allowPublish 
             <input className={FORM_INPUT} type="text" inputMode="url" placeholder="https://..." {...field('link')} />
           </label>
         )}
-        <ImageField label="Imagen (opcional)" value={form.image} onChange={set('image')} scope="publication" disabled={saving} hint="Sin imagen, la tarjeta usa el color del tipo." />
+        <ImageField label="Imagen (opcional)" value={form.image} onChange={set('image')} scope="publication" disabled={saving} hint={isPlace ? 'Sin imagen, se muestra el ícono de su categoría de lugar.' : 'Sin imagen, la tarjeta usa el color del tipo.'} />
         {allowPublish && !(editing && alreadyPublished) && (
           <label className="flex cursor-pointer items-start gap-3 rounded-[14px] border border-[#d9cfbe] bg-white py-3 px-4">
             <input type="checkbox" className="mt-0.5 size-5 shrink-0 cursor-pointer accent-[var(--ink)]" checked={publish} onChange={(event) => setPublish(event.target.checked)} disabled={saving} />
