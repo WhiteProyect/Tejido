@@ -85,7 +85,7 @@ export default function ProfileHeader({ user, roleLabel, markClass, onUserUpdate
     <header className="mb-12">
       <div className="flex flex-wrap items-center gap-7 max600:gap-5">
         <div className="relative size-[92px] shrink-0 max600:size-[72px]">
-          <span className="absolute -right-2.5 -bottom-2 size-full rounded-full border-2 border-ink/15" aria-hidden="true" />
+          <span className="absolute -right-2.5 -bottom-2 size-full rounded-full bg-gold" aria-hidden="true" />
           {showPhoto ? (
             <img src={cdnImage(user.avatar_url, { width: 184, fit: 'fill' })} alt={`Foto de ${user.name}`} decoding="async" onError={() => setAvatarFailed(true)} className="relative size-full rounded-full object-cover" />
           ) : (

@@ -213,8 +213,8 @@ La identidad se extrae del territorio, no de tendencias genéricas:
 - **Menta**: vegetación y crecimiento.
 - **Morado**: memoria ancestral y misterio.
 
-DM Sans es la voz tipográfica principal. Playfair Display en cursiva aparece
-solo como énfasis poético dentro de títulos. Los símbolos tampoco son
+DM Sans es la voz tipográfica principal. Arial se usa como acento (peso y
+color, sin cursiva) para el énfasis poético dentro de títulos. Los símbolos tampoco son
 ornamento: el río/serpiente es conexión, los tres círculos son encuentro, los
 sellos son recorrido, las rutas punteadas son caminos y la cronología son los
 hilos del tiempo. El manual de esencia define las reglas precisas de uso,

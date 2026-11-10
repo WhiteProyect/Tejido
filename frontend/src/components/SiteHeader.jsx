@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
+import GlobalSearch from './GlobalSearch.jsx';
 import Logo from './Logo.jsx';
 import MobileMenu from './MobileMenu.jsx';
 import ThreadsIcon from './ThreadsIcon.jsx';
@@ -20,7 +21,7 @@ const TAB = 'relative rounded-full px-4 py-2 text-[14px] leading-5 font-semibold
 // Capsula de 44x36 con area tactil de 44x44 (el ::before la alarga 4 px arriba y abajo).
 const TRIGGER = "relative hidden h-9 w-11 shrink-0 cursor-pointer items-center justify-end rounded-full border-0 px-2.5 before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 navcompact:inline-flex";
 
-export default function SiteHeader({ user, onLogin, onLogout, screen, municipalitySlug = null, isMoneystack = false }) {
+export default function SiteHeader({ user, onLogin, onLogout, screen, municipalitySlug = null, isMoneystack = false, publications = [], publicationsLoading = false }) {
   const reduceMotion = useReducedMotion();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -147,6 +148,7 @@ export default function SiteHeader({ user, onLogin, onLogout, screen, municipali
           </nav>
         </LayoutGroup>
         <div className="col-start-3 flex items-center justify-self-end gap-2">
+          <GlobalSearch publications={publications} loading={publicationsLoading} dark={isMoneystack} />
           {user ? (
             <div className="relative" ref={menuRef}>
               <button className="w-9 h-9 overflow-hidden rounded-[50%] bg-ink text-white border-none p-0 text-[14px] font-bold cursor-pointer" aria-label={`Menú de ${user.name}`} onClick={() => { closeMenu(false); setShowUserMenu(!showUserMenu); }}>

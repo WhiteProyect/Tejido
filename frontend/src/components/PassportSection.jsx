@@ -47,6 +47,9 @@ export default function PassportSection() {
     setProgress(getPassportProgress());
   }, []);
 
+  // Siguiente municipio por descubrir: da una acción concreta en vez de solo un contador.
+  const nextMunicipality = MUNICIPALITIES.find((muni) => !passport[muni.id]);
+
   return (
     <section className="max-w-[900px] my-0 mx-auto">
       {/* Encabezado del pasaporte */}
@@ -59,8 +62,16 @@ export default function PassportSection() {
       </div>
 
       {/* Barra de progreso */}
-      <div className="flex items-center gap-3.5 mb-[30px]">
-        <div className="flex-1 bg-[rgba(23,58,49,0.08)] rounded-[999px] h-2 overflow-hidden">
+      <div className="flex items-center gap-3.5 mb-[18px]">
+        <div
+          className="flex-1 bg-[rgba(23,58,49,0.08)] rounded-[999px] h-2 overflow-hidden"
+          role="progressbar"
+          aria-label="Progreso del pasaporte"
+          aria-valuemin={0}
+          aria-valuemax={progress.total}
+          aria-valuenow={progress.collected}
+          aria-valuetext={`${progress.collected} de ${progress.total} municipios`}
+        >
           <div
             className="bg-[linear-gradient(90deg,#1d8fa3,#d4a843)] rounded-[999px] h-full transition-[width] duration-600 ease-[ease]"
             style={{ width: `${progress.percentage}%` }}
@@ -70,6 +81,25 @@ export default function PassportSection() {
           {progress.collected} de {progress.total} municipios
         </span>
       </div>
+
+      {/* Próximo sello: una acción concreta para seguir el recorrido */}
+      {nextMunicipality && (
+        <div className="mb-[26px] flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-[rgba(29,143,163,.28)] bg-[rgba(29,143,163,.06)] py-4 px-5">
+          <div className="min-w-0">
+            <p className="m-0 text-[11px] font-extrabold uppercase tracking-[.16em] text-river">Tu próximo sello</p>
+            <p className="mt-1 mb-0 text-[17px] font-bold text-ink">
+              {nextMunicipality.name}
+              <span className="ml-2 text-[13px] font-semibold text-muted">{nextMunicipality.theme}</span>
+            </p>
+          </div>
+          <a
+            href={`#municipio/${nextMunicipality.id}`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-river py-2.5 px-4 text-[13px] font-bold text-white no-underline transition-colors duration-200 hover:bg-[#167585] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+          >
+            Descubrir {nextMunicipality.name} <Icon name="arrow-right" className="size-4" strokeWidth={2} />
+          </a>
+        </div>
+      )}
 
       {/* Grid de sellos */}
       <div className="grid gap-4 grid-cols-[repeat(3,1fr)] max600:grid-cols-[repeat(2,1fr)]">

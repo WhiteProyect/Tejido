@@ -67,7 +67,7 @@ const THEMES = {
   },
 };
 
-// Ultimas palabras del titulo en Playfair italica: 1 si tiene 2-3 palabras, 2 si tiene 4-5 y 3 si
+// Ultimas palabras del titulo en Arial: 1 si tiene 2-3 palabras, 2 si tiene 4-5 y 3 si
 // tiene mas. Con una sola palabra no hay cursiva (nunca todo el titulo).
 function splitTitle(title) {
   const words = String(title || '').trim().split(/\s+/).filter(Boolean);

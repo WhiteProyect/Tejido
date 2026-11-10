@@ -114,6 +114,11 @@ function getRoute() {
     return { screen: 'agenda', slug: null };
   }
 
+  // Explorar con búsqueda y filtros: #explorar?q=...&kind=...&mun=...&cat=... (ExploreScreen).
+  if (hash.startsWith('explorar?')) {
+    return { screen: 'explorar', slug: null };
+  }
+
   // Mapa vivo con deep link: #mapa?evento=<id> o #mapa?municipio=<slug> (MapScreen lo lee del hash).
   if (hash.startsWith('mapa?')) {
     return { screen: 'mapa', slug: null };
@@ -303,7 +308,7 @@ export default function App() {
       content = user ? <ArtistDashboard slug={route.slug} /> : <LoginScreen onSuccess={handleLogin} />;
       break;
     case 'explorar':
-      content = <ExploreScreen />;
+      content = <ExploreScreen publications={publications} loading={loading} error={error} user={user} />;
       break;
     case 'gestor':
       content = <GestorProfileScreen slug={route.slug} user={user} />;
@@ -401,7 +406,7 @@ export default function App() {
     <>
       {!isArtistRoute && (
         <>
-          {!isLoginRoute && <SiteHeader user={user} screen={route.screen} municipalitySlug={route.screen === 'municipio' ? route.slug : null} isMoneystack={route.screen === 'moneystack'} onLogin={() => { sessionStorage.setItem('tejido_return_to', window.location.hash.replace('#', '') || 'inicio'); window.location.hash = 'login'; }} onLogout={handleLogout} />}
+          {!isLoginRoute && <SiteHeader user={user} screen={route.screen} municipalitySlug={route.screen === 'municipio' ? route.slug : null} isMoneystack={route.screen === 'moneystack'} publications={publications} publicationsLoading={loading} onLogin={() => { sessionStorage.setItem('tejido_return_to', window.location.hash.replace('#', '') || 'inicio'); window.location.hash = 'login'; }} onLogout={handleLogout} />}
           {!isLoginRoute && <VerifyEmailBanner user={user} />}
           {/* overflow-x clip (no hidden): sin barra horizontal durante el deslizamiento y sin romper
               los sticky de las pantallas. */}

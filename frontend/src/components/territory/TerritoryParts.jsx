@@ -22,7 +22,7 @@ export function DayNotice({ notice, band }) {
   return <span className={PILL_BASE} style={noticeStyle(notice.kind, band)} data-aviso={notice.kind}>{notice.text}</span>;
 }
 
-// Entrada: caja crema, kicker ocre, titulo con las ultimas palabras en Playfair italica y texto corto.
+// Entrada: caja crema, kicker ocre, titulo con las ultimas palabras en Arial y texto corto.
 export function PageHero({ kicker, title, italic, text }) {
   return (
     <header className={TS.hero}>

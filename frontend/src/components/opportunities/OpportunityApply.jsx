@@ -1,9 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import AuthDialog from './AuthDialog.jsx';
+import Icon from '../Icon.jsx';
 import { TS } from '../territory/territoryStyles.js';
 import { UNVERIFIED_TEXT, notifyUnverified } from '../VerifyEmailNotice.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { apiRequest } from '../../utils/api.js';
+import { appliedAt, formatAppliedDate, isApplied, markApplied } from '../../utils/applications.js';
 import { isClosed } from '../../utils/opportunities.js';
 
 // Postulacion fase 1 en el detalle de una OPORTUNIDAD (#publicacion/<id>), bloque inferior:
@@ -35,6 +37,8 @@ export default function OpportunityApply({ publication, user }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null); // { tone: 'ok' | 'warn', text }
   const [dialog, setDialog] = useState(false);
+  // La postulación es externa (fase 1), pero se recuerda en el navegador para mostrarla al volver.
+  const [applied, setApplied] = useState(() => isApplied(publication.id));
   const opener = useRef(null);
   const bar = useRef(null);
   const mobile = useMobile();
@@ -96,7 +100,11 @@ export default function OpportunityApply({ publication, user }) {
     if (!link) event.preventDefault();
     // El enlace abre en su pestaña sin esperar a la red (los bloqueadores de ventanas no lo frenan).
     const ok = saved || await save(true);
-    if (ok) setMessage({ tone: 'ok', text: publication.end_date ? 'Guardada en tus guardadas. Te avisaremos antes del cierre.' : 'Guardada en tus guardadas.' });
+    if (ok) {
+      markApplied(publication.id);
+      setApplied(true);
+      setMessage({ tone: 'ok', text: publication.end_date ? 'Ya te postulaste. Está guardada y te avisaremos antes del cierre.' : 'Ya te postulaste. Está guardada en tus guardadas.' });
+    }
   }
 
   async function handleSave(event) {
@@ -124,19 +132,32 @@ export default function OpportunityApply({ publication, user }) {
           <button type="button" className={`${TS.btnDisabled} ${TS.focus} ${buttonWidth}`} aria-disabled="true" aria-describedby={lockedId}
             onClick={(event) => event.preventDefault()}>Plazo finalizado</button>
         </div>
-        <p id={lockedId} className="mt-2 mb-0 text-[15px] text-[#3f514a]">Esta convocatoria ya cerró.</p>
+        <p id={lockedId} className="mt-2 mb-0 text-[15px] text-[#3f514a]">
+          Esta convocatoria ya cerró.
+          {applied && ` Registramos que te postulaste el ${formatAppliedDate(appliedAt(publication.id))}.`}
+        </p>
       </>
     );
   } else {
     inner = (
       <>
+        {applied && (
+          <p className="mb-3 flex flex-wrap items-center gap-2 text-[14px] font-semibold text-[#276749]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(39,103,73,.12)] py-1 px-3">
+              <Icon name="check" className="size-4" strokeWidth={2} /> Ya te postulaste
+            </span>
+            <span className="text-[#3f514a]">el {formatAppliedDate(appliedAt(publication.id))}</span>
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           {link ? (
             <a href={link} target="_blank" rel="noopener noreferrer" className={`${TS.btnSolid} ${buttonWidth}`} onClick={handleApply}>
-              Postularme a esta oportunidad<span className="sr-only"> (abre la convocatoria en una pestaña nueva)</span>
+              {applied ? 'Volver a la convocatoria' : 'Postularme a esta oportunidad'}<span className="sr-only"> (abre la convocatoria en una pestaña nueva)</span>
             </a>
           ) : (
-            <button type="button" className={`${TS.btnSolid} ${buttonWidth}`} onClick={handleApply} disabled={busy}>Postularme a esta oportunidad</button>
+            <button type="button" className={`${TS.btnSolid} ${buttonWidth}`} onClick={handleApply} disabled={busy}>
+              {applied ? 'Volver a la convocatoria' : 'Postularme a esta oportunidad'}
+            </button>
           )}
           <button type="button" className={`${TS.btnOutline} ${mobile ? 'shrink-0' : ''}`} style={saved ? { backgroundColor: '#f3e4c8' } : undefined} onClick={handleSave}
             disabled={busy} aria-pressed={user ? saved : undefined}>
@@ -145,7 +166,11 @@ export default function OpportunityApply({ publication, user }) {
         </div>
         {!mobile && (
           <p className="mt-3 mb-0 text-[15px] text-[#3f514a]">
-            {user ? 'Al postularte la guardamos en tus guardadas para avisarte antes del cierre.' : 'Para postularte o guardarla, inicia sesión con tu cuenta de ciudadano.'}
+            {user
+              ? (applied
+                ? 'Tu postulación quedó registrada en este navegador. Puedes volver a abrir la convocatoria cuando quieras.'
+                : 'Al postularte la guardamos en tus guardadas para avisarte antes del cierre.')
+              : 'Para postularte o guardarla, inicia sesión con tu cuenta de ciudadano.'}
           </p>
         )}
         <p role="status" aria-live="polite"

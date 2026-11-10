@@ -67,7 +67,7 @@ La paleta de TEJIDO no es decorativa. Cada color existe porque representa algo v
 
 ### FUENTE PRINCIPAL — DM Sans
 
-**Carga:** `@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,700&display=swap');`
+**Carga:** `@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');`
 
 **Pesos utilizados:**
 - 400 — Texto general, descripciones
@@ -88,17 +88,17 @@ DM Sans no es una fuente corporativa fría. Es una fuente geometric sans-serif q
 
 **Cuándo NO usarla:** Nunca. DM Sans es la voz de TEJIDO.
 
-### FUENTE DE ACENTO — Playfair Display
+### FUENTE DE ACENTO — Arial
 
 **Pesos utilizados:**
-- Italic 700 — Exclusivamente para énfasis dentro de títulos
+- Bold 700 — Énfasis dentro de títulos y acentos con color
 
-**Por qué Playfair Display:**
-Playfair Display aparece solo en el contexto de *cursiva dentro de títulos*. No es una fuente de cuerpo. Es una herramienta de énfasis narrativo. Sus formas de transición entre serif y sans-serif transmiten:
+**Cambio del 2026-11-09:** el dueño pidió retirar la cursiva de Playfair Display y usar **Arial** en todos los textos que antes la usaban. Arial es una fuente de sistema: no se carga desde Google Fonts. El énfasis se conserva con peso, color y subrayado, sin inclinación.
 
-- **Poesía** — Cuando TEJIDO quiere subrayar una palabra con emoción.
-- **Elegancia territorial** — No es elegancia de oficina: es elegancia de río.
-- **Contraste** — Rompe la monotone de DM Sans justo cuando necesitas que una palabra resalte.
+**Por qué Arial:**
+- **Claridad** — Legible en todos los tamaños y sistemas.
+- **Sobriedad** — El acento va en el color y el peso, no en la forma de la letra.
+- **Consistencia** — La misma familia en cualquier navegador, sin depender de una descarga externa.
 
 **Ejemplo de uso correcto:**
 ```html
@@ -107,8 +107,9 @@ Playfair Display aparece solo en el contexto de *cursiva dentro de títulos*. No
 ```css
 .hero-cultural-title em {
   color: var(--sunset);
-  font-family: 'Playfair Display', serif;
-  font-style: italic;
+  font-family: Arial, Helvetica, sans-serif;
+  font-style: normal;
+  font-weight: 700;
   text-decoration: underline;
   text-decoration-color: var(--gold);
   text-underline-offset: 8px;
@@ -118,7 +119,7 @@ Playfair Display aparece solo en el contexto de *cursiva dentro de títulos*. No
 
 **Cuándo usarla:** Solo en `<em>` dentro de títulos principales (h1, h2) para resaltar una palabra con carga emocional.
 
-**Cuándo NO usarla:** Para cuerpo de texto, descripciones, botones, metadata, navegación. Nunca como fuente de párrafos.
+**Cuándo NO usarla:** Para cuerpo de texto, descripciones, botones, metadata, navegación. La voz de los párrafos sigue siendo DM Sans.
 
 ### ESCALA TIPOGRÁFICA
 
@@ -489,7 +490,7 @@ color: white;
 **Patrón de sección:**
 ```
 [Section Badge: 11px, uppercase, river color, pill shape]
-[Section Title: clamp(40px, 5vw, 64px), bold, con em en Playfair]
+[Section Title: clamp(40px, 5vw, 64px), bold, con em en Arial]
 [Section Description: 18px, muted, max-width 500px]
 [Content: grid, flex, o scroll horizontal]
 ```
@@ -963,7 +964,7 @@ La diferencia entre TEJIDO y un periódico es que TEJIDO no te dice qué pasó. 
 
 ### TÍTULOS
 
-**Son cortos, poéticos y directos.** Usan la cursiva de Playfair Display para resaltar una palabra con carga emocional.
+**Son cortos, poéticos y directos.** Usan el énfasis en Arial (peso y color, sin cursiva) para resaltar una palabra con carga emocional.
 
 - "Donde el río *cuenta* historias"
 - "Tus *sellos* del Bajo Cauca"

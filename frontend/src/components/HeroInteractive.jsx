@@ -318,7 +318,7 @@ export default function HeroInteractive({ onExplore, publications = [] }) {
             alt="Hilo, guía de TEJIDO"
           />
 
-          {/* Mensaje de Hilo: en el saludo, tres niveles (DM Sans bold, Playfair cursiva, pregunta),
+          {/* Mensaje de Hilo: en el saludo, tres niveles (DM Sans bold, Arial, pregunta),
               a la derecha en desktop (GREETING_POSITION) y bajo Hilo en pantallas medianas y chicas. */}
           {isGreeting ? (
             <div className={`${GREETING_POSITION} ${HALO}`}>

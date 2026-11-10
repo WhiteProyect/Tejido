@@ -15,8 +15,9 @@
  */
 @layer theme, base, components, utilities;
 
-/* Fuentes: DM Sans (texto) y Playfair Display cursiva 700 (acentos). */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,700&display=swap');
+/* Fuente: DM Sans (texto). Los acentos que antes usaban Playfair Display cursiva
+   pasaron a Arial (pedido del dueño, 2026-11-09). */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
@@ -97,10 +98,11 @@
   --color-ax-red: var(--ax-red);
   --color-ax-apple: var(--ax-apple);
 
-  /* Tipografia. Playfair Display solo se carga en cursiva 700 (ver el @import
-     de fuentes arriba): usar `font-display italic font-bold`. */
+  /* Tipografia. Los acentos (antes Playfair Display cursiva) usan Arial desde
+     2026-11-09. Se conserva el nombre del token `font-display` para no tocar
+     todas las pantallas. */
   --font-sans: "DM Sans", sans-serif;
-  --font-display: "Playfair Display", serif;
+  --font-display: Arial, "Helvetica Neue", Helvetica, sans-serif;
 
   /* Radios (28px = footer y tarjetas grandes; 20px = footer en movil) */
   --radius-footer: 28px;
@@ -149,3 +151,19 @@
   h3 { font-size: 24px; }
   @media (max-width: 800px) { nav { display: none; } }
 }
+
+/*
+ * Acentos tipograficos (2026-11-09): todo lo que antes era cursiva (Playfair
+ * Display) pasa a Arial sin inclinacion. Va sin @layer para ganar a las
+ * utilidades `.italic` y `.font-display`; `em`/`i` cubren los enfasis sin clase.
+ */
+.font-display,
+.font-display em,
+.font-display i,
+em,
+i,
+.italic {
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  font-style: normal;
+}
+

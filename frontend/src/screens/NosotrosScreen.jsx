@@ -47,9 +47,9 @@ const MAX_MESSAGE = 1000;
 function TeamMember({ member }) {
   return (
     <article className="flex flex-col items-start">
-      {/* Identidad temporal: iniciales + un aro desplazado, eco de los tres circulos de la marca. */}
+      {/* Identidad temporal: iniciales + un circulo dorado desplazado, eco de los tres circulos de la marca. */}
       <div className="relative mb-5 size-[76px]" aria-hidden="true">
-        <span className="absolute -right-2 -bottom-1.5 size-[76px] rounded-full border-2 border-ink/15" />
+        <span className="absolute -right-2 -bottom-1.5 size-[76px] rounded-full bg-gold" />
         <span className={`relative flex size-full items-center justify-center rounded-full text-[22px] font-extrabold tracking-[.02em] ${member.tone}`}>{getInitials(member.name)}</span>
       </div>
       <h3 className="m-0 font-sans text-[20px] font-bold tracking-[-0.02em] text-ink">{member.name}</h3>

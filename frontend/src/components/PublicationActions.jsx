@@ -3,6 +3,9 @@ import Icon from './Icon.jsx';
 import ShareMenu, { ICON_BUTTON, LABELED_BUTTON } from './ShareMenu.jsx';
 import { UNVERIFIED_TEXT, notifyUnverified } from './VerifyEmailNotice.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { hiloReaction } from '../utils/hiloBus.js';
+import { recordInterest } from '../utils/interests.js';
+import { hasReacted, toggleReaction } from '../utils/reactions.js';
 
 // Guardar y compartir una publicacion: la misma logica en la tarjeta (PublicationCard) y en su
 // pagina (PublicationScreen).
@@ -24,6 +27,17 @@ export default function PublicationActions({ publication, user, returnTo = 'expl
   const [points, setPoints] = useState(false);
   const [favorite, setFavorite] = useState(!!publication.favorite);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  // "Me interesa": reacción rápida local (aún no hay endpoint de reacciones).
+  const [reacted, setReacted] = useState(() => hasReacted(publication.id));
+
+  function handleReact() {
+    const next = toggleReaction(publication);
+    setReacted(next);
+    if (next) {
+      hiloReaction('interest', { publicationId: publication.id });
+      showToast({ tone: 'menta', eyebrow: 'Te interesa', title: 'Sumaste una señal a tu ruta', text: 'Explorar usará esto para recomendarte contenidos parecidos.' });
+    }
+  }
 
   // Con sesion, compartir por WhatsApp o Facebook suma los +10 pts de colaborador.
   async function handleShared() {
@@ -37,6 +51,7 @@ export default function PublicationActions({ publication, user, returnTo = 'expl
       });
       if (!response.ok) return;
       setPoints(true);
+      hiloReaction('share', { publicationId: publication.id });
       setTimeout(() => setPoints(false), 2000);
     } catch {}
   }
@@ -69,6 +84,8 @@ export default function PublicationActions({ publication, user, returnTo = 'expl
       showToast(next
         ? { tone: 'menta', eyebrow: 'Hilo guardado', title: 'Sumaste este hilo a tu ruta', text: 'Ya puedes verlo en tus guardados.' }
         : { tone: 'menta', title: 'Hilo quitado de tu ruta' });
+      hiloReaction(next ? 'favorite' : 'unfavorite', { publicationId: publication.id });
+      if (next) recordInterest(publication);
       onFavoriteChange?.(next);
     } catch {
       setFavorite(!next);
@@ -91,6 +108,10 @@ export default function PublicationActions({ publication, user, returnTo = 'expl
           {withLabels && (favorite ? 'Guardada' : 'Guardar')}
         </button>
       )}
+      <button type="button" className={button} onClick={handleReact} title={reacted ? 'Ya te interesa' : 'Me interesa'} aria-label={withLabels ? undefined : (reacted ? 'Quitar me interesa' : 'Me interesa')} aria-pressed={reacted}>
+        <Icon name="sprout" className={`size-4 ${reacted ? 'text-[#276749]' : ''}`} />
+        {withLabels && (reacted ? 'Te interesa' : 'Me interesa')}
+      </button>
       <ShareMenu url={publicationShareUrl(publication.id)} text={`${publication.title} - TEJIDO Bajo Cauca`} withLabels={withLabels} menuUp={menuUp} onShared={handleShared} />
     </div>
   );

@@ -759,3 +759,49 @@ borrar `main.css` y los `!` que sobran).
 - **Pendiente del user**: con `GREETING_POSITION` actual el título "¡Bienvenido!" se sale por la
   derecha a 1300 px (bloque de 333 px < ancho del título a 44 px).
 
+## 2026-11-09 — Hilo: panel "telar" + interacciones (HiloAssistant.jsx)
+
+- **Rediseño visual del panel:** fuera la cuadrícula 2x2. Hilo va grande y al centro, sobre un
+  arco de hilos punteados; los cuatro destinos son nudos bordados (círculo con ícono y etiqueta)
+  conectados a Hilo por hilos de color. Al pasar el cursor o enfocar un nudo, Hilo cambia de pose
+  (`senala`, `descubre`, `lee`, `celebra`); los hilos y la etiqueta son las mismas poses reales de
+  `/images/hilo/`, sin imágenes nuevas. En móvil el arco se mantiene con nudos más chicos.
+- **"Hilo te sugiere":** chips de arranque según pantalla (`STARTERS`), reutilizando intenciones y
+  destinos. También aparecen en el chat vacío. Píldoras secundarias y frase de cierre del telar.
+- **Chat más vivo:** indicador de escritura (Hilo piensa 650 ms), confeti solo en la primera
+  coincidencia (`celebrate`), "Ver otra coincidencia" también para búsqueda libre, búsqueda libre
+  por puntaje con stopwords (título 4, lugar 3, categoría/tipo 2, resumen 1; umbral 3) en vez de
+  `includes()`; intención de comida acepta "come/comidas/comiendo".
+- **Memoria de sesión:** `sessionStorage['tejido_hilo_chat_v1']` (máx. 30 mensajes, publicación
+  reducida a id/título/lugar/categoría/tipo) y botón "Empezar de nuevo".
+- **Reacciones fuera del panel:** `utils/hiloBus.js` (`hiloReaction` / `onHiloReaction`).
+  `PublicationActions` emite `favorite`/`unfavorite` tras guardar y `share` tras compartir con
+  éxito. Si el panel está cerrado, Hilo susurra; si está en chat, agrega el mensaje; si está en el
+  telar, muestra un aviso breve. Se activaron los `REACTIVE_MESSAGES` que estaban sin uso.
+- **Idle corregido:** habla una vez por sesión, no en pestaña oculta y vuelve a `hilo-saluda`.
+- **Accesibilidad:** Escape cierra y devuelve foco al lanzador, focus trap en el panel,
+  `aria-modal`, `role="log"`, input a 16 px (sin zoom en iOS). Header acortado a
+  "Hilo está contigo · Descubre Caucasia" para no truncarse.
+- **Verificación:** `npm run build` OK; Playwright con Edge (el Chromium de Playwright no está
+  instalado en esta máquina) contra Vite 5174 + backend 8765: 1300 y 390 px, comida, búsqueda
+  libre, persistencia tras recargar, reset de sesión, Escape, foco, navegación por nudo y
+  reacción externa. Sin errores de consola. `npm run test:header` no pudo correr por el mismo
+  Chromium faltante (no es un fallo del cambio).
+
+## 2026-11-09 — Tipografía: acentos de Arial (sin Playfair cursiva)
+
+- **Pedido del dueño:** todos los textos que usaban la tipografía cursiva pasan a Arial.
+- **`tailwind.css`:** `--font-display` ahora es `Arial, "Helvetica Neue", Helvetica, sans-serif`;
+  se quitó Playfair Display del `@import` de Google Fonts (solo queda DM Sans). Regla sin capa
+  para `.font-display`, `.italic`, `em` e `i`: Arial y `font-style: normal`, de modo que no
+  quede inclinación ni dependencia de la fuente cursiva.
+- **Alcance:** el cambio es global; no se tocó el JSX de las pantallas. Las palabras de acento
+  conservan peso, color y subrayado (p. ej. "Bajo Cauca" en Municipios, saludo de Hilo).
+- **Docs actualizados:** `docs/MANUAL_ESENCIA_TEJIDO.md` (sección 2, fuente de acento),
+  `docs/CONTEXTO_GENERAL_TEJIDO.md` y `frontend/README.md`.
+- **Verificación:** `npm run build` OK; capturas con Edge en inicio, Agenda, Municipios,
+  Nosotros y panel de Hilo a 1300 px; `getComputedStyle` confirma Arial y `font-style: normal`,
+  y `document.fonts` ya no carga Playfair. Sin errores de consola.
+
+
+
