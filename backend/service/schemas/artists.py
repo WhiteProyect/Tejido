@@ -116,13 +116,14 @@ class _ArtistFields(BaseModel):
 
 
 class ArtistCreateInput(_ArtistFields):
-    """POST /api/artists (solo ADMIN). Sin slug, se genera desde stage_name (la ruta exige
-    stage_name; aqui es opcional para responder el error en español)."""
+    """POST /api/artists (ADMIN y lider de Musica). Sin slug, se genera desde stage_name (la ruta exige
+    stage_name; aqui es opcional para responder el error en español). moneystack: el ADMIN lo manda
+    siempre (la ruta responde 422 sin el); al lider se le fija en false."""
     slug: Optional[str] = None
     city: Optional[str] = "Caucasia"
     region: Optional[str] = "Bajo Cauca, Antioquia"
     featured: bool = False
-    moneystack: bool = True
+    moneystack: Optional[bool] = None
 
     @field_validator("slug", mode="before")
     @classmethod

@@ -128,8 +128,22 @@ function section(path) {
   };
 }
 
+// Lista publica (solo activos y publicados). params: { sello: 'tejido' | 'moneystack', municipality, genre, q }.
+export function fetchPublicArtists(params = {}) {
+  const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value)).toString();
+  return apiRequest(`${API}/artists${query ? `?${query}` : ''}`);
+}
+
+// Lider de la rama Musica: los artistas que cargo (con estado y nota) y el reenvio de un rechazado.
+// Crear y editar usan las mismas rutas que el admin (adminArtistApi.create / update).
+export const leaderArtistApi = {
+  mine: () => apiRequest(`${API}/artists/mine`),
+  submit: (artistId) => apiRequest(`${API}/artists/${artistId}/submit`, { method: 'POST' }),
+};
+
 export const adminArtistApi = {
-  list: () => apiRequest(`${API}/admin/artists`),
+  list: (status) => apiRequest(`${API}/admin/artists${status ? `?status=${status}` : ''}`),
+  review: (artistId, action, note) => apiRequest(`${API}/artists/${artistId}/review`, { method: 'POST', body: { action, note: note || null } }),
   detail: fetchAdminArtist,
   create: (data) => apiRequest(`${API}/artists`, { method: 'POST', body: data }),
   update: (artistId, data) => apiRequest(`${API}/artists/${artistId}`, { method: 'PUT', body: data }),

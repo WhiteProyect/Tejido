@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from backend.service.errors import AppError
 from backend.service.models.tables import Artist, Publication, TalentProfile
+from backend.service.services import artists as artist_service
 from backend.service.schemas.municipalities import municipality_slug
 from backend.service.services import talent as talent_service
 
@@ -37,10 +38,11 @@ def municipality_filter(value) -> str | None:
 
 def municipality_page(db: Session, slug: str) -> dict:
     """Solo lo publico del municipio: publicaciones PUBLISHED sin borrar, talento PUBLISHED y artistas
-    activos. Campos de tarjeta, sin autores, correos ni moderacion."""
+    activos y publicados. Campos de tarjeta, sin autores, correos ni moderacion."""
     published = (Publication.municipality == slug, Publication.status == "PUBLISHED", Publication.deleted.is_(False))
     talent_visible = (TalentProfile.origin == slug, TalentProfile.status == "PUBLISHED", TalentProfile.deleted.is_(False))
-    active = (Artist.municipality == slug, Artist.active.is_(True))
+    # Artistas de los dos sellos (cada uno con su moneystack), solo los activos y publicados.
+    active = (Artist.municipality == slug, *artist_service.public_conditions())
 
     counts = db.execute(select(
         select(func.count()).select_from(Publication).where(*published).scalar_subquery().label("publications"),

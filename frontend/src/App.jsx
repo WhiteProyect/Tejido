@@ -12,6 +12,7 @@ import AcceptInviteScreen from './screens/AcceptInviteScreen.jsx';
 import { ResetPasswordScreen, VerifyEmailScreen } from './screens/AccountTokenScreens.jsx';
 import AdminDashboard from './screens/AdminDashboard.jsx';
 import AgendaScreen from './screens/AgendaScreen.jsx';
+import ArtistsScreen from './screens/ArtistsScreen.jsx';
 import CategoryScreen from './screens/CategoryScreen.jsx';
 import GestorDashboard from './screens/GestorDashboard.jsx';
 import ArtistScreen from './screens/ArtistScreen.jsx';
@@ -107,6 +108,11 @@ function getRoute() {
   // Vista previa de un talento sin publicar (admin o lider de su rama): #talento-vista-previa/<id>.
   if (hash.startsWith('talento-vista-previa/')) {
     return { screen: 'talento-vista-previa', slug: hash.slice('talento-vista-previa/'.length) };
+  }
+
+  // Artistas de TEJIDO con filtros: #artistas?mun=...&genero=...&q=... (ArtistsScreen los lee del hash).
+  if (hash.startsWith('artistas?')) {
+    return { screen: 'artistas', slug: null };
   }
 
   // Agenda con filtros: #agenda?mun=...&cat=...&anteriores=1 (AgendaScreen los lee del hash).
@@ -343,6 +349,9 @@ export default function App() {
       break;
     case 'municipio':
       content = <MunicipalityScreen slug={route.slug} user={user} />;
+      break;
+    case 'artistas':
+      content = <ArtistsScreen />;
       break;
     case 'agenda':
       content = <AgendaScreen />;

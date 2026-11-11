@@ -214,8 +214,9 @@ def build_carousel(db: Session, today: date | None = None) -> list[dict]:
     content = content[:MAX_CONTENT]
     for slide in content:
         del slide["_order"]
-    # Mismo orden que /api/artists/home (services/artists.get_home_artist_data): destacados primero.
-    artists = artist_service.list_artists(db)
+    # Solo el sello Moneystack (los de TEJIDO no entran a sus diapositivas), en el mismo orden que
+    # /api/artists/home (services/artists.get_home_artist_data): destacados primero.
+    artists = artist_service.list_artists(db, sello="moneystack")
     featured = [artist for artist in artists if artist["featured"]][:MAX_FEATURED_ARTISTS]
     others = [artist for artist in artists if artist not in featured]
     if not content:

@@ -6,6 +6,7 @@ import PublicationCard from '../components/PublicationCard.jsx';
 import PublicationForm from '../components/PublicationForm.jsx';
 import PillTabs from '../components/admin/PillTabs.jsx';
 import { LeaderBadge } from '../components/gestor/GestorHeader.jsx';
+import LeaderArtistsPanel from '../components/gestor/leader/LeaderArtistsPanel.jsx';
 import ParticipantsPanel from '../components/gestor/leader/ParticipantsPanel.jsx';
 import PlacesFilter from '../components/admin/PlacesFilter.jsx';
 import RequestsPanel from '../components/gestor/leader/RequestsPanel.jsx';
@@ -44,17 +45,19 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
 const CATEGORY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label, slug]) => [key, { label, slug }]));
 const TABS = [['mis-publicaciones', 'Mis publicaciones', 'book'], ['mi-categoria', 'Mi categoría', 'people']];
-// El lider de la rama suma Por revisar, Solicitudes, Participantes y Talento (en este orden).
+// El lider de la rama suma Por revisar, Solicitudes, Participantes y Talento (en este orden); el de la
+// rama Musica, ademas, Mis artistas (los artistas de TEJIDO que carga; components/gestor/leader/).
 const LEADER_TABS = [
   TABS[0], ['por-revisar', 'Por revisar', 'seal'], ['solicitudes', 'Solicitudes', 'inbox'], ['participantes', 'Participantes', 'people'],
   ['talento', 'Talento', 'mic'], TABS[1],
 ];
-const tabsFor = (isLeader) => (isLeader ? LEADER_TABS : TABS);
+const MUSIC_LEADER_TABS = [...LEADER_TABS.slice(0, 5), ['artistas', 'Mis artistas', 'music'], ...LEADER_TABS.slice(5)];
+const tabsFor = (isLeader, isMusicLeader = false) => (isMusicLeader ? MUSIC_LEADER_TABS : isLeader ? LEADER_TABS : TABS);
 // La seccion es "<pestana>[/<resto>]" (talento/<id>/<pestana-del-editor>). Una pestana de lider
 // pedida por URL sin ser lider cae a Mis publicaciones.
-const tabFrom = (section, isLeader) => {
+const tabFrom = (section, isLeader, isMusicLeader) => {
   const [first] = String(section || '').split('/');
-  return tabsFor(isLeader).some(([id]) => id === first) ? first : 'mis-publicaciones';
+  return tabsFor(isLeader, isMusicLeader).some(([id]) => id === first) ? first : 'mis-publicaciones';
 };
 const subpathFrom = (section) => {
   const [first, ...rest] = String(section || '').split('/');
@@ -273,7 +276,8 @@ function LeaderSummary({ branchLabel, counts, onOpen }) {
 export default function GestorDashboard({ user, section }) {
   const { showToast } = useToast();
   const isLeader = Boolean(user?.is_leader);
-  const [tab, setTab] = useState(() => tabFrom(section, isLeader));
+  const isMusicLeader = isLeader && user?.branch === 'MUSICA';
+  const [tab, setTab] = useState(() => tabFrom(section, isLeader, isMusicLeader));
   const [subpath, setSubpath] = useState(() => subpathFrom(section));
   const [leader, setLeader] = useState({ loaded: false, error: '', queue: [], requests: [], participants: [] });
   const [filter, setFilter] = useState('ALL');
@@ -318,12 +322,12 @@ export default function GestorDashboard({ user, section }) {
   useEffect(() => {
     const sync = () => {
       const current = window.location.hash.replace(/^#gestor-dashboard\/?/, '');
-      setTab(tabFrom(current, isLeader));
+      setTab(tabFrom(current, isLeader, isMusicLeader));
       setSubpath(subpathFrom(current));
     };
     window.addEventListener('hashchange', sync);
     return () => window.removeEventListener('hashchange', sync);
-  }, [isLeader]);
+  }, [isLeader, isMusicLeader]);
 
   function changeTab(id) {
     if (!confirmDiscard()) return;
@@ -419,7 +423,7 @@ export default function GestorDashboard({ user, section }) {
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
           <StatusCounters counts={category.counts} filter={filter} onFilter={(value) => { setFilter(value); if (tab !== 'mis-publicaciones') changeTab('mis-publicaciones'); }} />
           <PillTabs idPrefix="gestor" label="Qué ver" active={tab} onChange={changeTab}
-            tabs={tabsFor(isLeader).map(([id, label, icon]) => ({ id, label, icon, ...(tabBadges[id] || {}) }))} />
+            tabs={tabsFor(isLeader, isMusicLeader).map(([id, label, icon]) => ({ id, label, icon, ...(tabBadges[id] || {}) }))} />
           {showLeader && leader.error && <p className={ALERT} role="alert">{leader.error}</p>}
 
           <div id={`gestor-panel-${tab}`} role="tabpanel" aria-labelledby={`gestor-tab-${tab}`} className="grid grid-cols-[minmax(0,1fr)] gap-6">
@@ -486,6 +490,7 @@ export default function GestorDashboard({ user, section }) {
               <RequestsPanel branch={branch} branchLabel={info.label} pending={leader.requests} onChanged={refreshLeader} />
             )}
             {showLeader && tab === 'talento' && <TalentManager role="LEADER" branch={branch} subpath={subpath} />}
+            {showLeader && isMusicLeader && tab === 'artistas' && <LeaderArtistsPanel />}
             {showLeader && leader.loaded && tab === 'participantes' && (
               <ParticipantsPanel branch={branch} branchLabel={info.label} participants={leader.participants} userId={user.id} onChanged={refreshLeader} />
             )}

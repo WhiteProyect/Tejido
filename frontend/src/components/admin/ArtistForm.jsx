@@ -11,16 +11,43 @@ import { FULL, HELP, InlineForm, buildPayload, useFormValues } from './artist/co
 // archivado (se ve, no se edita). Municipio obligatorio (422 MUNICIPALITY_REQUIRED en el backend):
 // un artista antiguo sin municipio obliga a elegirlo al guardar. Sin `required` nativo en el
 // selector: el formulario usa la validacion del navegador y su globo taparia el error del campo.
+// Sello (Moneystack | TEJIDO): control segmentado; al crear llega preseleccionado (defaultSello, segun
+// el boton del panel) y el admin lo puede cambiar, tambien al editar. mode="leader" (lider de la rama
+// Musica): el mismo formulario sin sello, destacado ni slug (el backend lo fija en TEJIDO y en revision).
 
 const MAX_BIO = 5000;
 const FIELDS = ['stage_name', 'real_name', 'genre', 'city', 'region', 'municipality', 'slug', 'image', 'hero_image', 'bio'];
 const MUNICIPALITY_MESSAGE = 'Elige el municipio del artista.';
 
-function initialValues(artist) {
-  if (!artist) {
-    return { stage_name: '', real_name: '', genre: '', city: 'Caucasia', region: 'Bajo Cauca, Antioquia', municipality: '', slug: '', image: '', hero_image: '', bio: '', featured: false, moneystack: true };
-  }
-  return { ...Object.fromEntries(FIELDS.map((field) => [field, artist[field] ?? ''])), featured: Boolean(artist.featured), moneystack: artist.moneystack !== false };
+// Campos que solo maneja el admin (el backend responde 403 si el lider los manda al editar).
+const ADMIN_FIELDS = ['slug', 'featured', 'moneystack'];
+
+function initialValues(artist, leader, defaultSello) {
+  const values = !artist
+    ? { stage_name: '', real_name: '', genre: '', city: 'Caucasia', region: 'Bajo Cauca, Antioquia', municipality: '', slug: '', image: '', hero_image: '', bio: '', featured: false, moneystack: defaultSello !== 'tejido' }
+    : { ...Object.fromEntries(FIELDS.map((field) => [field, artist[field] ?? ''])), featured: Boolean(artist.featured), moneystack: artist.moneystack !== false };
+  if (leader) ADMIN_FIELDS.forEach((field) => delete values[field]);
+  return values;
+}
+
+const SELLO_OPTIONS = [[true, 'Moneystack'], [false, 'TEJIDO']];
+
+// Control segmentado (radios nativos: Tab entra al grupo, las flechas cambian).
+function SelloField({ value, onChange, disabled }) {
+  return (
+    <fieldset className={`${FULL} m-0 grid gap-1.5 border-0 p-0`} data-campo-sello>
+      <legend className={`${FORM_LABEL} mb-1.5 p-0`}>Sello *</legend>
+      <div className="inline-flex w-fit max-w-full gap-1 rounded-full bg-cream p-1">
+        {SELLO_OPTIONS.map(([option, label]) => (
+          <label key={label} className="relative inline-flex min-h-11 cursor-pointer items-center rounded-full px-5 text-[15px] font-bold text-ink has-[:checked]:bg-ink has-[:checked]:text-white has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink">
+            <input type="radio" name="artist-form-sello" className="sr-only" checked={value === option} onChange={() => onChange(option)} disabled={disabled} />
+            {label}
+          </label>
+        ))}
+      </div>
+      <p className={HELP}>Moneystack: aparece en Moneystack. TEJIDO: aparece en Artistas, en la rama Música y en su municipio.</p>
+    </fieldset>
+  );
 }
 
 // Vista aproximada del slug que generara el backend (services/artists.py::slugify).
@@ -28,9 +55,10 @@ function slugPreview(text) {
   return text.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
-export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false }) {
+export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false, mode = 'admin', defaultSello = 'moneystack', onSelloChange }) {
   const isEdit = Boolean(artist);
-  const form = useFormValues(initialValues(artist));
+  const leader = mode === 'leader';
+  const form = useFormValues(initialValues(artist, leader, defaultSello));
   const { values, initialValues: initial, bind, set } = form;
   const [error, setError] = useState('');
   const [municipalityError, setMunicipalityError] = useState('');
@@ -54,7 +82,8 @@ export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false
     try {
       const result = isEdit ? await adminArtistApi.update(artist.id, body) : await adminArtistApi.create(body);
       setSaving(false);
-      onSaved({ id: isEdit ? artist.id : result.id, slug: result.slug ?? body.slug ?? artist.slug, stage_name: values.stage_name.trim() });
+      onSaved({ id: isEdit ? artist.id : result.id, slug: result.slug ?? body.slug ?? artist.slug, stage_name: values.stage_name.trim(),
+        moneystack: result.moneystack ?? values.moneystack, status: result.status, values });
     } catch (saveError) {
       if (saveError.code === 'MUNICIPALITY_REQUIRED') {
         setMunicipalityError(saveError.message);
@@ -66,11 +95,12 @@ export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false
     }
   }
 
-  const preview = values.slug.trim() || slugPreview(values.stage_name) || 'nombre-del-artista';
+  const preview = (values.slug || '').trim() || slugPreview(values.stage_name) || 'nombre-del-artista';
   const id = (name) => `artist-form-${name}`;
 
   const fields = (
     <>
+      {!leader && <SelloField value={values.moneystack} onChange={(value) => { set('moneystack', value); onSelloChange?.(value ? 'moneystack' : 'tejido'); }} disabled={disabled} />}
       <label className={FORM_LABEL}>Nombre artístico *
         <input className={FORM_INPUT} {...bind('stage_name')} required minLength={2} maxLength={120} disabled={disabled} autoFocus={!isEdit} />
       </label>
@@ -105,7 +135,7 @@ export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false
         {municipalityError && <p id={id('municipality-error')} className="m-0 text-[13px] font-semibold text-[#b3442b]">{municipalityError}</p>}
       </div>
 
-      <div className="grid gap-1.5">
+      {!leader && <div className="grid gap-1.5">
         <label className={FORM_LABEL} htmlFor={id('slug')}>Slug {isEdit ? '*' : '(opcional)'}</label>
         <input id={id('slug')} className={FORM_INPUT} {...bind('slug')} required={isEdit} maxLength={80} placeholder={isEdit ? undefined : preview} aria-describedby={id('slug-ayuda')} disabled={disabled} />
         <p id={id('slug-ayuda')} className={HELP}>
@@ -113,7 +143,7 @@ export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false
             ? <>Cambiarlo cambia la dirección <strong className="text-ink">/artistas/{initial.slug}</strong>: los enlaces que ya se compartieron dejarán de funcionar.</>
             : <>Se genera del nombre artístico; la URL será <strong className="text-ink">/artistas/{preview}</strong>.</>}
         </p>
-      </div>
+      </div>}
 
       <ImageField id={id('image')} label="Imagen de perfil" value={values.image} onChange={(value) => set('image', value)} scope="artist" scopeRef={artist?.id} disabled={disabled} />
       <ImageField id={id('hero')} label="Imagen de portada" value={values.hero_image} onChange={(value) => set('hero_image', value)} scope="artist" scopeRef={artist?.id} disabled={disabled} />
@@ -124,14 +154,12 @@ export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false
         <p id={id('bio-contador')} className="m-0 text-right text-[12px] text-muted">{values.bio.length} / {MAX_BIO}</p>
       </div>
 
-      <label className={`${FULL} flex cursor-pointer items-center gap-3 text-[15px] font-semibold text-ink`}>
-        <input type="checkbox" className="size-5 cursor-pointer accent-ink" checked={values.featured} onChange={(event) => set('featured', event.target.checked)} disabled={disabled} />
-        Destacado en Moneystack
-      </label>
-      <label className={`${FULL} flex cursor-pointer items-center gap-3 text-[15px] font-semibold text-ink`}>
-        <input type="checkbox" className="size-5 cursor-pointer accent-ink" checked={values.moneystack} onChange={(event) => set('moneystack', event.target.checked)} disabled={disabled} />
-        Pertenece al sello Moneystack
-      </label>
+      {!leader && (
+        <label className={`${FULL} flex cursor-pointer items-center gap-3 text-[15px] font-semibold text-ink`}>
+          <input type="checkbox" className="size-5 cursor-pointer accent-ink" checked={values.featured} onChange={(event) => set('featured', event.target.checked)} disabled={disabled} />
+          Destacado (aparece primero en su sello)
+        </label>
+      )}
     </>
   );
 
@@ -140,12 +168,12 @@ export default function ArtistForm({ artist, onSaved, onCancel, readOnly = false
   }
   return (
     <InlineForm
-      title={isEdit ? 'Datos del artista' : 'Nuevo artista'}
+      title={isEdit ? 'Datos del artista' : leader ? 'Nuevo artista de TEJIDO' : 'Nuevo artista'}
       onSubmit={handleSubmit}
       onCancel={onCancel}
       busy={saving}
       error={error}
-      submitLabel={isEdit ? 'Guardar cambios' : 'Crear artista'}
+      submitLabel={isEdit ? 'Guardar cambios' : leader ? 'Enviar a revisión' : 'Crear artista'}
     >
       {fields}
     </InlineForm>

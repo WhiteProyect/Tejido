@@ -37,7 +37,8 @@ export default function MoneystackScreen({ user }) {
 
   // Cargar artistas al montar el componente
   useEffect(() => {
-    fetch('/api/artists')
+    // Solo el sello Moneystack: los artistas de TEJIDO viven en #artistas.
+    fetch('/api/artists?sello=moneystack')
       .then((res) => {
         if (!res.ok) throw new Error('No fue posible cargar los artistas');
         return res.json();

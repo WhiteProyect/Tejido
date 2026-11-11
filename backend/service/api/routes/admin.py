@@ -1,22 +1,25 @@
 import logging
 from typing import Literal, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.service.api.deps import get_current_user, require_roles
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
 from backend.service.models.tables import BranchJoinRequest, Organization, Publication, Report, Role, Suggestion, TalentProfile, User
-from backend.service.schemas.branches import LeaderInput
+from backend.service.schemas.branches import LeaderInput, PromoteLeaderInput
 from backend.service.schemas.cultural_categories import CULTURAL_CATEGORY_LABELS
 from backend.service.schemas.organizations import GestorCreateInput, GestorUpdateInput
+from backend.service.schemas.admin_users import MakeGestorInput, MoveBranchInput, UserUpdateInput
 from backend.service.services import artists as artists_service
 from backend.service.services import branches as branch_service
 from backend.service.services import email as email_service
 from backend.service.services import notifications
 from backend.service.services import org_profiles
+from backend.service.services import users as users_service
 from backend.service.services.auth import now_utc
 from backend.service.services.invites import create_invite, invite_link, unusable_password_hash
 from backend.service.services.serialization import rows_to_dicts
@@ -49,8 +52,11 @@ def stats(user: Optional[dict] = Depends(get_current_user), db: Session = Depend
     talent_review = db.execute(
         select(func.count()).select_from(TalentProfile).where(TalentProfile.status == "REVIEW", TalentProfile.deleted.is_(False))
     ).scalar_one()
+    # Artistas que cargo el lider de Musica y esperan aprobacion (pestaña Artistas del admin).
+    artists_review = artists_service.count_in_review(db)
     return {"published": published, "pending": pending, "users": users, "gestores_activos": gestores_activos,
-            "reports": reports, "suggestions": suggestions, "join_requests": join_requests, "talent_review": talent_review}
+            "reports": reports, "suggestions": suggestions, "join_requests": join_requests, "talent_review": talent_review,
+            "artists_review": artists_review}
 
 
 # ---------------------------------------------------------------------------
@@ -82,9 +88,9 @@ def _get_gestor(db: Session, gestor_id: int) -> User:
     return user
 
 
-def _status(active: bool) -> str:
-    # Sin estado "desactivado" aparte: se reusa el booleano active de User.
-    return "ACTIVO" if active else "PENDIENTE"
+def _status(active: bool, invited: bool) -> str:
+    # ACTIVO, INVITADO (aun no acepta la invitacion) o INACTIVO (desactivado por el admin): ver services/users.py.
+    return users_service.status_of(active, invited)
 
 
 @router.post("/gestores")
@@ -127,7 +133,7 @@ def list_gestores(user: Optional[dict] = Depends(get_current_user), db: Session 
         select(User.id, User.name, User.email, User.active, User.created_at,
                Organization.id.label("organization_id"), Organization.name.label("organization_name"),
                Organization.branch, Organization.contact, Organization.photo_url, Organization.is_leader,
-               Organization.slug, Organization.profile_hidden)
+               Organization.slug, Organization.profile_hidden, users_service._invited().label("invited"))
         .join(Role, Role.id == User.role_id)
         .join(Organization, Organization.user_id == User.id, isouter=True)
         .where(Role.name == "GESTOR")
@@ -135,7 +141,7 @@ def list_gestores(user: Optional[dict] = Depends(get_current_user), db: Session 
     ).all()
     gestores = rows_to_dicts(rows)
     for g in gestores:
-        g["status"] = _status(g["active"])
+        g["status"] = _status(g["active"], g.pop("invited"))
     return gestores
 
 
@@ -173,14 +179,19 @@ def update_gestor(gestor_id: int, payload: GestorUpdateInput, user: Optional[dic
             raise AppError(409, "NO_ORGANIZATION", "Este gestor no tiene organización ni perfil público")
         organization.profile_hidden = payload.profile_hidden
     db.flush()
-    return {"ok": True, "id": gestor.id, "active": gestor.active, "status": _status(gestor.active)}
+    return {"ok": True, "id": gestor.id, "active": gestor.active, "status": users_service.get_user(db, gestor.id)["status"]}
 
 
 @router.get("/artists")
-def list_artists(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Todos los artistas, tambien los archivados (la web publica solo ve los activos)."""
+def list_artists(status: Optional[str] = Query(default=None), user: Optional[dict] = Depends(get_current_user),
+                 db: Session = Depends(get_db)):
+    """Todos los artistas, tambien archivados y en revision (la web publica solo ve los activos y
+    publicados). status=REVIEW lista los que esperan aprobacion."""
     require_roles(user, ("ADMIN",), ADMIN_ONLY)
-    return artists_service.list_artists_admin(db)
+    status = (status or "").strip().upper() or None
+    if status and status not in artists_service.STATUSES:
+        raise AppError(422, "INVALID_STATUS", "El estado debe ser PUBLISHED, REVIEW o REJECTED")
+    return artists_service.list_artists_admin(db, status)
 
 
 @router.get("/artists/{artist_id:int}")
@@ -203,6 +214,118 @@ def resend_invite(gestor_id: int, user: Optional[dict] = Depends(get_current_use
     db.commit()
     link, email_sent = _send_invite(gestor, token)
     return {"user_id": gestor.id, "invite_link": link, "email_sent": email_sent}
+
+
+# ---------------------------------------------------------------------------
+# Usuarios (solo ADMIN): por ahora solo la busqueda de ciudadanos (services/users.py).
+# ---------------------------------------------------------------------------
+
+@router.get("/users")
+def list_users(q: Optional[str] = Query(default=None), role: Optional[str] = Query(default=None), status: Optional[str] = Query(default=None),
+               branch: Optional[str] = Query(default=None), page: int = Query(default=1), page_size: int = Query(default=users_service.DEFAULT_PAGE_SIZE),
+               user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Listado paginado (alta mas reciente primero) con q (nombre o correo), role, status y branch, y el
+    conteo por rol con los demas filtros: {items, total, page, page_size, counts}."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    text = (q or "").strip()
+    if text and len(text) < users_service.MIN_QUERY:
+        raise AppError(422, "QUERY_TOO_SHORT", f"Escribe al menos {users_service.MIN_QUERY} caracteres para buscar")
+    role = (role or "").strip().upper() or None
+    if role and role not in users_service.ROLES:
+        raise AppError(422, "INVALID_ROLE", "El rol debe ser ADMIN, GESTOR o CIUDADANO")
+    status = (status or "").strip().upper() or None
+    if status and status not in users_service.STATUSES:
+        raise AppError(422, "INVALID_STATUS", "El estado debe ser ACTIVO, INACTIVO o INVITADO")
+    branch = branch_service.require_valid_branch(branch) if (branch or "").strip() else None
+    if page < 1:
+        raise AppError(422, "INVALID_PAGE", "La página empieza en 1")
+    if page_size < 1 or page_size > users_service.MAX_PAGE_SIZE:
+        raise AppError(422, "INVALID_PAGE_SIZE", f"El tamaño de página debe estar entre 1 y {users_service.MAX_PAGE_SIZE}")
+    return users_service.list_users(db, user["id"], q=text or None, role=role, status=status, branch=branch, page=page, page_size=page_size)
+
+
+@router.get("/users/{user_id:int}")
+def user_detail(user_id: int, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    return users_service.user_detail(db, user_id, user["id"])
+
+
+@router.patch("/users/{user_id:int}")
+def update_user(user_id: int, payload: UserUpdateInput, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Nombre, municipio y activo (el correo no se edita). Devuelve el usuario y leadership_cleared."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    fields = {name: getattr(payload, name) for name in payload.model_fields_set}
+    result = users_service.update_user(db, user["id"], user_id, fields)
+    db.commit()
+    return {**users_service.get_user(db, user_id, user["id"]), **result}
+
+
+def _leader_change(db: Session, background_tasks: BackgroundTasks, run) -> dict:
+    """Ejecuta un cambio que puede nombrar lider en UNA transaccion: si el indice unico salta, nada queda a
+    medias (409 LEADER_EXISTS). Tras el commit, aviso al nombrado (nunca rompe la accion)."""
+    try:
+        result = run()
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise AppError(409, "LEADER_EXISTS", "Esa rama ya tiene líder: quítale el liderazgo antes de nombrar otro")
+    if result.get("leader_id") and result.get("changed"):
+        named = db.get(User, result["leader_id"])
+        background_tasks.add_task(notifications.notify_leader_appointed, named.email, named.name, CULTURAL_CATEGORY_LABELS[result["branch"]])
+    return result
+
+
+@router.post("/users/{user_id:int}/make-gestor")
+def make_gestor(user_id: int, payload: MakeGestorInput, background_tasks: BackgroundTasks,
+                user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Ciudadano -> gestor participante de la rama (leader: y lider, como promote)."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    branch = branch_service.require_valid_branch(payload.branch)
+    if payload.leader:
+        return _leader_change(db, background_tasks, lambda: branch_service.promote_to_leader(db, branch, user_id, payload.organization_name, user["id"]))
+    result = branch_service.make_participant(db, branch, user_id, payload.organization_name, user["id"])
+    db.commit()
+    return result
+
+
+@router.post("/users/{user_id:int}/move")
+def move_gestor(user_id: int, payload: MoveBranchInput, background_tasks: BackgroundTasks,
+                user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Gestor -> otra rama (lead: y lider). Lo suyo en revision vuelve a borrador."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    branch = branch_service.require_valid_branch(payload.branch)
+    return _leader_change(db, background_tasks, lambda: branch_service.move_to_branch(db, user_id, branch, payload.lead, user["id"]))
+
+
+@router.post("/users/{user_id:int}/remove-from-branch")
+def remove_from_branch(user_id: int, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Gestor -> ciudadano (sale de su rama). Un lider primero pierde el liderazgo."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    branch = users_service.gestor_branch(db, user_id)
+    if branch is None:
+        users_service.get_user(db, user_id)  # 404 si no existe
+        raise AppError(409, "NOT_GESTOR", "Esa persona no es gestor de ninguna rama")
+    if branch_service.current_leader_row(db, branch) and branch_service.current_leader_row(db, branch).id == user_id:
+        raise AppError(409, "IS_LEADER", f"Es líder de {CULTURAL_CATEGORY_LABELS[branch]}: primero quítale el liderazgo")
+    branch_service.remove_participant(db, branch, user_id, user["id"])
+    db.commit()
+    return {"user_id": user_id, "branch": branch, "role": "CIUDADANO"}
+
+
+@router.post("/users/{user_id:int}/make-admin")
+def make_admin(user_id: int, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    result = users_service.make_admin(db, user["id"], user_id)
+    db.commit()
+    return result
+
+
+@router.post("/users/{user_id:int}/revoke-admin")
+def revoke_admin(user_id: int, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    result = users_service.revoke_admin(db, user["id"], user_id)
+    db.commit()
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +358,24 @@ def put_branch_leader(branch: str, payload: LeaderInput, background_tasks: Backg
         gestor = db.get(User, payload.gestor_id)
         background_tasks.add_task(notifications.notify_leader_appointed, gestor.email, gestor.name,
                                   CULTURAL_CATEGORY_LABELS[result["branch"]])
+    return result
+
+
+@router.post("/branches/{branch}/leader/promote")
+def promote_branch_leader(branch: str, payload: PromoteLeaderInput, background_tasks: BackgroundTasks,
+                          user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Un ciudadano (activo, correo verificado) pasa a gestor y lider de la rama, todo en una transaccion."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    branch = branch_service.require_valid_branch(branch)
+    try:
+        result = branch_service.promote_to_leader(db, branch, payload.user_id, payload.organization_name, user["id"])
+        db.commit()
+    except IntegrityError:
+        # Otro lider entro a la vez (indice unico parcial): no queda nada a medias.
+        db.rollback()
+        raise AppError(409, "LEADER_EXISTS", "Esa rama ya tiene líder: quítale el liderazgo antes de nombrar otro")
+    promoted = db.get(User, result["user_id"])
+    background_tasks.add_task(notifications.notify_leader_appointed, promoted.email, promoted.name, CULTURAL_CATEGORY_LABELS[branch])
     return result
 
 

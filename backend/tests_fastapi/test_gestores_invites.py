@@ -107,10 +107,10 @@ def test_create_gestor_as_admin_sends_invite(client, tokens, sent_emails):
         assert len(invites) == 1 and invites[0].used_at is None
         assert invites[0].expires_at - now_utc() > timedelta(days=6)
 
-    # Aparece en el listado como PENDIENTE, con su organizacion y rama.
+    # Aparece en el listado como INVITADO (aun no acepta), con su organizacion y rama.
     listed = client.get("/api/admin/gestores", headers=auth_header(tokens, "admin")).json()
     row = next(g for g in listed if g["id"] == body["user_id"])
-    assert row["status"] == "PENDIENTE"
+    assert row["status"] == "INVITADO"
     assert (row["organization_name"], row["branch"], row["email"]) == (
         payload["organization_name"], "DANZA", payload["email"])
 
@@ -275,7 +275,7 @@ def test_patch_gestor_edits_organization_and_toggles_active(client, tokens, sent
 
     # Desactivar corta el login; reactivar lo devuelve.
     off = client.patch(f"/api/admin/gestores/{gid}", headers=admin, json={"active": False})
-    assert off.status_code == 200 and off.json()["status"] == "PENDIENTE"
+    assert off.status_code == 200 and off.json()["status"] == "INACTIVO"
     assert login(client, payload["email"], GOOD_PASSWORD).status_code == 401
     on = client.patch(f"/api/admin/gestores/{gid}", headers=admin, json={"active": True})
     assert on.json()["status"] == "ACTIVO"

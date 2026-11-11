@@ -1,6 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from backend.service.api.deps import get_current_user, require_roles
@@ -18,21 +19,30 @@ from backend.service.schemas.artists import (
     TrackInput,
 )
 from backend.service.services import artists as svc
+from backend.service.services.branches import leader_of
 from backend.service.services.municipalities import ARTIST_MESSAGE, municipality_filter, require_municipality
 
 router = APIRouter(prefix="/api/artists")
 
 ADMIN_ONLY = "Solo un administrador puede hacer esto"
-# Campos del PUT que el GESTOR dueno no puede tocar: definen la identidad publica y la propiedad.
-ADMIN_ONLY_FIELDS = {"slug", "featured", "active", "user_id", "moneystack"}
+# Campos del PUT que el GESTOR dueno no puede tocar: definen la identidad publica, la propiedad y la revision.
+ADMIN_ONLY_FIELDS = {"slug", "featured", "active", "user_id", "moneystack", "status"}
+# Ademas del ADMIN, crea artistas (siempre de TEJIDO y en revision) el lider de esta rama.
+ARTISTS_BRANCH = "MUSICA"
+CREATE_FORBIDDEN = "Solo un administrador o el líder de la rama Música pueden agregar artistas"
+
+
+def is_music_leader(db: Session, user: Optional[dict]) -> bool:
+    return bool(user) and user["role"] == "GESTOR" and leader_of(db, user["id"]) == ARTISTS_BRANCH
 
 
 def _check_artist_admin(db: Session, user: Optional[dict], artist_id: int, include_inactive: bool = False) -> dict:
     """ADMIN, o GESTOR dueno del artista (artists.user_id). Con include_inactive, un ADMIN
-    tambien gestiona artistas archivados; para un GESTOR un archivado no existe."""
+    tambien gestiona artistas archivados; para un GESTOR un archivado no existe. Los dos ven sus artistas
+    en revision o rechazados (la web publica no)."""
     if not user or user["role"] not in ("ADMIN", "GESTOR"):
         raise AppError(403, "FORBIDDEN", "Acceso denegado")
-    artist = svc.get_artist_by_id(db, artist_id, include_inactive=include_inactive and user["role"] == "ADMIN")
+    artist = svc.get_artist_by_id(db, artist_id, include_inactive=include_inactive and user["role"] == "ADMIN", any_status=True)
     if not artist:
         raise AppError(404, "NOT_FOUND", "Artista no encontrado")
     if user["role"] == "GESTOR" and artist.get("user_id") != user["id"]:
@@ -53,8 +63,22 @@ def _check_video_url(tipo: str, url: str):
 # ───────────────────────── rutas literales (deben ir antes de /{slug}) ─────────────────────────
 
 @router.get("")
-def list_artists(municipality: Optional[str] = Query(default=None), db: Session = Depends(get_db)):
-    return svc.list_artists(db, municipality_filter(municipality))
+def list_artists(municipality: Optional[str] = Query(default=None), sello: Optional[str] = Query(default=None),
+                 genre: Optional[str] = Query(default=None), q: Optional[str] = Query(default=None), db: Session = Depends(get_db)):
+    """Publico: artistas activos y publicados, destacados primero. Filtros opcionales: municipality,
+    sello (tejido|moneystack), genre y q (nombre). Sin filtros, todos (como siempre)."""
+    sello = (sello or "").strip().lower() or None
+    if sello and sello not in svc.SELLOS:
+        raise AppError(422, "INVALID_SELLO", "El sello debe ser tejido o moneystack")
+    return svc.list_artists(db, municipality_filter(municipality), sello=sello, genre=(genre or "").strip() or None,
+                            q=(q or "").strip()[:80] or None)
+
+
+@router.get("/mine")
+def my_artists(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Los artistas que cargo el gestor (el lider de Musica), con su estado y la nota de revision."""
+    require_roles(user, ("GESTOR",), "Solo para gestores")
+    return svc.list_my_artists(db, user["id"])
 
 
 @router.get("/home")
@@ -142,16 +166,29 @@ def profile(slug: str, db: Session = Depends(get_db)):
     return data
 
 
-# ───────────────────────── alta, archivado y restauracion (solo ADMIN) ─────────────────────────
+# ───────────────────────── alta (ADMIN y lider de Musica), revision, archivado ─────────────────────────
 
 @router.post("", status_code=201)
 def create_artist(payload: ArtistCreateInput, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
-    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    """ADMIN: elige el sello (moneystack obligatorio en el cuerpo) y queda publicado. Lider de la rama
+    Musica: siempre TEJIDO, sin destacar, activo y EN REVISION hasta que el admin lo apruebe; el dueno y
+    quien lo cargo es el lider (lo que mande en slug, featured, active, moneystack, user_id o status se
+    ignora). Cualquier otro rol: 403."""
+    leader = is_music_leader(db, user)
+    if not user or (user["role"] != "ADMIN" and not leader):
+        raise AppError(403, "FORBIDDEN", CREATE_FORBIDDEN)
     if not payload.stage_name:
         raise AppError(400, "VALIDATION", "El nombre artístico es requerido")
     municipality = require_municipality(payload.municipality, ARTIST_MESSAGE)
-    _check_owner_user(db, payload.user_id)
     data = {**payload.model_dump(), "municipality": municipality}
+    if leader:
+        data.update(slug=None, featured=False, active=True, moneystack=False, user_id=user["id"], status="REVIEW")
+    else:
+        if payload.moneystack is None:
+            raise AppError(422, "SELLO_REQUIRED", "Elige el sello del artista: Moneystack o TEJIDO")
+        _check_owner_user(db, payload.user_id)
+        data["status"] = "PUBLISHED"
+    data["created_by_user_id"] = user["id"]
     slug = data.pop("slug")
     if slug is None:
         slug = svc.generate_artist_slug(db, data["stage_name"])
@@ -159,7 +196,38 @@ def create_artist(payload: ArtistCreateInput, user: Optional[dict] = Depends(get
         raise AppError(409, "SLUG_IN_USE", "Ya existe un artista con ese slug")
     data["name"] = data["name"] or data["stage_name"]
     artist = svc.create_artist(db, {**data, "slug": slug})
-    return {"id": artist.id, "slug": artist.slug}
+    return {"id": artist.id, "slug": artist.slug, "status": artist.status, "moneystack": artist.moneystack}
+
+
+class ReviewInput(BaseModel):
+    action: str = ""
+    note: Optional[str] = None
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def _note(cls, v):
+        v = " ".join(str(v or "").split())
+        return v[:1000] or None
+
+
+@router.post("/{artist_id:int}/review")
+def review_artist(artist_id: int, payload: ReviewInput, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Solo ADMIN: aprueba (approve: se publica) o rechaza (reject, con nota opcional que ve el lider) un
+    artista en revision."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    status = {"approve": "PUBLISHED", "reject": "REJECTED"}.get(payload.action)
+    if status is None:
+        raise AppError(422, "INVALID_ACTION", "La acción debe ser approve o reject")
+    artist = svc.set_review(db, artist_id, status, payload.note if status == "REJECTED" else None)
+    return {"message": "Artista publicado" if status == "PUBLISHED" else "Artista rechazado", "status": artist.status}
+
+
+@router.post("/{artist_id:int}/submit")
+def resubmit_artist(artist_id: int, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """El dueno (lider) reenvia a revision un artista rechazado."""
+    _check_artist_admin(db, user, artist_id)
+    artist = svc.resubmit(db, artist_id)
+    return {"message": "Enviado a revisión", "status": artist.status}
 
 
 @router.delete("/{artist_id:int}")

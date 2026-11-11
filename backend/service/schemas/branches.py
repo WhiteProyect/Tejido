@@ -15,6 +15,17 @@ class LeaderInput(BaseModel):
     gestor_id: int
 
 
+class PromoteLeaderInput(BaseModel):
+    """Convertir a un ciudadano en lider (organization_name opcional: por defecto su nombre)."""
+    user_id: int
+    organization_name: Optional[str] = None
+
+    @field_validator("organization_name", mode="before")
+    @classmethod
+    def _organization_name(cls, v):
+        return _optional_text(v, 120, "El nombre de la organización")
+
+
 class JoinRequestInput(BaseModel):
     branch: str
     message: Optional[str] = None

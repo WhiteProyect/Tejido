@@ -9,7 +9,8 @@ import { cdnImage } from '../utils/cloudinaryUrl.js';
 // decide la carpeta segun `scope`) y entrega por onChange el secure_url, que es lo que guarda cada
 // endpoint. Tambien se puede soltar el archivo encima. "Usar un enlace" despliega el campo de texto
 // para URLs externas y rutas del sitio (/assets/...) ya existentes. Un error de subida no borra el
-// valor anterior. scope "artist" necesita scopeRef (id): un artista nuevo sube sus fotos ya creado.
+// valor anterior. scope "artist": con scopeRef (id) sube a la carpeta del artista; sin el (el alta de uno
+// nuevo) el backend usa una carpeta fija y la URL queda en el formulario hasta crearlo.
 // onUploaded (opcional) avisa solo de las subidas, para quien guarda al momento (el avatar).
 
 const LINK_BUTTON = 'cursor-pointer justify-self-start border-0 bg-transparent p-0 text-[13px] font-semibold text-ink underline decoration-[#d9cfbe] underline-offset-4 hover:decoration-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-60';
@@ -29,8 +30,7 @@ export default function ImageField({
 
   const url = (value || '').trim();
   const uploading = progress !== null;
-  const needsArtist = scope === 'artist' && !scopeRef;
-  const canUpload = !disabled && !uploading && !needsArtist;
+  const canUpload = !disabled && !uploading;
   const percent = Math.round((progress || 0) * 100);
 
   useEffect(() => { setFailed(false); }, [value]);
@@ -105,9 +105,7 @@ export default function ImageField({
                 )}
               </div>
               <span className="text-[12px] leading-[1.4] text-muted">
-                {needsArtist
-                  ? 'Podrás subir fotos cuando el artista esté creado. Mientras, puedes usar un enlace.'
-                  : 'JPG, PNG o WebP, hasta 10 MB. También puedes soltarla aquí.'}
+                JPG, PNG o WebP, hasta 10 MB. También puedes soltarla aquí.
               </span>
             </>
           )}

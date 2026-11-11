@@ -14,6 +14,7 @@
     "@vitejs/plugin-react": "latest",
     "framer-motion": "^13.3.0",
     "leaflet": "1.9.4",
+    "leaflet.markercluster": "1.5.3",
     "ogl": "^1.0.11",
     "react": "latest",
     "react-dom": "latest",

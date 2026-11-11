@@ -442,6 +442,7 @@ class Artist(Base):
         # Indice funcional: autogenerate no lo detecta, la migracion lo escribe a mano.
         Index("uq_artists_slug_lower", func.lower(text("slug")), unique=True),
         _municipality_check("artists"),
+        CheckConstraint("status IN ('PUBLISHED', 'REVIEW', 'REJECTED')", name="ck_artists_status"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -465,8 +466,15 @@ class Artist(Base):
     # Municipio, como en las publicaciones (obligatorio en la API, nullable mientras se rellena).
     # city queda como texto libre, sin tocar.
     municipality: Mapped[str | None] = mapped_column(String, index=True)
-    # Pertenece al sello Moneystack (hoy, todos).
+    # Sello: Moneystack (true) o TEJIDO (false). Decide donde se muestra (#moneystack o #artistas, rama
+    # Musica y municipio). El admin lo elige al crear; lo que crea el lider de Musica es siempre TEJIDO.
     moneystack: Mapped[bool] = mapped_column(default=True, server_default=text("true"), nullable=False)
+    # Revision: lo que crea el lider de la rama Musica llega en REVIEW y lo aprueba (PUBLISHED) o rechaza
+    # (REJECTED, con review_note) el admin. Lo publico solo ve active y PUBLISHED.
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="PUBLISHED", server_default=text("'PUBLISHED'"))
+    review_note: Mapped[str | None] = mapped_column(Text)
+    # Quien lo cargo (admin o lider); user_id sigue siendo el dueno que lo gestiona.
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

@@ -1,12 +1,12 @@
 // ─── Municipios del Bajo Cauca: fuente única ───────────────────────────────────────────────
 // Editable a mano (como timelineItems.js). De aquí salen la lista de municipios de los
-// formularios, el mapa del inicio (HomeMapSection), las escenas del hero (HeroInteractive), el
+// formularios, el mapa del inicio (HomeMapSection), las tarjetas del hero (utils/heroCards.js), el
 // pasaporte y las pantallas #municipios y #municipio/<slug>. utils/constants.js reexporta las
 // formas antiguas (MUNICIPALITIES, MUNICIPALITY_LOCATION_MAP) a partir de esta lista.
 //
 // Campos:
-// - slug, name, emoji, color (el de siempre: pasaporte, hero de opciones), theme.
-// - heroColor: color de la escena del municipio en el hero del inicio (no cambia su aspecto).
+// - slug, name, emoji, color (el de siempre: pasaporte), theme.
+// - icon: icono de components/Icon.jsx en las tarjetas del hero del inicio (sub-escena Historias del río).
 // - accent: acento del diseño de las pantallas de municipio. Solo decorativo (bordes, puntos,
 //   líneas): como texto no siempre llega a 4.5:1, por eso cada uno trae sus tonos de texto:
 //   · accentText: texto sobre papel (#fff9ec) o blanco, ≥ 4.5:1.
@@ -31,11 +31,11 @@
 export const MUNICIPALITY_LIST = [
   {
     slug: 'caucasia',
+    icon: 'confluence',
     center: [7.9847, -75.1953], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'Caucasia',
     emoji: '🏰',
     color: '#d4a843',
-    heroColor: '#d4a843',
     theme: 'Capital',
     accent: '#1d8fa3',
     accentText: '#1a7e8f',
@@ -64,11 +64,11 @@ export const MUNICIPALITY_LIST = [
   },
   {
     slug: 'caceres',
+    icon: 'columns',
     center: [7.5782, -75.3514], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'Cáceres',
     emoji: '🏛',
     color: '#1d8fa3',
-    heroColor: '#1d8fa3',
     theme: 'Historia',
     accent: '#9b72a6',
     accentText: '#8a6594',
@@ -97,11 +97,11 @@ export const MUNICIPALITY_LIST = [
   },
   {
     slug: 'taraza',
+    icon: 'coffee',
     center: [7.5758, -75.4003], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'Tarazá',
     emoji: '☕',
     color: '#75b79b',
-    heroColor: '#75b79b',
     theme: 'Café',
     accent: '#88c5a4',
     accentText: '#547a66',
@@ -130,11 +130,11 @@ export const MUNICIPALITY_LIST = [
   },
   {
     slug: 'nechi',
+    icon: 'waves',
     center: [8.0941, -74.7788], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'Nechí',
     emoji: '🌊',
     color: '#1d8fa3',
-    heroColor: '#0f6b7a',
     theme: 'Río',
     accent: '#1d8fa3',
     accentText: '#1a7e8f',
@@ -163,11 +163,11 @@ export const MUNICIPALITY_LIST = [
   },
   {
     slug: 'elbagre',
+    icon: 'gem',
     center: [7.5973, -74.8120], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'El Bagre',
     emoji: '⭐',
     color: '#d4a843',
-    heroColor: '#c4713a',
     theme: 'Oro',
     accent: '#d4a843',
     accentText: '#8c6f2c',
@@ -196,11 +196,11 @@ export const MUNICIPALITY_LIST = [
   },
   {
     slug: 'zaragoza',
+    icon: 'anchor',
     center: [7.4889, -74.8667], // PROVISIONAL: cabecera aproximada (lat, lng) para el Mapa vivo
     name: 'Zaragoza',
     emoji: '⚓',
     color: '#8a4f7d',
-    heroColor: '#6b3a7d',
     theme: 'Fundación',
     accent: '#c85a32',
     accentText: '#ba542e',

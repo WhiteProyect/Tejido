@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from backend.service.errors import AppError
 from backend.service.models.tables import (
@@ -30,39 +30,74 @@ def now_utc():
 
 # ───────────────────────── lecturas base ─────────────────────────
 
-def list_artists(db: Session, municipality: str | None = None):
-    conditions = [Artist.active.is_(True)]
+STATUSES = ("PUBLISHED", "REVIEW", "REJECTED")
+# Sello en la API (?sello=): tejido = moneystack false, moneystack = true.
+SELLOS = {"tejido": False, "moneystack": True}
+# Datos de moderacion: solo los ven el admin y el lider dueno, nunca la web publica.
+_PRIVATE_KEYS = ("status", "review_note", "created_by_user_id")
+
+
+def public_conditions():
+    """Lo publico (lista, perfil y sus sub-recursos, /home, carrusel, municipios, Moneystack): activo y
+    publicado. Un artista en REVIEW o REJECTED no existe para la web (404)."""
+    return (Artist.active.is_(True), Artist.status == "PUBLISHED")
+
+
+def _public_dict(artist) -> dict | None:
+    data = model_to_dict(artist)
+    if data is not None:
+        for key in _PRIVATE_KEYS:
+            data.pop(key, None)
+    return data
+
+
+def list_artists(db: Session, municipality: str | None = None, sello: str | None = None, genre: str | None = None,
+                 q: str | None = None):
+    """Publico, destacados primero. sello (tejido|moneystack), genre (sin distinguir mayusculas) y q (en el
+    nombre artistico o el nombre) son opcionales; sin filtros, todos (comportamiento de siempre)."""
+    conditions = list(public_conditions())
     if municipality:
         conditions.append(Artist.municipality == municipality)
+    if sello:
+        conditions.append(Artist.moneystack.is_(SELLOS[sello]))
+    if genre:
+        conditions.append(func.lower(Artist.genre) == genre.lower())
+    if q:
+        term = f"%{q}%"
+        conditions.append(or_(Artist.stage_name.ilike(term), Artist.name.ilike(term)))
     artists = db.execute(
         select(Artist).where(*conditions).order_by(Artist.featured.desc(), Artist.name)
     ).scalars().all()
-    return models_to_dicts(artists)
+    return [_public_dict(artist) for artist in artists]
 
 
-def get_artist_by_id(db: Session, artist_id: int, include_inactive: bool = False):
+def get_artist_by_id(db: Session, artist_id: int, include_inactive: bool = False, any_status: bool = False):
+    """Por defecto, solo lo publico. include_inactive: tambien archivados (admin). any_status: tambien en
+    REVIEW o REJECTED (el admin y el lider dueno en su panel)."""
     stmt = select(Artist).where(Artist.id == artist_id)
     if not include_inactive:
         stmt = stmt.where(Artist.active.is_(True))
+    if not any_status:
+        stmt = stmt.where(Artist.status == "PUBLISHED")
     return model_to_dict(db.execute(stmt).scalar_one_or_none())
 
 
 def get_artist_by_slug(db: Session, slug: str):
     artist = db.execute(
-        select(Artist).where(func.lower(Artist.slug) == func.lower(slug), Artist.active.is_(True))
+        select(Artist).where(func.lower(Artist.slug) == func.lower(slug), *public_conditions())
     ).scalar_one_or_none()
-    return model_to_dict(artist)
+    return _public_dict(artist)
 
 
 def get_artist_by_stage_name(db: Session, stage_name: str):
     artist = db.execute(
         select(Artist).where(
             func.lower(func.replace(Artist.stage_name, " ", "-")) == func.lower(stage_name),
-            Artist.active.is_(True),
+            *public_conditions(),
         )
     ).scalar_one_or_none()
     if artist:
-        return model_to_dict(artist)
+        return _public_dict(artist)
     return get_artist_by_slug(db, stage_name)
 
 
@@ -227,19 +262,28 @@ def get_artist_dashboard(db: Session, artist_id: int):
 
 
 def get_home_artist_data(db: Session):
-    artists = list_artists(db)
+    """Artista destacado del sello Moneystack (el mismo orden que usa el carrusel del inicio)."""
+    artists = list_artists(db, sello="moneystack")
     if not artists:
         return None
     artist = artists[0]
     return {"artist": artist, "featured_track": get_featured_track(db, artist["id"])}
 
 
-def list_artists_admin(db: Session):
-    """Todos los artistas (tambien archivados) con conteos por seccion; activos primero."""
-    artists = db.execute(
-        select(Artist.id, Artist.slug, Artist.stage_name, Artist.genre, Artist.image, Artist.featured, Artist.active)
-        .order_by(Artist.active.desc(), Artist.featured.desc(), Artist.stage_name)
-    ).all()
+def list_artists_admin(db: Session, status: str | None = None):
+    """Todos los artistas (tambien archivados) con conteos por seccion; en revision primero, luego activos.
+    status (PUBLISHED|REVIEW|REJECTED) filtra. Trae el sello, el estado, la nota de revision y quien lo cargo."""
+    creator = aliased(User)
+    stmt = (
+        select(Artist.id, Artist.slug, Artist.stage_name, Artist.genre, Artist.image, Artist.featured, Artist.active,
+               Artist.moneystack, Artist.municipality, Artist.status, Artist.review_note, Artist.user_id,
+               Artist.created_by_user_id, creator.name.label("created_by_name"))
+        .join(creator, creator.id == Artist.created_by_user_id, isouter=True)
+        .order_by((Artist.status == "REVIEW").desc(), Artist.active.desc(), Artist.featured.desc(), Artist.stage_name)
+    )
+    if status:
+        stmt = stmt.where(Artist.status == status)
+    artists = db.execute(stmt).all()
     sections = {
         "tracks": Track, "media": ArtistMedia, "timeline": ArtistTimeline,
         "social": ArtistSocialLink, "connections": ArtistConnection, "metrics": ArtistMetric,
@@ -255,9 +299,9 @@ def list_artists_admin(db: Session):
 
 
 def get_artist_admin_detail(db: Session, artist_id: int):
-    """Todo lo de un artista para el panel de admin: tambien archivado y con borradores
-    (las lecturas publicas ocultan ambos). Mismas claves que el perfil publico, mas metrics."""
-    artist = get_artist_by_id(db, artist_id, include_inactive=True)
+    """Todo lo de un artista para el panel de admin: tambien archivado, en revision y con borradores
+    (las lecturas publicas ocultan todo eso). Mismas claves que el perfil publico, mas metrics."""
+    artist = get_artist_by_id(db, artist_id, include_inactive=True, any_status=True)
     if not artist:
         return None
     tracks = db.execute(
@@ -322,6 +366,47 @@ def is_gestor(db: Session, user_id: int) -> bool:
     return db.execute(
         select(User.id).join(Role, Role.id == User.role_id).where(User.id == user_id, Role.name == "GESTOR")
     ).first() is not None
+
+
+def list_my_artists(db: Session, user_id: int) -> list[dict]:
+    """Los artistas que cargo ese usuario (el lider de Musica), activos, con su estado y nota."""
+    # Todos sus campos: el panel del lider los usa para editar (es su propio artista).
+    rows = db.execute(
+        select(Artist)
+        .where(Artist.created_by_user_id == user_id, Artist.active.is_(True))
+        .order_by((Artist.status == "REJECTED").desc(), (Artist.status == "REVIEW").desc(), Artist.updated_at.desc().nulls_last(), Artist.id.desc())
+    ).scalars().all()
+    return models_to_dicts(rows)
+
+
+def count_in_review(db: Session) -> int:
+    return db.execute(select(func.count()).select_from(Artist).where(Artist.status == "REVIEW", Artist.active.is_(True))).scalar_one()
+
+
+def set_review(db: Session, artist_id: int, status: str, note: str | None) -> Artist:
+    """Aprueba (PUBLISHED) o rechaza (REJECTED, con la nota) un artista en REVIEW. No hace commit."""
+    artist = db.get(Artist, artist_id)
+    if artist is None or not artist.active:
+        raise AppError(404, "NOT_FOUND", "Artista no encontrado")
+    if artist.status != "REVIEW":
+        raise AppError(409, "INVALID_STATE", "Solo se puede revisar un artista que esté en revisión")
+    artist.status = status
+    artist.review_note = note or None
+    artist.updated_at = now_utc()
+    db.flush()
+    return artist
+
+
+def resubmit(db: Session, artist_id: int) -> Artist:
+    """El lider reenvia a revision un artista rechazado (se borra la nota anterior). No hace commit."""
+    artist = db.get(Artist, artist_id)
+    if artist.status != "REJECTED":
+        raise AppError(409, "INVALID_STATE", "Solo un artista rechazado se puede reenviar a revisión")
+    artist.status = "REVIEW"
+    artist.review_note = None
+    artist.updated_at = now_utc()
+    db.flush()
+    return artist
 
 
 def create_artist(db: Session, data: dict) -> Artist:

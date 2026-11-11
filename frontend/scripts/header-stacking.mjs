@@ -1,5 +1,5 @@
 // Prueba del apilamiento del header: nada de lo que se pinta debajo de el (secciones del inicio, Agenda,
-// Oportunidades, Municipios, Mapa vivo, detalle...) puede taparlo.
+// Oportunidades, Municipios, Mapa vivo, detalle, Artistas...) puede taparlo.
 //
 //   npm --prefix frontend run test:header            (Vite debe estar corriendo en http://localhost:5173)
 //   TEJIDO_URL=http://localhost:5174 npm --prefix frontend run test:header
@@ -67,11 +67,13 @@ const POINTS = [point(41, 'EVENTO', 7.9862, -75.1968), point(42, 'EVENTO', 7.983
 const MUNICIPALITY = { slug: 'caucasia', counts: { publications: PUBLICATIONS.length, talent: 0, artists: 0 },
   publications: PUBLICATIONS.map(({ id, title, summary, image, kind, cultural_category, location, start_date, municipality }) => ({ id, title, summary, image, kind, cultural_category, location, start_date, municipality })),
   talent: [], artists: [] };
+const ARTISTS = CATS.map(([, slug, label], i) => ({ id: 300 + i, slug: `artista-${i}`, name: `Artista ${i}`, stage_name: `Artista ${label}`, image: IMG(slug),
+  genre: label, municipality: 'caucasia', moneystack: false, featured: i === 0, active: true }));
 const ADMIN = { id: 4, name: 'Camila Prueba', email: 'prueba@tejido.test', role: 'ADMIN', email_verified: true, branch: null, is_leader: false };
 
 const PAGES = [
   ['inicio', '#inicio'], ['categoria', '#categoria/musica'], ['agenda', '#agenda'], ['oportunidades', '#oportunidades'],
-  ['municipios', '#municipios'], ['municipio', '#municipio/caucasia'], ['mapa', '#mapa'], ['publicacion', '#publicacion/501'],
+  ['municipios', '#municipios'], ['municipio', '#municipio/caucasia'], ['mapa', '#mapa'], ['publicacion', '#publicacion/501'], ['artistas', '#artistas'],
 ].filter(([name]) => !ONLY.length || ONLY.includes(name));
 
 function solidPng(r, g, b) {
@@ -95,6 +97,7 @@ function apiResponse(path, search, session) {
   if (path === '/api/municipalities/caucasia') return MUNICIPALITY;
   if (path === '/api/cultural-categories/covers') return {};
   if (path === '/api/categories') return [];
+  if (path === '/api/artists') return ARTISTS;
   return /s$|\/images$/.test(path) ? [] : {};
 }
 

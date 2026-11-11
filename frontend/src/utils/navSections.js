@@ -9,6 +9,7 @@ export const NAV_LINKS = [
   ['agenda', 'Agenda'],
   ['oportunidades', 'Oportunidades'],
   ['talento', 'Talento'],
+  ['artistas', 'Artistas'],
   ['nosotros', 'Nosotros'],
   ['moneystack', 'Moneystack'],
 ];
@@ -22,6 +23,7 @@ export const NAV_DESCRIPTIONS = {
   agenda: 'Eventos',
   oportunidades: 'Convocatorias',
   talento: 'Creadores',
+  artistas: 'Voces del territorio',
   nosotros: 'El proyecto',
   moneystack: 'Sello Musical',
 };

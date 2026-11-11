@@ -137,13 +137,13 @@ def test_publication_filter_by_municipality(client, category_ids, admin):  # noq
 
 # ─────────────────────────── artistas ───────────────────────────
 
-def test_artist_requires_municipality_and_moneystack_defaults_to_true(client, admin):  # noqa: F811
+def test_artist_requires_municipality_and_keeps_the_sello(client, admin):  # noqa: F811
     name = f"Artista Municipio {uuid.uuid4().hex[:6]}"
     for bad in ({}, {"municipality": ""}, {"municipality": "bello"}):
-        resp = client.post("/api/artists", json={"stage_name": name, **bad}, headers=admin)
+        resp = client.post("/api/artists", json={"moneystack": True, "stage_name": name, **bad}, headers=admin)
         assert resp.status_code == 422, resp.text
         assert resp.json() == {"error": "MUNICIPALITY_REQUIRED", "message": "Elige el municipio del artista"}
-    created = client.post("/api/artists", json={"stage_name": name, "municipality": "ZARAGOZA"}, headers=admin)
+    created = client.post("/api/artists", json={"moneystack": True, "stage_name": name, "municipality": "ZARAGOZA"}, headers=admin)
     assert created.status_code == 201, created.text
     artist_id, slug = created.json()["id"], created.json()["slug"]
     profile = client.get(f"/api/artists/{slug}").json()["artist"]
@@ -261,7 +261,7 @@ def test_backfill_dry_run_writes_nothing_and_apply_fills_only_deduced(script_db,
             session.execute(update(Publication).where(Publication.id == pub).values(municipality=municipality))
         rows[key] = pub
         script_db["publications"].append(pub)
-    artist = client.post("/api/artists", json={"stage_name": f"Relleno {uuid.uuid4().hex[:6]}", "city": "Tarazá",
+    artist = client.post("/api/artists", json={"moneystack": True, "stage_name": f"Relleno {uuid.uuid4().hex[:6]}", "city": "Tarazá",
                                               "municipality": "caucasia"}, headers=admin).json()["id"]
     script_db["artists"].append(artist)
     with schema_session() as session:

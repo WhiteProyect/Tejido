@@ -46,6 +46,7 @@ def make_artist(client, admin):
     def make(**body):
         body.setdefault("stage_name", _name())
         body.setdefault("municipality", "caucasia")
+        body.setdefault("moneystack", True)
         resp = client.post("/api/artists", json=body, headers=admin)
         assert resp.status_code == 201, resp.text
         created.append(resp.json()["id"])
@@ -97,7 +98,7 @@ def test_permission_matrix(client, tokens, admin, gestor, gestor_id, make_artist
     for field, value in (("slug", "otro-slug-gestor"), ("featured", True), ("active", False), ("user_id", None)):
         resp = client.put(f"/api/artists/{a}", json={field: value}, headers=gestor)
         assert resp.status_code == 403, (field, resp.text)
-    assert client.post("/api/artists", json={"stage_name": _name(), "municipality": "caucasia"}, headers=gestor).status_code == 403
+    assert client.post("/api/artists", json={"moneystack": True, "stage_name": _name(), "municipality": "caucasia"}, headers=gestor).status_code == 403
     assert client.delete(f"/api/artists/{a}", headers=gestor).status_code == 403
     assert client.post(f"/api/artists/{a}/restore", headers=gestor).status_code == 403
     assert client.get("/api/admin/artists", headers=gestor).status_code == 403
@@ -117,7 +118,7 @@ def test_permission_matrix(client, tokens, admin, gestor, gestor_id, make_artist
 def test_owner_must_be_a_gestor(client, tokens, admin, make_artist):
     ciudadano_id = client.get("/api/me", headers=auth_header(tokens, "ciudadano")).json()["user"]["id"]
     for user_id in (ciudadano_id, 999999):
-        resp = client.post("/api/artists", json={"stage_name": _name(), "municipality": "caucasia", "user_id": user_id}, headers=admin)
+        resp = client.post("/api/artists", json={"moneystack": True, "stage_name": _name(), "municipality": "caucasia", "user_id": user_id}, headers=admin)
         assert resp.status_code == 400, resp.text
     artist = make_artist()
     assert client.put(f"/api/artists/{artist['id']}", json={"user_id": ciudadano_id}, headers=admin).status_code == 400
@@ -132,18 +133,18 @@ def test_slugs(client, admin, make_artist):
     assert make_artist(stage_name="123")["slug"].startswith("artista-123")
     assert make_artist(stage_name="Home")["slug"] == "home-2"
 
-    created = client.post("/api/artists", json={"stage_name": _name(), "municipality": "caucasia", "slug": "  Slug-Explicito-F1 "}, headers=admin)
+    created = client.post("/api/artists", json={"moneystack": True, "stage_name": _name(), "municipality": "caucasia", "slug": "  Slug-Explicito-F1 "}, headers=admin)
     assert created.status_code == 201 and created.json()["slug"] == "slug-explicito-f1"
     client.delete(f"/api/artists/{created.json()['id']}", headers=admin)
 
     for bad in ("Mal Slug!", "con_guion_bajo", "-borde", "doble--guion", "canción", "123", "home", "admin", "media-kit"):
-        resp = client.post("/api/artists", json={"stage_name": _name(), "municipality": "caucasia", "slug": bad}, headers=admin)
+        resp = client.post("/api/artists", json={"moneystack": True, "stage_name": _name(), "municipality": "caucasia", "slug": bad}, headers=admin)
         assert resp.status_code == 400, (bad, resp.text)
     # Unicidad sin distinguir mayusculas, tambien contra archivados (slug-explicito-f1 lo esta).
     for taken in ("NANDU-SONICO-FASE1", "slug-explicito-f1"):
-        assert client.post("/api/artists", json={"stage_name": _name(), "municipality": "caucasia", "slug": taken}, headers=admin).status_code == 409
-    assert client.post("/api/artists", json={"stage_name": "x"}, headers=admin).status_code == 400
-    assert client.post("/api/artists", json={}, headers=admin).status_code == 400
+        assert client.post("/api/artists", json={"moneystack": True, "stage_name": _name(), "municipality": "caucasia", "slug": taken}, headers=admin).status_code == 409
+    assert client.post("/api/artists", json={"moneystack": True, "stage_name": "x"}, headers=admin).status_code == 400
+    assert client.post("/api/artists", json={"moneystack": True}, headers=admin).status_code == 400
 
     # Cambio de slug: la URL nueva funciona, la vieja no; no puede pisar a otro; el propio si.
     a = first["id"]
@@ -299,7 +300,7 @@ def test_url_validation_on_every_field(client, admin, make_artist):
         assert ok.status_code == 200, (path, field, ok.text)
 
     # Al crear tambien se valida.
-    for body in ({"stage_name": _name(), "municipality": "caucasia", "image": "javascript:alert(1)"}, {"stage_name": _name(), "municipality": "caucasia", "hero_image": "data:x"}):
+    for body in ({"stage_name": _name(), "municipality": "caucasia", "moneystack": True, "image": "javascript:alert(1)"}, {"stage_name": _name(), "municipality": "caucasia", "moneystack": True, "hero_image": "data:x"}):
         assert client.post("/api/artists", json=body, headers=admin).status_code == 400
     a = artist["id"]
     assert client.post(f"/api/artists/{a}/social", json={"platform": "x", "url": "javascript:alert(1)"}, headers=admin).status_code == 400

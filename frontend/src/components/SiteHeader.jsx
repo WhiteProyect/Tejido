@@ -63,6 +63,20 @@ export default function SiteHeader({ user, onLogin, onLogout, screen, municipali
     };
   }, [showUserMenu]);
 
+  // Alto real del header publicado en :root como --header-height (el Mapa vivo ocupa el resto de la
+  // pantalla con calc(100dvh - var(--header-height))). Sigue los cambios de alto (avatar, salto de linea,
+  // corte compacto) sin depender de un numero fijo.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty('--header-height', `${Math.round(el.getBoundingClientRect().height)}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     function handleScroll() {
       const currentScrollY = window.scrollY;

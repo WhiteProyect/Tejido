@@ -1,10 +1,13 @@
+import ArtistCard from '../artists/ArtistCard.jsx';
 import { cdnImage } from '../../utils/cloudinaryUrl.js';
 import { getInitials } from '../../utils/initials.js';
 import SuggestNote from './SuggestNote.jsx';
 
 // Modulo 5: talento y artistas del municipio, en tarjetas horizontales (avatar, texto, boton).
-// - Artista: fondo #0d0f0e, avatar dorado con iniciales de tinta (o su foto), "Artista Moneystack"
-//   solo si moneystack es true (si no, su genero o "Artista"), "Ver perfil" a #artista/<slug>.
+// - Artista Moneystack: fondo #0d0f0e, avatar dorado con iniciales de tinta (o su foto), la etiqueta
+//   "Artista Moneystack" y "Ver perfil" a #artista/<slug> (como siempre).
+// - Artista de TEJIDO: la tarjeta comun (components/artists/ArtistCard.jsx, horizontal) con su chip
+//   "TEJIDO"; toda la tarjeta enlaza a su perfil.
 // - Talento: fondo tinta, avatar menta, la categoria cultural en menta, "Explorar" a #talento/<slug>.
 // Sin ninguno, Hilo invita a sugerir un talento.
 // Contrastes: dorado sobre #0d0f0e 8.7:1; gris 70 % 9.6:1; tinta sobre dorado 5.3:1; menta sobre
@@ -29,7 +32,7 @@ export default function MunicipalityPeople({ municipality, artists, talent }) {
         <h2 id="municipio-talento" className="m-0 font-sans text-[length:clamp(28px,3.4vw,40px)] font-extrabold leading-[1.1] tracking-[-0.04em] text-ink">
           Talento y artistas de {municipality.name}
         </h2>
-        <p className="m-0 text-[15px] font-semibold text-[#7a5c12]">Con sello Moneystack y gestores locales</p>
+        <p className="m-0 text-[15px] font-semibold text-[#7a5c12]">Artistas de TEJIDO y Moneystack, y gestores locales</p>
       </div>
       {empty ? (
         <div className="mt-6">
@@ -41,13 +44,13 @@ export default function MunicipalityPeople({ municipality, artists, talent }) {
         </div>
       ) : (
         <ul className="mt-6 grid list-none gap-4 p-0 md:grid-cols-2">
-          {artists.map((artist) => (
+          {artists.map((artist) => (!artist.moneystack ? (
+            <li key={`artista-${artist.slug}`} className="flex min-w-0"><ArtistCard artist={artist} layout="row" /></li>
+          ) : (
             <li key={`artista-${artist.slug}`} className={`${CARD} bg-[#0d0f0e]`}>
               <Avatar src={artist.image} name={artist.stage_name} tone="bg-gold" />
               <div className="min-w-0 flex-1 max480:basis-[calc(100%-80px)]">
-                <p className="m-0 text-[11px] font-bold uppercase tracking-[.14em] text-gold">
-                  {artist.moneystack ? 'Artista Moneystack' : (artist.genre || 'Artista')}
-                </p>
+                <p className="m-0 text-[11px] font-bold uppercase tracking-[.14em] text-gold" data-sello="moneystack">Artista Moneystack</p>
                 <h3 className="mt-1 mb-0 font-sans text-[20px] font-extrabold leading-[1.2] tracking-[-0.02em] text-white [overflow-wrap:anywhere]">{artist.stage_name}</h3>
                 <p className="mt-1 mb-0 text-[14px] text-[rgba(255,255,255,0.7)]">{[artist.genre, municipality.name].filter(Boolean).join(' · ')}</p>
               </div>
@@ -55,7 +58,7 @@ export default function MunicipalityPeople({ municipality, artists, talent }) {
                 Ver perfil<span className="sr-only">: {artist.stage_name}</span>
               </a>
             </li>
-          ))}
+          )))}
           {talent.map((profile) => (
             <li key={`talento-${profile.slug}`} className={`${CARD} bg-ink`}>
               <Avatar src={profile.cover_url} name={profile.name} tone="bg-[#88c5a4]" />

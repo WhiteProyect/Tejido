@@ -77,6 +77,7 @@ export default function Footer() {
         <a href="#agenda" className={LINK}>Eventos</a>
         <a href="#oportunidades" className={LINK}>Oportunidades</a>
         <a href="#talento" className={LINK}>Talento</a>
+        <a href="#artistas" className={LINK}>Artistas</a>
       </motion.div>
       <motion.div className={COL} variants={footerItem}>
         <b className={HEADING}>Proyecto</b>

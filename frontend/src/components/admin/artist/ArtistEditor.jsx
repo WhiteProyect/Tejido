@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { SelloChip } from '../../artists/ArtistCard.jsx';
 import Icon from '../../Icon.jsx';
 import PillTabs from '../PillTabs.jsx';
 import { BTN_GHOST, BTN_INK_SM, PANEL } from '../../uiStyles.js';
@@ -18,8 +19,13 @@ import TrayectoriaTab from './TrayectoriaTab.jsx';
 // (GET /api/admin/artists/{id}: tambien archivado y con borradores) y se lo pasa a las pestanas;
 // tras cada cambio lo recarga conservando lo que se ve (sin parpadeo). La pestana va en la URL con
 // replaceState, como las del dashboard. Archivado = solo lectura, con aviso y "Restaurar".
+// Sello: un artista Moneystack tiene las 7 pestanas; uno de TEJIDO (perfil publico sencillo) solo el
+// formulario de datos, sin barra de pestanas. Cambiar el sello no borra nada: las secciones vuelven si
+// regresa a Moneystack. Una pestana que no corresponde en la URL cae en Datos.
+// initialArtist (recien creado desde el alta): se pinta de inmediato con sus datos mientras llega el
+// detalle, sin pantalla de carga; el foco va al titulo.
 
-const TABS = [
+export const TABS = [
   ['datos', 'Datos', 'pen'],
   ['musica', 'Música', 'music'],
   ['galeria', 'Galería', 'palette'],
@@ -30,6 +36,7 @@ const TABS = [
 ];
 const TAB_IDS = TABS.map(([id]) => id);
 const tabFrom = (value) => (TAB_IDS.includes(value) ? value : 'datos');
+const EMPTY_SECTIONS = { tracks: [], timeline: [], media: [], social_links: [], connections: [], metrics: [] };
 const COUNTS = { musica: 'tracks', galeria: 'media', trayectoria: 'timeline', redes: 'social_links', conexiones: 'connections', metricas: 'metrics' };
 
 function BackLink() {
@@ -44,11 +51,14 @@ function BackLink() {
   );
 }
 
-export default function ArtistEditor({ artistId, tab: tabFromUrl }) {
+export default function ArtistEditor({ artistId, tab: tabFromUrl, initialArtist = null }) {
   const { showToast } = useToast();
   const [tab, setTab] = useState(() => tabFrom(tabFromUrl));
-  const [state, setState] = useState({ loading: true, error: '', detail: null });
+  const [state, setState] = useState(() => ({ loading: true, error: '', detail: initialArtist ? { artist: initialArtist, ...EMPTY_SECTIONS } : null }));
   const restore = useAction();
+  const titleRef = useRef(null);
+
+  useEffect(() => { if (initialArtist) titleRef.current?.focus({ preventScroll: true }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Un enlace a otra pestana de este mismo artista (hashchange) mueve la pestana.
   useEffect(() => { setTab(tabFrom(tabFromUrl)); }, [tabFromUrl]);
@@ -64,6 +74,14 @@ export default function ArtistEditor({ artistId, tab: tabFromUrl }) {
 
   useEffect(() => { reload(); }, [reload]);
 
+  // Una seccion que no corresponde al sello (p. ej. Musica de un artista de TEJIDO) cae en Datos, tambien en la URL.
+  useEffect(() => {
+    const current = state.detail?.artist;
+    if (!current || tab === 'datos' || (current.moneystack !== false && TAB_IDS.includes(tab))) return;
+    setTab('datos');
+    window.history.replaceState(window.history.state, '', `#admin-dashboard/artistas/${artistId}/datos`);
+  }, [state.detail, tab, artistId]);
+
   function changeTab(id) {
     if (id === tab || !confirmDiscard()) return;
     setTab(id);
@@ -75,7 +93,7 @@ export default function ArtistEditor({ artistId, tab: tabFromUrl }) {
       await adminArtistApi.restore(artistId);
       await reload();
     });
-    if (ok) showToast({ tone: 'menta', eyebrow: 'De vuelta en el sello', title: 'Artista restaurado', text: 'Vuelve a aparecer en Moneystack y ya puedes editarlo.' });
+    if (ok) showToast({ tone: 'menta', eyebrow: 'De vuelta en el sello', title: 'Artista restaurado', text: `Vuelve a aparecer en ${state.detail?.artist?.moneystack === false ? 'Artistas' : 'Moneystack'} y ya puedes editarlo.` });
   }
 
   const { detail } = state;
@@ -93,6 +111,9 @@ export default function ArtistEditor({ artistId, tab: tabFromUrl }) {
   const { artist } = detail;
   const readOnly = !artist.active;
   const tabProps = { artist, readOnly, onChanged: reload };
+  // TEJIDO: solo Datos (sin barra). Si la URL pedia otra seccion, se muestra Datos.
+  const sections = artist.moneystack === false ? TABS.filter(([id]) => id === 'datos') : TABS;
+  const shown = sections.some(([id]) => id === tab) ? tab : 'datos';
 
   return (
     <section className={PANEL} aria-labelledby="artist-editor-title">
@@ -101,8 +122,9 @@ export default function ArtistEditor({ artistId, tab: tabFromUrl }) {
         <div className="flex min-w-0 items-center gap-4">
           <ArtistAvatar artist={artist} size="size-16" text="text-[26px]" />
           <div className="min-w-0">
-            <h2 id="artist-editor-title" className="m-0 flex flex-wrap items-center gap-2 font-sans text-[28px] font-extrabold leading-[1.1] tracking-[-0.03em] text-ink">
+            <h2 id="artist-editor-title" ref={titleRef} tabIndex={-1} className="m-0 flex flex-wrap items-center gap-2 font-sans text-[28px] font-extrabold leading-[1.1] tracking-[-0.03em] text-ink outline-none">
               {artist.stage_name}
+              <SelloChip artist={artist} />
               {artist.featured && <span className={TAG.gold}>Destacado</span>}
               {readOnly && <span className={TAG.grey}>Archivado</span>}
             </h2>
@@ -128,29 +150,34 @@ export default function ArtistEditor({ artistId, tab: tabFromUrl }) {
         </div>
       )}
 
-      <div className="mt-6">
-        <PillTabs
-          idPrefix="artist-editor"
-          size="compact"
-          label={`Secciones de ${artist.stage_name}`}
-          active={tab}
-          onChange={changeTab}
-          tabs={TABS.map(([id, label, icon]) => ({
-            id, label, icon,
-            ...(COUNTS[id] ? { badge: detail[COUNTS[id]].length, badgeLabel: 'elementos', badgeTone: 'neutral' } : {}),
-          }))}
-        />
-      </div>
-
-      <div id={`artist-editor-panel-${tab}`} role="tabpanel" aria-labelledby={`artist-editor-tab-${tab}`} className="mt-6">
-        {tab === 'datos' && <DatosTab {...tabProps} />}
-        {tab === 'musica' && <MusicaTab {...tabProps} tracks={detail.tracks} />}
-        {tab === 'galeria' && <GaleriaTab {...tabProps} media={detail.media} />}
-        {tab === 'trayectoria' && <TrayectoriaTab {...tabProps} timeline={detail.timeline} />}
-        {tab === 'redes' && <RedesTab {...tabProps} socialLinks={detail.social_links} />}
-        {tab === 'conexiones' && <ConexionesTab {...tabProps} connections={detail.connections} />}
-        {tab === 'metricas' && <MetricasTab {...tabProps} metrics={detail.metrics} />}
-      </div>
+      {sections.length > 1 ? (
+        <>
+          <div className="mt-6">
+            <PillTabs
+              idPrefix="artist-editor"
+              size="compact"
+              label={`Secciones de ${artist.stage_name}`}
+              active={shown}
+              onChange={changeTab}
+              tabs={sections.map(([id, label, icon]) => ({
+                id, label, icon,
+                ...(COUNTS[id] ? { badge: detail[COUNTS[id]].length, badgeLabel: 'elementos', badgeTone: 'neutral' } : {}),
+              }))}
+            />
+          </div>
+          <div id={`artist-editor-panel-${shown}`} role="tabpanel" aria-labelledby={`artist-editor-tab-${shown}`} className="mt-6">
+            {shown === 'datos' && <DatosTab {...tabProps} />}
+            {shown === 'musica' && <MusicaTab {...tabProps} tracks={detail.tracks} />}
+            {shown === 'galeria' && <GaleriaTab {...tabProps} media={detail.media} />}
+            {shown === 'trayectoria' && <TrayectoriaTab {...tabProps} timeline={detail.timeline} />}
+            {shown === 'redes' && <RedesTab {...tabProps} socialLinks={detail.social_links} />}
+            {shown === 'conexiones' && <ConexionesTab {...tabProps} connections={detail.connections} />}
+            {shown === 'metricas' && <MetricasTab {...tabProps} metrics={detail.metrics} />}
+          </div>
+        </>
+      ) : (
+        <div className="mt-6" data-editor-tejido><DatosTab {...tabProps} /></div>
+      )}
     </section>
   );
 }

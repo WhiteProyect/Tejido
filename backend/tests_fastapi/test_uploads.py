@@ -6,6 +6,7 @@ import hashlib
 import pytest
 
 from backend.tests_fastapi.test_parity import auth_header, tokens  # noqa: F401
+from backend.tests_fastapi.test_artists_review import admin, create, created, music, sent  # noqa: F401
 
 SIGN = "/api/uploads/sign"
 FAKE = {"cloudinary_cloud_name": "tejido-test", "cloudinary_api_key": "123456789", "cloudinary_api_secret": "secreto-de-prueba"}
@@ -82,7 +83,9 @@ def test_server_decides_the_folder(client, tokens, configured, artist):
     for bad in ("../../otra", "tejido/hackeado", "1; drop", 1.5, True):
         assert client.post(SIGN, json={"scope": "artist", "ref": bad}, headers=admin).status_code == 400, bad
     assert client.post(SIGN, json={"scope": "artist", "ref": 999999}, headers=admin).status_code == 404
-    assert client.post(SIGN, json={"scope": "artist"}, headers=admin).status_code == 400
+    # Sin ref: el alta de un artista nuevo, a una carpeta fija que decide el servidor.
+    resp = client.post(SIGN, json={"scope": "artist"}, headers=admin)
+    assert resp.status_code == 200 and resp.json()["folder"] == "tejido/artistas/nuevos"
     # Campos extra (folder, public_id...) se ignoran: la carpeta firmada no cambia.
     resp = client.post(SIGN, json={"scope": "avatar", "folder": "otra", "public_id": "x"}, headers=admin)
     assert resp.json()["folder"] == "tejido/perfiles" and "public_id" not in resp.json()
@@ -111,3 +114,45 @@ def test_rate_limit_per_user(client, tokens, configured):
     assert blocked.status_code == 429 and "Espera un minuto" in blocked.json()["message"]
     # El limite es por usuario: otro usuario sigue pudiendo.
     assert client.post(SIGN, json={"scope": "avatar"}, headers=gestor).status_code == 200
+
+
+def test_artist_photos_for_the_music_leader(client, tokens, configured, admin, music, created):  # noqa: F811
+    """El lider de Musica sube fotos del alta (sin ref) y de sus propios artistas; nunca de los ajenos."""
+    own = create(client, music["lider"], created)  # queda en revision: igual se encuentra
+    other = create(client, admin, created, moneystack=False)
+    lider = music["lider"]
+    resp = client.post(SIGN, json={"scope": "artist"}, headers=lider)
+    assert resp.status_code == 200 and resp.json()["folder"] == "tejido/artistas/nuevos"
+    resp = client.post(SIGN, json={"scope": "artist", "ref": own["id"]}, headers=lider)
+    assert resp.status_code == 200 and resp.json()["folder"] == f"tejido/artistas/{own['slug']}"
+    resp = client.post(SIGN, json={"scope": "artist", "ref": other["id"]}, headers=lider)
+    assert resp.status_code == 403 and resp.json()["message"] == "Solo puedes subir fotos de tus propios artistas"
+    assert client.post(SIGN, json={"scope": "artist", "ref": 999999}, headers=lider).status_code == 404
+    # El admin, con ref, a la carpeta del slug (tambien en revision).
+    resp = client.post(SIGN, json={"scope": "artist", "ref": own["id"]}, headers=admin)
+    assert resp.status_code == 200 and resp.json()["folder"] == f"tejido/artistas/{own['slug']}"
+    # Nadie mas: participante de Musica, lider de otra rama, gestor comun y ciudadano (403); sin sesion, 401.
+    forbidden = "Solo el líder de la rama Música o un administrador pueden subir fotos de artistas"
+    for headers in (music["participante"], music["otro_lider"], auth_header(tokens, "gestor")):
+        for body in ({"scope": "artist"}, {"scope": "artist", "ref": own["id"]}):
+            resp = client.post(SIGN, json=body, headers=headers)
+            assert resp.status_code == 403 and resp.json()["message"] == forbidden, resp.text
+    assert client.post(SIGN, json={"scope": "artist"}, headers=auth_header(tokens, "ciudadano")).status_code == 403
+    assert client.post(SIGN, json={"scope": "artist"}).status_code == 401
+
+
+def test_artist_photos_keep_503_and_rate_limit(client, tokens, admin, monkeypatch):  # noqa: F811
+    from backend.service.core.config import settings
+    from backend.service.core.rate_limit import reset_login_rate_limit
+    monkeypatch.setattr(settings, "cloudinary_api_secret", "")
+    resp = client.post(SIGN, json={"scope": "artist"}, headers=admin)
+    assert resp.status_code == 503 and resp.json()["error"] == "UPLOADS_DISABLED"
+    for key, value in FAKE.items():
+        monkeypatch.setattr(settings, key, value)
+    reset_login_rate_limit()
+    try:
+        for _ in range(30):
+            assert client.post(SIGN, json={"scope": "artist"}, headers=admin).status_code == 200
+        assert client.post(SIGN, json={"scope": "artist"}, headers=admin).status_code == 429
+    finally:
+        reset_login_rate_limit()

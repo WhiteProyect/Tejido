@@ -14,6 +14,15 @@ const PATHS = {
   // Navegacion y controles
   'arrow-left': <path d="M19 12H5m6-6-6 6 6 6" />,
   'arrow-right': <path d="M5 12h14m-6-6 6 6-6 6" />,
+  'arrow-up-right': <path d="M7 17 17 7M9 7h8v8" />,
+  home: <><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1v-9.5z" /></>,
+  'id-card': <><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><circle cx="9" cy="11" r="2" /><path d="M5.8 15.8c.6-1.4 1.8-2.1 3.2-2.1s2.6.7 3.2 2.1M14 10h4M14 13.5h3" /></>,
+  plus: <path d="M12 5v14M5 12h14" />,
+  minus: <path d="M5 12h14" />,
+  list: <path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" />,
+  locate: <><circle cx="12" cy="12" r="6.5" /><circle cx="12" cy="12" r="2" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" /></>,
+  star: <path d="m12 3.8 2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8L12 3.8z" />,
+  sliders: <path d="M4 7h10M18 7h2M4 17h4M12 17h8M14 4.5v5M8 14.5v5" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
   search: <><circle cx="11" cy="11" r="6" /><path d="m20 20-4.5-4.5" /></>,
   check: <path d="m5 12.5 4.5 4.5L19 7" />,
@@ -38,6 +47,9 @@ const PATHS = {
   send: <path d="M20.5 3.5 10 14M20.5 3.5 14 20.5l-4-6.5-6.5-4 17-6.5z" />,
   logout: <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10" />,
   compass: <><circle cx="12" cy="12" r="8.5" /><path d="m15.5 8.5-2 5-5 2 2-5 5-2z" /></>,
+  map: <><path d="M3.5 6.5 9 4l6 2.5L20.5 4v13.5L15 20l-6-2.5L3.5 20V6.5z" /><path d="M9 4v13.5M15 6.5V20" /></>,
+  lock: <><rect x="5" y="10.5" width="14" height="10" rx="2" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" /></>,
+  door: <><path d="M6 21V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21M4 21h16" /><circle cx="14.5" cy="12" r=".9" /></>,
   seal: <><circle cx="12" cy="9" r="5.5" /><path d="M8.6 13.4 7 21l5-2.5 5 2.5-1.6-7.6" /></>,
 
   // Municipios del Bajo Cauca

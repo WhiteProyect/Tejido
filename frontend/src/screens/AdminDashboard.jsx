@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import CategoryCoverEditor from '../components/CategoryCoverEditor.jsx';
-import EmptyNote from '../components/EmptyNote.jsx';
 import Icon from '../components/Icon.jsx';
 import PublicationForm from '../components/PublicationForm.jsx';
 import ArtistasPanel from '../components/admin/ArtistasPanel.jsx';
@@ -8,10 +8,11 @@ import BandejaPanel from '../components/admin/BandejaPanel.jsx';
 import GestoresPanel from '../components/admin/GestoresPanel.jsx';
 import OpportunityTypesPanel from '../components/admin/OpportunityTypesPanel.jsx';
 import PlaceCategoriesPanel from '../components/admin/PlaceCategoriesPanel.jsx';
-import PlacesFilter from '../components/admin/PlacesFilter.jsx';
+import AdminNav, { useAdminNavMode } from '../components/admin/AdminNav.jsx';
+import KindFilter, { KindEmpty, filterByKind } from '../components/admin/KindFilter.jsx';
 import TalentManager from '../components/talent/manage/TalentManager.jsx';
+import UsersPanel from '../components/admin/UsersPanel.jsx';
 import { MODERATION_TOASTS, ModerationButtons, RejectForm, moderatePublication } from '../components/Moderation.jsx';
-import PillTabs from '../components/admin/PillTabs.jsx';
 import { confirmDiscard } from '../components/admin/artist/unsavedChanges.js';
 import { BTN_DANGER, BTN_GHOST, BTN_INK_MD, EYEBROW, H1, PANEL, PANEL_TITLE, SECTION } from '../components/uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
@@ -20,9 +21,13 @@ import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
 import { formatDateShort } from '../utils/dateUtils.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
-// Dashboard del Admin (#admin-dashboard[/publicaciones[/<id>]|gestores|artistas[/<id>[/<pestana>]]|talento[/<id>[/<pestana>]]|oportunidades|lugares|portadas|bandeja]):
-// - Pulso: GET /api/admin/stats (incluye gestores_activos), visible en todas las pestanas. Los
-//   mosaicos de reportes y mensajes enlazan a la Bandeja.
+// Dashboard del Admin (#admin-dashboard[/publicaciones[/<id>]|gestores|usuarios[/<id>]|artistas[/<id>[/<pestana>]]|talento[/<id>[/<pestana>]]|oportunidades|lugares|portadas|bandeja]):
+// - Pulso: GET /api/admin/stats (incluye gestores_activos), visible en todas las pestanas: 8 tarjetas;
+//   reportes, mensajes y solicitudes enlazan a la Bandeja y "Talento y artistas por revisar" suma los dos
+//   contadores y enlaza a la pestana con mas pendientes (empate: Talento). Entrada escalonada y conteo
+//   ascendente solo la primera vez que llegan los datos (sin animacion con movimiento reducido).
+// - Secciones: barra vertical a la derecha (components/admin/AdminNav.jsx: columna en escritorio, riel de
+//   iconos en tablet y boton flotante en movil). El panel activo entra con un fundido breve.
 // - Pestanas: solo se monta el panel activo. La pestana va en la URL con replaceState (sin
 //   hashchange: App subiria la pagina y cada cambio llenaria el historial).
 // - Gestores: components/admin/GestoresPanel.jsx, tal cual vivia en el perfil.
@@ -37,7 +42,7 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 //   contador es stats.talent_review.
 // - Oportunidades: los tipos de oportunidad (components/admin/OpportunityTypesPanel.jsx).
 // - Lugares: las categorias de lugar (components/admin/PlaceCategoriesPanel.jsx). Los lugares mismos se
-//   crean, editan y moderan en Publicaciones (filtro "Solo lugares"); los que envia un lider llegan a la
+//   crean, editan y moderan en Publicaciones (filtro "Lugares"); los que envia un lider llegan a la
 //   cola de revision como cualquier otra publicacion y solo el admin los aprueba.
 // - Portadas: la portada de cada una de las 10 categorias (components/CategoryCoverEditor.jsx).
 // - Bandeja: components/admin/BandejaPanel.jsx (mensajes de Nosotros y reportes).
@@ -47,6 +52,7 @@ const CATEGORY_LABELS = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]
 const TABS = [
   ['publicaciones', 'Publicaciones', 'book'],
   ['gestores', 'Gestores', 'people'],
+  ['usuarios', 'Usuarios', 'id-card'],
   ['artistas', 'Artistas', 'music'],
   ['talento', 'Talento', 'mic'],
   ['oportunidades', 'Oportunidades', 'compass'],
@@ -67,34 +73,89 @@ const byPriority = (a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.sta
 
 const INBOX_HREF = '#admin-dashboard/bandeja';
 
-function StatsPanel({ stats }) {
+// Talento y artistas en una tarjeta: el total, el detalle y el enlace a la pestaña con mas pendientes.
+export function reviewTile(stats) {
+  const talent = stats?.talent_review;
+  const artists = stats?.artists_review;
+  const known = talent != null || artists != null;
+  const t = talent || 0;
+  const a = artists || 0;
+  return {
+    value: known ? t + a : null,
+    detail: known ? `${t} talento · ${a} ${a === 1 ? 'artista' : 'artistas'}` : '',
+    href: a > t ? '#admin-dashboard/artistas' : '#admin-dashboard/talento',
+    linkLabel: `Talento y artistas por revisar: ${t} de talento y ${a} ${a === 1 ? 'artista' : 'artistas'}`,
+  };
+}
+
+const easeOut = (t) => 1 - (1 - t) ** 3;
+const CARD = 'relative flex h-full min-h-[132px] flex-col justify-between gap-3 rounded-[16px] border border-[#ddd5c7] bg-[#fffdf6] p-5 [box-shadow:0_1px_2px_rgba(23,63,54,.06),0_2px_6px_rgba(23,63,54,.05)] max600:min-h-[120px] max600:p-4';
+
+function StatsPanel({ stats, cornerSpace = false }) {
+  const reduce = useReducedMotion();
+  // Conteo ascendente solo la primera vez que llegan los datos; los refrescos ponen el valor directo.
+  const [progress, setProgress] = useState(stats ? 1 : 0);
+  const started = useRef(Boolean(stats));
+  const frame = useRef(0);
+  const firstMount = useRef(true);
+  useEffect(() => { firstMount.current = false; }, []);
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+  useEffect(() => {
+    if (!stats || started.current) return;
+    started.current = true;
+    if (reduce) { setProgress(1); return; }
+    const start = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, Math.max(0, (now - start) / 700));
+      setProgress(easeOut(t));
+      if (t < 1) frame.current = requestAnimationFrame(tick);
+    };
+    frame.current = requestAnimationFrame(tick);
+  }, [stats, reduce]);
+
+  const review = reviewTile(stats);
   const tiles = [
-    ['Publicadas', stats?.published],
-    ['En revisión', stats?.pending],
-    ['Gestores activos', stats?.gestores_activos],
-    ['Usuarios activos', stats?.users],
-    ['Reportes abiertos', stats?.reports, INBOX_HREF],
-    ['Mensajes nuevos', stats?.suggestions, INBOX_HREF],
-    ['Solicitudes de ingreso', stats?.join_requests, INBOX_HREF],
-    ['Talento por revisar', stats?.talent_review, '#admin-dashboard/talento'],
+    { label: 'Publicadas', value: stats?.published },
+    { label: 'En revisión', value: stats?.pending },
+    { label: 'Gestores activos', value: stats?.gestores_activos },
+    { label: 'Usuarios activos', value: stats?.users },
+    { label: 'Reportes abiertos', value: stats?.reports, href: INBOX_HREF },
+    { label: 'Mensajes nuevos', value: stats?.suggestions, href: INBOX_HREF },
+    { label: 'Solicitudes de ingreso', value: stats?.join_requests, href: INBOX_HREF },
+    { label: 'Talento y artistas por revisar', value: review.value, href: review.href, detail: review.detail, linkLabel: review.linkLabel, id: 'revision' },
   ];
+  const animateIn = firstMount.current && !reduce;
   return (
     <section className={PANEL} aria-labelledby="admin-pulso">
-      <h2 id="admin-pulso" className={PANEL_TITLE}>Pulso de la plataforma</h2>
-      <dl className="mt-6 mb-0 grid grid-cols-[repeat(8,minmax(0,1fr))] gap-4 max1200:grid-cols-[repeat(4,1fr)] max800:grid-cols-[repeat(3,1fr)] max600:grid-cols-[repeat(2,1fr)]">
-        {tiles.map(([label, value, href]) => (
-          <div key={label} className="relative flex flex-col-reverse border-l-2 border-l-[rgba(29,143,163,0.35)] pl-4">
-            <dt className="mt-2 text-[12px] font-bold uppercase tracking-[.1em] text-muted">
-              {href ? (
-                <a className="inline-flex items-center gap-1 text-river no-underline after:absolute after:inset-0 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink" href={href}>
-                  {label} <Icon name="arrow-right" className="size-3" />
-                </a>
-              ) : label}
-            </dt>
-            <dd className="m-0 text-[40px] font-extrabold leading-none tracking-[-0.04em] text-ink">{value ?? '–'}</dd>
-          </div>
-        ))}
+      <h2 id="admin-pulso" className={`${PANEL_TITLE} ${cornerSpace ? 'pr-12' : ''}`}>Pulso de la plataforma</h2>
+      {/* 4 columnas (4x2) cuando el panel tiene >= 600 px utiles; si no, 2. Depende del ancho real del panel
+          (container query): a 768 px el riel de secciones lo deja en ~540 px y 4 columnas partian las etiquetas. */}
+      <div className="@container mt-6">
+      <dl className="m-0 grid auto-rows-fr grid-cols-[repeat(2,minmax(0,1fr))] gap-3 @min-[600px]:grid-cols-[repeat(4,minmax(0,1fr))] @min-[600px]:gap-4" data-pulso>
+        {tiles.map(({ label, value, href, detail, linkLabel, id }, index) => {
+          const shown = value == null ? null : Math.round(value * progress);
+          return (
+            <motion.div key={label} className={`${CARD} ${href ? 'transition-[border-color] duration-200 hover:border-ink has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-ink' : ''}`}
+              initial={animateIn ? { opacity: 0, y: 8 } : false} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: reduce ? 0 : 0.25, ease: 'easeOut', delay: animateIn ? index * 0.04 : 0 }}
+              whileHover={href && !reduce ? { y: -2, transition: { duration: 0.15 } } : undefined}
+              data-tarjeta-pulso={id || label}>
+              <dt className="order-2 text-[12px] font-bold uppercase leading-[1.3] tracking-[.1em] text-[#53645c]">
+                {href ? (
+                  <a className="inline-flex items-start gap-1 text-ink no-underline outline-none after:absolute after:inset-0 after:rounded-[16px] hover:underline" href={href} aria-label={linkLabel} data-enlace-pulso>
+                    <span>{label}</span> <Icon name="arrow-right" className="mt-px size-3.5 shrink-0" strokeWidth={2} />
+                  </a>
+                ) : label}
+                {detail && <span className="mt-1 block text-[12px] font-semibold normal-case tracking-normal text-[#53645c]" data-detalle>{detail}</span>}
+              </dt>
+              <dd className="order-1 m-0 font-sans text-[40px] font-extrabold leading-none tracking-[-0.04em] text-ink max600:text-[34px]" data-valor={value ?? ''}>
+                {value == null ? '–' : <><span aria-hidden="true">{shown}</span><span className="sr-only">{value}</span></>}
+              </dd>
+            </motion.div>
+          );
+        })}
       </dl>
+      </div>
     </section>
   );
 }
@@ -167,6 +228,8 @@ export default function AdminDashboard({ section }) {
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState('');
   const [kindFilter, setKindFilter] = useState('ALL');
+  const navMode = useAdminNavMode();
+  const reduce = useReducedMotion();
 
   const load = useCallback(async () => {
     try {
@@ -238,14 +301,14 @@ export default function AdminDashboard({ section }) {
 
   const { publications } = state;
   const pending = publications.filter((item) => item.status === 'REVIEW').length;
-  const placeCount = publications.filter((item) => item.kind === 'LUGAR').length;
-  const listed = kindFilter === 'LUGAR' ? publications.filter((item) => item.kind === 'LUGAR') : publications;
+  const listed = filterByKind(publications, kindFilter);
   const inboxPending = (stats?.reports || 0) + (stats?.suggestions || 0) + (stats?.join_requests || 0);
 
   return (
     <section className={`${SECTION} min-h-[62vh]`}>
-      <a className="mb-8 inline-flex items-center gap-2 text-[14px] font-semibold text-ink no-underline hover:underline" href="#perfil">
-        <Icon name="arrow-left" className="size-4" /> Volver a mi perfil
+      <a className="group mb-8 inline-flex min-h-11 items-center gap-2 rounded-full bg-ink px-5 font-sans text-[15px] font-bold text-[#fff9ec] no-underline transition-colors duration-200 hover:bg-[#2d5a3d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+        href="#perfil" data-volver-perfil>
+        <Icon name="home" className="size-5 transition-transform duration-200 group-hover:-translate-x-0.5 motion-reduce:transition-none" strokeWidth={2} /> Volver a mi perfil
       </a>
       <header className="mb-10 max-w-[760px]">
         <p className={EYEBROW}>Dashboard de admin</p>
@@ -253,23 +316,31 @@ export default function AdminDashboard({ section }) {
         <p className="mt-4 mb-0 text-[18px] leading-[1.6] text-[#53645c]">Modera lo que llega a revisión, acompaña a los gestores y cuida todo lo que se publica en TEJIDO.</p>
       </header>
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-        <StatsPanel stats={stats} />
+      {/* Dos columnas: contenido y la barra de secciones a la derecha. El DOM conserva el orden Pulso,
+          secciones (tablist) y panel: la grilla solo los ubica. */}
+      <div className={`grid gap-y-6 ${navMode === 'desktop' ? 'grid-cols-[minmax(0,1fr)_120px] gap-x-6' : navMode === 'rail' ? 'grid-cols-[minmax(0,1fr)_56px] gap-x-3' : 'grid-cols-[minmax(0,1fr)]'}`} data-admin-layout={navMode}>
+        <div className="col-start-1 row-start-1 min-w-0"><StatsPanel stats={stats} cornerSpace={navMode === 'float'} /></div>
 
-        <PillTabs
-          idPrefix="admin"
-          label="Qué gestionar"
-          active={tab}
-          onChange={changeTab}
-          tabs={TABS.map(([id, label, icon]) => ({
-            id, label, icon,
-            ...(id === 'publicaciones' && pending > 0 ? { badge: pending, badgeLabel: 'en revisión', badgeTone: 'alert' } : {}),
-            ...(id === 'bandeja' && inboxPending > 0 ? { badge: inboxPending, badgeLabel: 'pendientes', badgeTone: 'alert' } : {}),
-            ...(id === 'talento' && stats?.talent_review > 0 ? { badge: stats.talent_review, badgeLabel: 'en revisión', badgeTone: 'alert' } : {}),
-          }))}
-        />
+        <div className={`row-span-2 row-start-1 flex ${navMode === 'float' ? 'col-start-1 justify-end' : 'col-start-2'}`}>
+          <AdminNav
+            mode={navMode}
+            idPrefix="admin"
+            label="Qué gestionar"
+            active={tab}
+            onChange={changeTab}
+            pendingTotal={pending + inboxPending + (stats?.talent_review || 0) + (stats?.artists_review || 0)}
+            tabs={TABS.map(([id, label, icon]) => ({
+              id, label, icon,
+              ...(id === 'publicaciones' && pending > 0 ? { badge: pending, badgeLabel: 'en revisión', badgeTone: 'alert' } : {}),
+              ...(id === 'bandeja' && inboxPending > 0 ? { badge: inboxPending, badgeLabel: 'pendientes', badgeTone: 'alert' } : {}),
+              ...(id === 'talento' && stats?.talent_review > 0 ? { badge: stats.talent_review, badgeLabel: 'en revisión', badgeTone: 'alert' } : {}),
+              ...(id === 'artistas' && stats?.artists_review > 0 ? { badge: stats.artists_review, badgeLabel: 'en revisión', badgeTone: 'alert' } : {}),
+            }))}
+          />
+        </div>
 
-        <div id={`admin-panel-${tab}`} role="tabpanel" aria-labelledby={`admin-tab-${tab}`} className="grid grid-cols-[minmax(0,1fr)] gap-6">
+        <div id={`admin-panel-${tab}`} role="tabpanel" aria-labelledby={`admin-tab-${tab}`} className="col-start-1 row-start-2 min-w-0">
+          <motion.div key={tab} className="grid grid-cols-[minmax(0,1fr)] gap-6" initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduce ? 0 : 0.2, ease: 'easeInOut' }}>
           {tab === 'publicaciones' && (
             <>
               {editor && (
@@ -294,31 +365,33 @@ export default function AdminDashboard({ section }) {
                   </div>
                   {!editor && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}><Icon name="pen" className="size-4" /> Nueva publicación</button>}
                 </div>
-                {!state.loading && !state.error && <div className="mt-4"><PlacesFilter value={kindFilter} onChange={setKindFilter} count={placeCount} /></div>}
+                {!state.loading && !state.error && <div className="mt-4"><KindFilter value={kindFilter} onChange={setKindFilter} publications={publications} /></div>}
                 {actionError && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{actionError}</p>}
                 {state.loading && <p className="m-0 py-6 text-[14px] text-muted" aria-busy="true">Cargando...</p>}
                 {state.error && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{state.error}</p>}
-                {!state.loading && !state.error && (listed.length ? (
-                  <ul className="mt-4 mb-0 grid list-none gap-1 p-0">
-                    {listed.map((publication) => (
-                      <AdminPublicationItem key={publication.id} publication={publication} busy={busyId === publication.id} onEdit={openEditor} onAction={handleAction} />
-                    ))}
-                  </ul>
-                ) : kindFilter === 'LUGAR' ? (
-                  <div className="mt-6"><EmptyNote icon="pin" title="Aún no hay lugares" text="Crea uno con «Nueva publicación» y el tipo Lugar, o espera a que un líder envíe el suyo." /></div>
-                ) : (
-                  <div className="mt-6"><EmptyNote icon="book" title="Aún no hay publicaciones" text="Crea la primera o espera a que los gestores envíen las suyas." /></div>
-                ))}
+                {!state.loading && !state.error && (
+                  <motion.div key={kindFilter} initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reduce ? 0 : 0.2, ease: 'easeInOut' }} data-lista-publicaciones={kindFilter}>
+                    {listed.length ? (
+                      <ul className="mt-4 mb-0 grid list-none gap-1 p-0">
+                        {listed.map((publication) => (
+                          <AdminPublicationItem key={publication.id} publication={publication} busy={busyId === publication.id} onEdit={openEditor} onAction={handleAction} />
+                        ))}
+                      </ul>
+                    ) : <div className="mt-6"><KindEmpty kind={kindFilter} /></div>}
+                  </motion.div>
+                )}
               </section>
             </>
           )}
-          {tab === 'gestores' && <GestoresPanel />}
-          {tab === 'artistas' && <ArtistasPanel subpath={subpath} />}
+          {tab === 'gestores' && <GestoresPanel onStatsChange={loadStats} />}
+          {tab === 'usuarios' && <UsersPanel subpath={subpath} onStatsChange={loadStats} />}
+          {tab === 'artistas' && <ArtistasPanel subpath={subpath} onChanged={loadStats} />}
           {tab === 'talento' && <TalentManager role="ADMIN" subpath={subpath} onChanged={loadStats} />}
           {tab === 'oportunidades' && <OpportunityTypesPanel />}
           {tab === 'lugares' && <PlaceCategoriesPanel />}
           {tab === 'portadas' && <CoversPanel />}
           {tab === 'bandeja' && <BandejaPanel onChange={loadStats} />}
+          </motion.div>
         </div>
       </div>
     </section>

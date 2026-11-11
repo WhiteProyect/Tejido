@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
 import './map/map.css';
 import { FORM_INPUT, FORM_LABEL } from './uiStyles.js';
-import { BAJO_CAUCA_BOX, BOX_BOUNDS, MUNICIPALITY_ZOOM, TILE_ATTRIBUTION, TILE_URL, inBox, loadLeaflet, moveMap, pinIcon } from '../utils/mapConfig.js';
+import { BAJO_CAUCA_BOX, BOX_BOUNDS, MUNICIPALITY_ZOOM, TILE_ATTRIBUTION, TILE_URL, inBox, loadLeaflet, locateUser, moveMap, pinIcon } from '../utils/mapConfig.js';
 import { municipalityCenter } from '../utils/municipalities.js';
 
 // Selector del punto exacto (PublicationForm hoy; la entidad Lugar en la entrega B). Mapa pequeño con
@@ -11,17 +11,23 @@ import { municipalityCenter } from '../utils/municipalities.js';
 // en contexto seguro) y busqueda por direccion (Nominatim de OpenStreetMap: una peticion por clic en
 // "Buscar", acotada a Colombia y a la caja del Bajo Cauca, como mucho una por segundo). No hay punto
 // por defecto: existe solo cuando la persona lo coloca o confirma un resultado. value: { lat, lng } o
-// null; onChange(value). Si `placeEmpty` y la busqueda trae un nombre, ofrece usarlo como "Lugar".
+// null; onChange(value). Si `placeEmpty` y la busqueda trae un nombre, ofrece usarlo como "Lugar". El
+// error de validacion (sin punto, o fuera del Bajo Cauca) va en una tarjeta con borde ocre.
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
 const MIN_GAP_MS = 1000;
 const round = (n) => Math.round(n * 1e6) / 1e6;
 const BTN = 'inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full border-2 border-[#173f36] bg-white px-4 font-sans text-[15px] font-bold text-[#173f36] hover:bg-[#f3e4c8] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#173f36]';
 const BTN_SOLID = 'inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full border-0 bg-[#173f36] px-5 font-sans text-[15px] font-bold text-[#fff9ec] hover:bg-[#2d5a3d] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#173f36]';
-const GEO_ERRORS = {
-  1: 'No diste permiso para usar tu ubicación. Puedes marcar el punto en el mapa o buscar la dirección.',
-  2: 'No pudimos saber dónde estás. Intenta de nuevo o marca el punto en el mapa.',
-  3: 'Se agotó el tiempo para encontrar tu ubicación. Intenta de nuevo.',
-};
+const COORD_INPUT = `${FORM_INPUT.replace('font-sans', 'font-mono')} tabular-nums`;
+// Resultado de Nominatim: titulo (nombre) y barrio o direccion (sin pais, departamento ni codigo postal).
+function resultParts(item) {
+  const parts = String(item.display_name || '').split(',').map((part) => part.trim()).filter(Boolean);
+  const title = item.name || parts[0] || '';
+  const detail = parts.slice(item.name && parts[0] !== item.name ? 0 : 1)
+    .filter((part) => part !== title && !/^\d+$/.test(part) && !/^(colombia|antioquia)$/i.test(part) && !/^rap /i.test(part))
+    .slice(0, 2).join(', ');
+  return { title, detail };
+}
 
 export default function LocationPicker({ id, label = 'Punto exacto en el mapa', value, onChange, municipality, error, disabled = false, placeEmpty = false, onUsePlace, placeNoun = 'lugar' }) {
   const auto = useId().replace(/:/g, '');
@@ -124,24 +130,18 @@ export default function LocationPicker({ id, label = 'Punto exacto en el mapa', 
     if (place({ lat: latNum, lng: lngNum }, { recenter: true })) setNote({ tone: 'info', text: 'Punto actualizado.' });
   }
 
-  function useMyLocation() {
-    if (!('geolocation' in navigator)) { setNote({ tone: 'warn', text: 'Tu navegador no permite usar la ubicación. Marca el punto en el mapa.' }); return; }
-    if (!window.isSecureContext) { setNote({ tone: 'warn', text: 'La ubicación solo funciona en una conexión segura (https). Marca el punto en el mapa.' }); return; }
+  async function useMyLocation() {
     setLocating(true);
     setNote({ tone: 'info', text: 'Buscando tu ubicación...' });
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocating(false);
-        const { latitude, longitude } = position.coords;
-        if (!inBox(latitude, longitude)) { setNote({ tone: 'warn', text: 'Tu ubicación está fuera del Bajo Cauca: marca el punto en el mapa.' }); return; }
-        if (place({ lat: latitude, lng: longitude }, { recenter: true })) setNote({ tone: 'info', text: 'Usamos tu ubicación. Ajusta el pin si hace falta.' });
-      },
-      (geoError) => {
-        setLocating(false);
-        setNote({ tone: 'warn', text: GEO_ERRORS[geoError.code] || GEO_ERRORS[2] });
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
-    );
+    try {
+      const { lat: latitude, lng: longitude } = await locateUser();
+      if (!inBox(latitude, longitude)) { setNote({ tone: 'warn', text: 'Tu ubicación está fuera del Bajo Cauca: marca el punto en el mapa.' }); return; }
+      if (place({ lat: latitude, lng: longitude }, { recenter: true })) setNote({ tone: 'info', text: 'Usamos tu ubicación. Ajusta el pin si hace falta.' });
+    } catch (geoError) {
+      setNote({ tone: 'warn', text: `${geoError.message} Marca el punto en el mapa o busca la dirección.` });
+    } finally {
+      setLocating(false);
+    }
   }
 
   async function search(event) {
@@ -162,8 +162,8 @@ export default function LocationPicker({ id, label = 'Punto exacto en el mapa', 
       if (!response.ok) throw new Error(String(response.status));
       const data = await response.json();
       const found = (Array.isArray(data) ? data : []).map((item) => ({
-        id: item.place_id, lat: Number(item.lat), lng: Number(item.lon), label: item.display_name, name: item.name || String(item.display_name || '').split(',')[0],
-      })).filter((item) => inBox(item.lat, item.lng));
+        id: item.place_id, lat: Number(item.lat), lng: Number(item.lon), ...resultParts(item), name: item.name || String(item.display_name || '').split(',')[0],
+      })).filter((item) => inBox(item.lat, item.lng)).slice(0, 6);
       setResults(found);
       setNote(found.length ? { tone: 'info', text: `${found.length} ${found.length === 1 ? 'resultado' : 'resultados'}. Elige uno para poner el pin.` }
         : { tone: 'warn', text: 'No encontramos esa dirección en el Bajo Cauca. Prueba con otra referencia o marca el punto en el mapa.' });
@@ -193,40 +193,54 @@ export default function LocationPicker({ id, label = 'Punto exacto en el mapa', 
       <span id={`${baseId}-etiqueta`} className={FORM_LABEL}>{label}</span>
       <p id={`${baseId}-ayuda`} className="m-0 text-[15px] text-[#53645c]">Haz clic en el mapa o arrastra el pin hasta el lugar exacto. También puedes buscar la dirección, usar tu ubicación o escribir las coordenadas.</p>
       {/* Sin <form>: va dentro del formulario de la publicacion (Enter busca sin enviarlo). */}
-      <div className="flex flex-wrap gap-2" role="search" aria-label="Buscar una dirección">
-        <label htmlFor={`${baseId}-buscar`} className="sr-only">Buscar una dirección o un sitio en el Bajo Cauca</label>
-        <input id={`${baseId}-buscar`} className={`${FORM_INPUT} min-w-[180px] flex-1`} value={query} onChange={(e) => setQuery(e.target.value)}
-          placeholder="Dirección o sitio, p. ej. Parque de las Banderas" disabled={disabled} maxLength={160}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); search(); } }} />
-        <button type="button" className={BTN_SOLID} onClick={search} disabled={disabled || searching || !query.trim()}>{searching ? 'Buscando...' : 'Buscar'}</button>
+      <div className="grid gap-1.5" role="search" aria-label="Buscar una dirección">
+        <label htmlFor={`${baseId}-buscar`} className="flex items-center gap-1.5 text-[15px] font-semibold text-[#173f36]">
+          <Icon name="search" className="size-4" strokeWidth={2} /> Buscar dirección o referencia
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <input id={`${baseId}-buscar`} className={`${FORM_INPUT} min-w-[180px] flex-1`} value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder="Malecón de Caucasia..." disabled={disabled} maxLength={160}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); search(); } }} />
+          <button type="button" className={BTN_SOLID} onClick={search} disabled={disabled || searching || !query.trim()}>{searching ? 'Buscando...' : 'Buscar'}</button>
+        </div>
       </div>
       {results && results.length > 0 && (
-        <ul className="m-0 grid list-none gap-1.5 p-0" aria-label="Resultados de la búsqueda" data-resultados>
-          {results.map((item) => (
+        <ol className="m-0 grid list-none gap-1.5 p-0" aria-label="Resultados de la búsqueda" data-resultados>
+          {results.map((item, index) => (
             <li key={item.id}>
-              <button type="button" className="w-full min-h-11 cursor-pointer rounded-[12px] border border-[#ddd5c7] bg-white px-3.5 py-2 text-left font-sans text-[15px] text-[#173f36] hover:border-[#173f36] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#173f36]"
-                onClick={() => chooseResult(item)}>{item.label}</button>
+              <button type="button" className="grid w-full min-h-11 cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 rounded-[12px] border border-[#ddd5c7] bg-white px-3.5 py-2 text-left font-sans text-[15px] text-[#173f36] hover:border-[#173f36] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#173f36]"
+                onClick={() => chooseResult(item)} data-resultado>
+                <span className="font-bold tabular-nums" aria-hidden="true">{index + 1}.</span>
+                <span className="min-w-0 [overflow-wrap:anywhere]">
+                  <strong className="font-bold">{item.title}</strong>
+                  {item.detail && <span className="text-[#3f514a]"> · {item.detail}</span>}
+                </span>
+              </button>
             </li>
           ))}
-        </ul>
+        </ol>
       )}
+      <div>
+        <button type="button" className={BTN} onClick={useMyLocation} disabled={disabled || locating} data-usar-ubicacion>
+          <Icon name="locate" className="size-4" strokeWidth={2} /> {locating ? 'Buscando...' : 'Usar mi ubicación actual'}
+        </button>
+      </div>
       <div ref={mapEl} className="tejido-map h-[300px] w-full overflow-hidden rounded-[16px] border border-[#ddd5c7] max-[767px]:h-[260px]"
         role="region" aria-label="Mapa para marcar el punto" data-mapa-punto />
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2 max-[480px]:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2 rounded-[14px] bg-[#f3e4c8] p-3 max-[480px]:grid-cols-2" data-coordenadas>
         <label className="grid gap-1 text-[15px] font-semibold text-[#173f36]" htmlFor={`${baseId}-lat`}>Latitud
-          <input id={`${baseId}-lat`} className={`${FORM_INPUT} ${error ? 'border-[#b3442b]' : ''}`} inputMode="decimal" value={lat} disabled={disabled}
+          <input id={`${baseId}-lat`} className={`${COORD_INPUT} ${error ? 'border-[#b8502b]' : ''}`} inputMode="decimal" value={lat} disabled={disabled}
             onChange={(e) => setLat(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyFields(); } }}
             aria-invalid={error ? true : undefined} aria-describedby={describedBy} placeholder="7.9847" />
         </label>
         <label className="grid gap-1 text-[15px] font-semibold text-[#173f36]" htmlFor={`${baseId}-lng`}>Longitud
-          <input id={`${baseId}-lng`} className={`${FORM_INPUT} ${error ? 'border-[#b3442b]' : ''}`} inputMode="decimal" value={lng} disabled={disabled}
+          <input id={`${baseId}-lng`} className={`${COORD_INPUT} ${error ? 'border-[#b8502b]' : ''}`} inputMode="decimal" value={lng} disabled={disabled}
             onChange={(e) => setLng(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyFields(); } }}
             aria-invalid={error ? true : undefined} aria-describedby={describedBy} placeholder="-75.1953" />
         </label>
         <button type="button" className={`${BTN} max-[480px]:col-span-2`} onClick={applyFields} disabled={disabled}>Aplicar</button>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={BTN} onClick={useMyLocation} disabled={disabled || locating}><Icon name="pin" className="size-4" /> {locating ? 'Buscando...' : 'Usar mi ubicación'}</button>
         <button type="button" className={`${BTN} border-[#b3442b] text-[#b3442b]`} onClick={clearPoint} disabled={disabled || !value}>Quitar punto</button>
       </div>
       <p className={`m-0 text-[15px] ${note?.tone === 'warn' ? 'font-semibold text-[#8a3a1c]' : 'text-[#3f514a]'}`} role="status" aria-live="polite" data-nota-punto>
@@ -239,7 +253,11 @@ export default function LocationPicker({ id, label = 'Punto exacto en el mapa', 
           <button type="button" className={BTN} onClick={() => setSuggestion('')}>No, gracias</button>
         </p>
       )}
-      {error && <p id={`${baseId}-error`} className="m-0 text-[15px] font-semibold text-[#b3442b]">{error}</p>}
+      {error && (
+        <p id={`${baseId}-error`} className="m-0 flex items-start gap-2 rounded-[14px] border-2 border-[#b8502b] bg-[#fff9ec] px-4 py-3 text-[15px] font-bold text-[#173f36]" role="alert" data-error-punto>
+          <span aria-hidden="true" className="font-extrabold text-[#a44727]">⚠</span>{error}
+        </p>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import EmptyNote from '../components/EmptyNote.jsx';
+import ArtistCard from '../components/artists/ArtistCard.jsx';
 import Icon from '../components/Icon.jsx';
 import PublicationCard from '../components/PublicationCard.jsx';
 import ParticipateBlock from '../components/branch/ParticipateBlock.jsx';
@@ -9,6 +10,7 @@ import { CULTURAL_CATEGORIES } from '../utils/constants.js';
 import { getInitials } from '../utils/initials.js';
 import { getMunicipalityFromLocation, stampMunicipality } from '../utils/passportUtils.js';
 import { cdnImage } from '../utils/cloudinaryUrl.js';
+import { fetchPublicArtists } from '../services/artistApi.js';
 
 // Una categoria cultural (#categoria/<slug>): arriba sus gestores (GET /api/gestores?branch=),
 // abajo sus publicaciones, filtradas de las que App ya cargo (cultural_category) y por el
@@ -60,6 +62,41 @@ function useGestores(categoryKey) {
   return state;
 }
 
+// La rama Musica muestra los artistas de TEJIDO (GET /api/artists?sello=tejido), hasta 6, con el enlace a
+// todos (#artistas). Los de Moneystack siguen en #moneystack.
+const MUSIC_KEY = 'MUSICA';
+const MUSIC_PREVIEW = 6;
+
+function MusicArtists() {
+  const [state, setState] = useState({ loading: true, error: '', artists: [] });
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublicArtists({ sello: 'tejido' })
+      .then((artists) => { if (!cancelled) setState({ loading: false, error: '', artists }); })
+      .catch((loadError) => { if (!cancelled) setState({ loading: false, error: loadError.message, artists: [] }); });
+    return () => { cancelled = true; };
+  }, []);
+  return (
+    <section className="mb-14" aria-labelledby="categoria-artistas" data-artistas-rama>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <h2 id="categoria-artistas" className={SUBTITLE}>Artistas de TEJIDO</h2>
+        <a className="inline-flex min-h-11 items-center gap-2 text-[15px] font-bold text-ink underline decoration-[#ddd5c7] decoration-2 underline-offset-4 hover:decoration-ink" href="#artistas" data-ver-artistas>
+          Ver todos los artistas <Icon name="arrow-right" className="size-4" />
+        </a>
+      </div>
+      {state.loading && <p className={STATUS} aria-busy="true">Cargando artistas...</p>}
+      {state.error && <p className={STATUS_ERROR} role="alert">{state.error}</p>}
+      {!state.loading && !state.error && (state.artists.length ? (
+        <ul className="m-0 grid list-none grid-cols-3 gap-5 p-0 max-[1023px]:grid-cols-2 max-[539px]:grid-cols-1">
+          {state.artists.slice(0, MUSIC_PREVIEW).map((artist) => <li key={artist.slug} className="flex min-w-0"><ArtistCard artist={artist} /></li>)}
+        </ul>
+      ) : (
+        <EmptyNote icon="music" title="Aún no hay artistas de TEJIDO en esta rama" text="Cuando el equipo publique los primeros perfiles, aparecerán aquí." />
+      ))}
+    </section>
+  );
+}
+
 export default function CategoryScreen({ categoryKey, publications = [], loading = false, error = '', user }) {
   const [, label = categoryKey, slug] = CULTURAL_CATEGORIES.find(([key]) => key === categoryKey) || [];
   const gestores = useGestores(categoryKey);
@@ -103,6 +140,8 @@ export default function CategoryScreen({ categoryKey, publications = [], loading
           </div>
         ))}
       </section>
+
+      {categoryKey === MUSIC_KEY && <MusicArtists />}
 
       {/* "Quiero participar": se oculta a gestores y admins (ParticipateBlock). */}
       {!gestores.loading && (!user || user.role === 'CIUDADANO') && (

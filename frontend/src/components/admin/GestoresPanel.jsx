@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import EmptyNote from '../EmptyNote.jsx';
 import BranchCoverage from './BranchCoverage.jsx';
-import { Switch } from '../gestor/edit/common.jsx';
+import PromoteLeaderDialog from './PromoteLeaderDialog.jsx';
+import { ConfirmDialog, Switch } from '../gestor/edit/common.jsx';
 import Icon from '../Icon.jsx';
 import { BTN_GHOST, BTN_INK_MD, BTN_INK_OUTLINE_MD } from '../uiStyles.js';
 import { useToast } from '../../context/ToastContext.jsx';
+import { clearLeader } from '../../services/adminApi.js';
 import { BRANCH_LABELS, CULTURAL_BRANCHES } from '../../utils/constants.js';
 
 // Panel de administracion de gestores (dentro de AdminModule, ProfileScreen).
@@ -20,8 +22,10 @@ const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visi
 const LABEL = 'grid gap-1.5 text-[12px] font-bold uppercase tracking-[.1em] text-muted';
 // text-[16px]: evita el zoom automatico de iOS al enfocar.
 const FIELD = 'w-full rounded-[12px] border border-line bg-white py-2.5 px-3 text-[16px] font-medium normal-case tracking-normal text-ink outline-none transition-colors duration-200 focus:border-river';
+// INVITADO: aun no acepta su invitacion; INACTIVO: desactivado por el admin (antes los dos eran "Pendiente").
 const STATUS = {
-  PENDIENTE: ['Pendiente', 'bg-[rgba(212,168,67,0.18)] text-[#7a5c12]'],
+  INVITADO: ['Invitado', 'bg-[rgba(212,168,67,0.18)] text-[#7a5c12]'],
+  INACTIVO: ['Inactivo', 'bg-[#ece7df] text-[#3f4a46]'],
   ACTIVO: ['Activo', 'bg-[rgba(29,143,163,0.1)] text-[#146f80]'],
 };
 const EMPTY_FORM = { name: '', email: '', organization_name: '', branch: CULTURAL_BRANCHES[0], contact: '' };
@@ -141,7 +145,8 @@ function AddGestorForm({ preset, overview, onCreated, onCancel }) {
   );
 }
 
-export default function GestoresPanel() {
+// onStatsChange (opcional): refresca el Pulso del dashboard tras nombrar a un lider.
+export default function GestoresPanel({ onStatsChange }) {
   const [state, setState] = useState({ loading: true, gestores: [], overview: {}, error: '' });
   const [showForm, setShowForm] = useState(false);
   const [preset, setPreset] = useState(null); // { branch, nonce } elegido desde la cobertura
@@ -149,6 +154,9 @@ export default function GestoresPanel() {
   const [busyId, setBusyId] = useState(null);
   const [rowError, setRowError] = useState('');
   const [confirmHide, setConfirmHide] = useState(null); // id del gestor a confirmar
+  const [promoting, setPromoting] = useState(null); // { branch, label } de "Nombrar líder"
+  const [unleading, setUnleading] = useState(null); // { branch, label, leader } de "Quitar liderazgo"
+  const [unleadError, setUnleadError] = useState('');
   const { showToast } = useToast();
 
   async function load() {
@@ -175,6 +183,27 @@ export default function GestoresPanel() {
       const name = form.elements.name;
       (name && !name.value ? name : form.elements.branch)?.focus({ preventScroll: true });
     });
+  }
+
+  function handlePromoted(person) {
+    showToast({ tone: 'menta', title: 'Líder nombrado', text: `${person.name} ahora es gestor y líder de ${promoting.label}.` });
+    setPromoting(null);
+    load();
+    onStatsChange?.();
+  }
+
+  async function confirmUnlead() {
+    const { branch, label, leader } = unleading;
+    setUnleading(null);
+    setUnleadError('');
+    try {
+      await clearLeader(branch);
+      showToast({ tone: 'menta', title: 'Liderazgo quitado', text: `${leader.name} sigue en ${label} como participante; la rama quedó sin líder.` });
+      load();
+      onStatsChange?.();
+    } catch (clearError) {
+      setUnleadError(clearError.message);
+    }
   }
 
   function handleCreated(form, result) {
@@ -229,7 +258,20 @@ export default function GestoresPanel() {
 
       {state.loading && <p className="m-0 py-6 text-[14px] text-muted" aria-busy="true">Cargando...</p>}
       {state.error && <p className="mt-6 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{state.error}</p>}
-      {!state.loading && !state.error && <BranchCoverage gestores={state.gestores} overview={state.overview} onAdd={openFormFor} onChanged={load} />}
+      {!state.loading && !state.error && (
+        <BranchCoverage gestores={state.gestores} overview={state.overview} onAdd={openFormFor} onChanged={load}
+          onPromote={(branch, label) => setPromoting({ branch, label })} onClearLeader={(branch, label, leader) => setUnleading({ branch, label, leader })} />
+      )}
+      {unleadError && <p className="mt-4 mb-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]" role="alert">{unleadError}</p>}
+      {unleading && (
+        <ConfirmDialog title={`¿Quitar el liderazgo a ${unleading.leader.name}?`}
+          text={`${unleading.leader.name} sigue en ${unleading.label} como participante. La rama queda sin líder: lo que revisaba (publicaciones de los participantes y solicitudes) pasa al equipo de TEJIDO.`}
+          confirmLabel="Sí, quitar liderazgo" danger onConfirm={confirmUnlead} onCancel={() => setUnleading(null)} />
+      )}
+      {promoting && (
+        <PromoteLeaderDialog branch={promoting.branch} branchLabel={promoting.label} currentLeader={state.overview[promoting.branch]?.leader || null}
+          onClose={() => setPromoting(null)} onPromoted={handlePromoted} />
+      )}
       {!state.loading && !state.error && state.gestores.length === 0 && (
         <div className="mt-6"><EmptyNote icon="people" title="Aún no hay gestores" text="Agrega el primero para enviarle su invitación." /></div>
       )}
@@ -250,7 +292,7 @@ export default function GestoresPanel() {
             </thead>
             <tbody>
               {state.gestores.map((gestor) => {
-                const [statusLabel, statusTone] = STATUS[gestor.status] || STATUS.PENDIENTE;
+                const [statusLabel, statusTone] = STATUS[gestor.status] || STATUS.INACTIVO;
                 const busy = busyId === gestor.id;
                 return (
                   <tr key={gestor.id} className="border-b border-b-line align-middle last:border-b-0">
@@ -264,14 +306,17 @@ export default function GestoresPanel() {
                     <td className="py-4 pr-4"><span className={`whitespace-nowrap rounded-full py-1 px-3 text-[12px] font-bold ${statusTone}`}>{statusLabel}</span></td>
                     <td className="py-4">
                       <div className="flex justify-end gap-2">
-                        {gestor.status === 'PENDIENTE' && (
+                        {gestor.status === 'INVITADO' && (
                           <button type="button" className={`${BTN_GHOST} whitespace-nowrap`} disabled={busy} onClick={() => runRowAction(gestor, 'resend')}>
                             <Icon name="send" className="size-3.5" /> Reenviar invitación
                           </button>
                         )}
-                        <button type="button" className={`${BTN_GHOST} whitespace-nowrap`} disabled={busy} onClick={() => runRowAction(gestor, 'toggle')}>
-                          {gestor.active ? 'Desactivar' : 'Activar'}
-                        </button>
+                        {/* Un invitado se activa al aceptar su invitacion: aqui solo se reenvia. */}
+                        {gestor.status !== 'INVITADO' && (
+                          <button type="button" className={`${BTN_GHOST} whitespace-nowrap`} disabled={busy} onClick={() => runRowAction(gestor, 'toggle')}>
+                            {gestor.active ? 'Desactivar' : 'Activar'}
+                          </button>
+                        )}
                         {gestor.organization_id && (confirmHide === gestor.id ? (
                           <>
                             <button type="button" className={`${BTN_GHOST} whitespace-nowrap`} disabled={busy} onClick={() => runRowAction(gestor, 'visibility')}>

@@ -288,6 +288,22 @@ def _pending_request(db: Session, branch: str, request_id: int) -> BranchJoinReq
     return request
 
 
+def _become_gestor(db: Session, user: User, branch: str, organization_name: Optional[str] = None) -> Organization:
+    """Ciudadano -> GESTOR participante de la rama. Reutiliza su organizacion si ya tiene una (p. ej. un
+    exgestor: se reactiva y pasa a esta rama, conserva su nombre) o crea una con organization_name (por
+    defecto su nombre) y slug. No hace commit."""
+    user.role_id = _role_id(db, "GESTOR")
+    org = _organization(db, user.id)
+    if org is None:
+        org = Organization(user_id=user.id, name=organization_name or user.name, branch=branch, is_leader=False, active=True)
+        ensure_slug(db, org)
+        db.add(org)
+    else:
+        org.branch, org.is_leader, org.active = branch, False, True
+    db.flush()
+    return org
+
+
 def approve_request(db: Session, branch: str, request_id: int, decided_by: int) -> tuple[BranchJoinRequest, User]:
     """El solicitante (ciudadano activo) pasa a gestor participante de la rama. No hace commit."""
     request = _pending_request(db, branch, request_id)
@@ -296,17 +312,113 @@ def approve_request(db: Session, branch: str, request_id: int, decided_by: int) 
     ).scalars().first()
     if applicant is None:
         raise AppError(409, "NOT_CITIZEN", "Solo se aprueba a ciudadanos con la cuenta activa (esta persona ya es gestor, admin o está inactiva)")
-    applicant.role_id = _role_id(db, "GESTOR")
-    org = _organization(db, applicant.id)
-    if org is None:
-        org = Organization(user_id=applicant.id, name=applicant.name, branch=branch, is_leader=False, active=True)
-        ensure_slug(db, org)
-        db.add(org)
-    else:
-        org.branch, org.is_leader, org.active = branch, False, True
+    _become_gestor(db, applicant, branch)
     request.status, request.decided_by, request.decided_at = "APPROVED", decided_by, now_utc()
     db.flush()
     return request, applicant
+
+
+OTHER_BRANCH_NOTE = "Pasó a ser líder de otra rama"
+OTHER_BRANCH_MEMBER_NOTE = "Pasó a ser gestor de otra rama"
+
+
+def _settle_requests(db: Session, user_id: int, branch: str, decided_by: int, other_note: str) -> None:
+    """Solicitudes pendientes de esa persona: la de esta rama queda aprobada; las de otra, canceladas."""
+    now = now_utc()
+    pending = db.execute(
+        select(BranchJoinRequest).where(BranchJoinRequest.user_id == user_id, BranchJoinRequest.status == "PENDING")
+    ).scalars().all()
+    for request in pending:
+        if request.branch == branch:
+            request.status, request.decided_by, request.decided_at = "APPROVED", decided_by, now
+        else:
+            request.status, request.decided_by, request.decided_at, request.decision_note = "CANCELLED", decided_by, now, other_note
+    db.flush()
+
+
+def _promotable_citizen(db: Session, user_id: int) -> User:
+    """Ciudadano activo y con correo verificado (los demas casos: 404/409 con su code)."""
+    row = db.execute(select(User, Role.name).join(Role, Role.id == User.role_id).where(User.id == user_id)).first()
+    if row is None:
+        raise AppError(404, "USER_NOT_FOUND", "Usuario no encontrado")
+    user, role = row
+    if role == "GESTOR":
+        raise AppError(409, "ALREADY_GESTOR", f"{user.name} ya es gestor: usa «Nombrar líder» entre los participantes de su rama")
+    if role == "ADMIN":
+        raise AppError(409, "IS_ADMIN", f"{user.name} es administrador: no se puede convertir en gestor")
+    if role != "CIUDADANO":
+        raise AppError(409, "NOT_CITIZEN", "Solo se puede nombrar a un ciudadano")
+    if not user.active:
+        raise AppError(409, "INACTIVE_USER", f"La cuenta de {user.name} está inactiva")
+    if user.email_verified_at is None:
+        raise AppError(409, "EMAIL_NOT_VERIFIED", f"{user.name} aún no verifica su correo: pídele que lo confirme antes de nombrarlo gestor")
+    return user
+
+
+def promote_to_leader(db: Session, branch: str, user_id: int, organization_name: Optional[str], decided_by: int) -> dict:
+    """El admin convierte a un CIUDADANO activo y con correo verificado en gestor LIDER de la rama: rol
+    GESTOR, organizacion (reutilizada o nueva) y set_leader (el lider anterior queda como participante).
+    Su solicitud pendiente en esa rama queda aprobada; una en otra rama, cancelada. No hace commit: si el
+    indice unico de lider salta (IntegrityError), la ruta deshace todo."""
+    branch = require_valid_branch(branch)
+    user = _promotable_citizen(db, user_id)
+    org = _become_gestor(db, user, branch, organization_name)
+    result = set_leader(db, branch, user.id)
+    _settle_requests(db, user.id, branch, decided_by, OTHER_BRANCH_NOTE)
+    return {**result, "user_id": user.id, "organization_id": org.id, "converted": True}
+
+
+def make_participant(db: Session, branch: str, user_id: int, organization_name: Optional[str], decided_by: int) -> dict:
+    """CIUDADANO (activo, correo verificado) -> GESTOR participante de la rama, sin liderazgo. Mismas
+    reglas que promote_to_leader. No hace commit."""
+    branch = require_valid_branch(branch)
+    user = _promotable_citizen(db, user_id)
+    org = _become_gestor(db, user, branch, organization_name)
+    _settle_requests(db, user.id, branch, decided_by, OTHER_BRANCH_MEMBER_NOTE)
+    return {"branch": branch, "user_id": user.id, "organization_id": org.id, "converted": True}
+
+
+def move_to_branch(db: Session, user_id: int, branch: str, lead: bool, decided_by: int) -> dict:
+    """Un GESTOR activo pasa a ESTA rama (su organizacion se mueve y queda activa) y, con lead, queda de
+    lider (set_leader: el lider anterior pasa a participante). Al cambiar de rama, lo suyo en REVISION
+    vuelve a BORRADOR (lo publicado sigue visible), como remove_participant. Un LIDER de otra rama no se
+    mueve sin quitarle antes el liderazgo. No hace commit (IntegrityError -> la ruta deshace todo)."""
+    branch = require_valid_branch(branch)
+    row = db.execute(
+        select(User, Organization, Role.name)
+        .join(Role, Role.id == User.role_id)
+        .join(Organization, Organization.user_id == User.id, isouter=True)
+        .where(User.id == user_id)
+        .order_by(Organization.id)
+        .limit(1)
+    ).first()
+    if row is None:
+        raise AppError(404, "USER_NOT_FOUND", "Usuario no encontrado")
+    user, org, role = row
+    if role != "GESTOR":
+        raise AppError(409, "NOT_GESTOR", f"{user.name} no es gestor: conviértelo primero en gestor de la rama")
+    if not user.active:
+        raise AppError(409, "INACTIVE_USER", f"La cuenta de {user.name} está inactiva")
+    if org is None:
+        raise AppError(409, "NO_ORGANIZATION", f"{user.name} no tiene organización: edítalo desde Gestores para crearla")
+    same = org.branch == branch and org.active
+    if org.is_leader and not same:
+        current = CULTURAL_CATEGORY_LABELS.get(org.branch, org.branch)
+        raise AppError(409, "IS_LEADER", f"{user.name} es líder de {current}: primero quítale el liderazgo para moverlo")
+    if same and not lead:
+        raise AppError(409, "SAME_BRANCH", f"{user.name} ya participa en {CULTURAL_CATEGORY_LABELS[branch]}")
+    drafted = 0
+    if not same:
+        org.branch, org.active, org.is_leader = branch, True, False
+        drafted = db.execute(update(Publication).where(Publication.author_id == user.id, Publication.status == "REVIEW")
+                             .values(status="DRAFT", updated_at=now_utc())).rowcount or 0
+        db.flush()
+    if lead:
+        result = set_leader(db, branch, user.id)
+    else:
+        result = {"branch": branch, "leader_id": None, "previous_leader_id": None, "changed": False}
+    _settle_requests(db, user.id, branch, decided_by, OTHER_BRANCH_NOTE if lead else OTHER_BRANCH_MEMBER_NOTE)
+    return {**result, "user_id": user.id, "organization_id": org.id, "moved": not same, "drafted": drafted}
 
 
 def reject_request(db: Session, branch: str, request_id: int, decided_by: int, note: Optional[str]) -> tuple[BranchJoinRequest, User]:

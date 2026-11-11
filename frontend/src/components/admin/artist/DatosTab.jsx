@@ -38,7 +38,7 @@ export default function DatosTab({ artist, readOnly, onChanged }) {
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-[rgba(216,91,54,.25)] p-5">
           <div className="min-w-0 flex-1 basis-[280px]">
             <h3 className="m-0 font-sans text-[17px] font-bold text-ink">Archivar artista</h3>
-            <p className="mt-1 mb-0 text-[14px] leading-[1.5] text-muted">Sale de la web pública y de Moneystack. Su contenido se conserva y puedes restaurarlo cuando quieras.</p>
+            <p className="mt-1 mb-0 text-[14px] leading-[1.5] text-muted">Sale de la web pública y de {artist.moneystack === false ? 'Artistas' : 'Moneystack'}. Su contenido se conserva y puedes restaurarlo cuando quieras.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <ConfirmButton label="Archivar" confirmLabel="Sí, archivar" itemName={artist.stage_name} busy={archive.busy} onConfirm={handleArchive} />

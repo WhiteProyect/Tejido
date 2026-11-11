@@ -22,28 +22,29 @@ export function moderatePublication(id, action, note = '') {
 
 // Botones Aprobar / Rechazar y, al pedir rechazo, el campo de motivo. title nombra la publicacion
 // en los aria-label ("Aprobar la publicacion X").
-export function ModerationButtons({ title, busy, rejecting, onApprove, onToggleReject }) {
+// noun: lo que se modera, con su articulo (por defecto "la publicación"; los artistas usan "el artista").
+export function ModerationButtons({ title, busy, rejecting, onApprove, onToggleReject, noun = 'la publicación' }) {
   return (
     <>
-      <button type="button" className={BTN_INK_SM} disabled={busy} onClick={onApprove} aria-label={`Aprobar la publicación ${title}`}>
+      <button type="button" className={BTN_INK_SM} disabled={busy} onClick={onApprove} aria-label={`Aprobar ${noun} ${title}`}>
         <Icon name="check" className="size-3.5" /> Aprobar
       </button>
-      <button type="button" className={BTN_GHOST} disabled={busy} aria-expanded={rejecting} onClick={onToggleReject} aria-label={`Rechazar la publicación ${title}`}>
+      <button type="button" className={BTN_GHOST} disabled={busy} aria-expanded={rejecting} onClick={onToggleReject} aria-label={`Rechazar ${noun} ${title}`}>
         Rechazar
       </button>
     </>
   );
 }
 
-export function RejectForm({ busy, onSubmit, onCancel }) {
+export function RejectForm({ busy, onSubmit, onCancel, label = 'Motivo para el gestor', placeholder = 'Qué debe ajustar para publicarla' }) {
   const [note, setNote] = useState('');
   const hintId = useId();
   return (
     <form className="mt-4 flex flex-wrap items-end gap-3 max480:grid max480:grid-cols-1" onSubmit={(event) => { event.preventDefault(); onSubmit(note.trim()); }}>
       <label className="grid min-w-[240px] flex-1 gap-1.5 text-[12px] font-bold uppercase tracking-[.12em] text-muted max480:min-w-0">
-        Motivo para el gestor
+        {label}
         <input className={FORM_INPUT} value={note} onChange={(event) => setNote(event.target.value)} maxLength={500}
-          placeholder="Qué debe ajustar para publicarla" disabled={busy} autoFocus aria-describedby={hintId} />
+          placeholder={placeholder} disabled={busy} autoFocus aria-describedby={hintId} />
       </label>
       <span id={hintId} className="sr-only">Mínimo {MIN_REJECT_NOTE} caracteres.</span>
       <button type="submit" className={BTN_DANGER} disabled={busy || note.trim().length < MIN_REJECT_NOTE}>Rechazar con este motivo</button>
