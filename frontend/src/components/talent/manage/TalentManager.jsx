@@ -7,7 +7,7 @@ import { BTN_DANGER, BTN_GHOST, BTN_INK_MD, BTN_INK_SM, FORM_INPUT, FORM_LABEL, 
 import TalentSeal from '../TalentSeal.jsx';
 import { useToast } from '../../../context/ToastContext.jsx';
 import { cdnImage } from '../../../utils/cloudinaryUrl.js';
-import { CULTURAL_CATEGORIES } from '../../../utils/constants.js';
+import { branchLabel as labelOf, keyOptions, useCulturalBranches } from '../../../utils/culturalBranches.js';
 import { formatDateShort } from '../../../utils/dateUtils.js';
 import { categoryColor, categoryOrigin, categoryTint, initials } from '../../../utils/talent.js';
 import { ALERT, StatusBadge, TALENT_TOASTS, managePath, talentApi } from './common.jsx';
@@ -106,6 +106,7 @@ function TalentRow({ talent, role, busy, onAction }) {
 function TalentList({ role, branch, onChanged }) {
   const { showToast } = useToast();
   const isAdmin = role === 'ADMIN';
+  const { list: branches } = useCulturalBranches();
   const [state, setState] = useState({ loading: true, error: '', items: [] });
   const [status, setStatus] = useState('ALL');
   const [category, setCategory] = useState('');
@@ -151,7 +152,7 @@ function TalentList({ role, branch, onChanged }) {
     .filter((item) => !category || item.category === category)
     .filter((item) => !query.trim() || item.name.toLowerCase().includes(query.trim().toLowerCase()))
     .sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status) || String(b.updated_at).localeCompare(String(a.updated_at)));
-  const branchLabel = CULTURAL_CATEGORIES.find(([key]) => key === branch)?.[1];
+  const branchLabel = branch ? labelOf(branch) : '';
 
   return (
     <section className={PANEL} aria-labelledby="talento-gestion">
@@ -184,7 +185,7 @@ function TalentList({ role, branch, onChanged }) {
           <label className={FORM_LABEL}>Categoría
             <select className={FORM_INPUT} value={category} onChange={(event) => setCategory(event.target.value)}>
               <option value="">Todas las categorías</option>
-              {CULTURAL_CATEGORIES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              {keyOptions(branches).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </select>
           </label>
         ) : (

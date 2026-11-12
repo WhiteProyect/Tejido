@@ -15,8 +15,8 @@ from sqlalchemy.orm import Session
 
 from backend.service.errors import AppError
 from backend.service.models.tables import BranchJoinRequest, InviteToken, Organization, Publication, Role, Session_ as SessionRow, User
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS
 from backend.service.schemas.municipalities import MUNICIPALITY_LABELS
+from backend.service.services import cultural_branches
 from backend.service.services.auth import now_utc
 
 logger = logging.getLogger("tejido.admin")
@@ -63,14 +63,14 @@ def status_of(active: bool, invited: bool) -> str:
     return "ACTIVO" if active else "INVITADO" if invited else "INACTIVO"
 
 
-def _item(row, acting_id: Optional[int]) -> dict:
+def _item(row, acting_id: Optional[int], branch_labels: Optional[dict] = None) -> dict:
     gestor = row.role == "GESTOR" and bool(row.org_active)
-    branch = row.org_branch if gestor and row.org_branch in CULTURAL_CATEGORIES else None
+    branch = row.org_branch if gestor and row.org_branch in (branch_labels or {}) else None
     return {
         "id": row.id, "name": row.name, "email": row.email, "role": row.role, "active": row.active,
         "status": status_of(row.active, bool(row.invited)), "email_verified": row.email_verified_at is not None,
         "municipality": row.municipality, "created_at": row.created_at,
-        "branch": branch, "branch_label": CULTURAL_CATEGORY_LABELS.get(branch) if branch else None,
+        "branch": branch, "branch_label": (branch_labels or {}).get(branch) if branch else None,
         "is_leader": bool(gestor and row.org_leader and row.active),
         "organization_name": row.organization_name if row.role == "GESTOR" else None,
         "organization_slug": row.organization_slug if row.role == "GESTOR" else None,
@@ -111,7 +111,8 @@ def list_users(db: Session, acting_id: int, q: Optional[str] = None, role: Optio
     ).all())
     counts = {name: by_role.get(name, 0) for name in ROLES}
     counts["ALL"] = sum(counts.values())
-    return {"items": [_item(row, acting_id) for row in rows], "total": total, "page": page, "page_size": page_size, "counts": counts}
+    branch_labels = cultural_branches.labels(db)
+    return {"items": [_item(row, acting_id, branch_labels) for row in rows], "total": total, "page": page, "page_size": page_size, "counts": counts}
 
 
 def _row(db: Session, user_id: int):
@@ -122,12 +123,13 @@ def _row(db: Session, user_id: int):
 
 
 def get_user(db: Session, user_id: int, acting_id: Optional[int] = None) -> dict:
-    return _item(_row(db, user_id), acting_id)
+    return _item(_row(db, user_id), acting_id, cultural_branches.labels(db))
 
 
 def user_detail(db: Session, user_id: int, acting_id: int) -> dict:
     """Ficha: lo del listado, publicaciones por estado, solicitudes de ingreso recientes y organizacion."""
     row = _row(db, user_id)
+    branch_labels = cultural_branches.labels(db)
     counts = dict(db.execute(
         select(Publication.status, func.count()).where(Publication.author_id == user_id, Publication.deleted.is_(False)).group_by(Publication.status)
     ).all())
@@ -138,11 +140,11 @@ def user_detail(db: Session, user_id: int, acting_id: int) -> dict:
     organization = None
     if row.organization_id:
         organization = {"id": row.organization_id, "name": row.organization_name, "slug": row.organization_slug, "branch": row.org_branch,
-                        "branch_label": CULTURAL_CATEGORY_LABELS.get(row.org_branch), "is_leader": bool(row.org_leader), "active": bool(row.org_active)}
+                        "branch_label": branch_labels.get(row.org_branch), "is_leader": bool(row.org_leader), "active": bool(row.org_active)}
     return {
-        **_item(row, acting_id),
+        **_item(row, acting_id, branch_labels),
         "publications": {status: counts.get(status, 0) for status in ("PUBLISHED", "REVIEW", "DRAFT", "REJECTED")},
-        "join_requests": [{"id": r.id, "branch": r.branch, "branch_label": CULTURAL_CATEGORY_LABELS.get(r.branch, r.branch), "status": r.status,
+        "join_requests": [{"id": r.id, "branch": r.branch, "branch_label": branch_labels.get(r.branch, r.branch), "status": r.status,
                            "created_at": r.created_at, "decided_at": r.decided_at} for r in requests],
         "organization": organization,
     }
@@ -232,7 +234,7 @@ def make_admin(db: Session, acting_id: int, user_id: int) -> dict:
     if role == "GESTOR":
         org = _org(db, user.id)
         if org is not None and org.is_leader:
-            label = CULTURAL_CATEGORY_LABELS.get(org.branch, org.branch)
+            label = cultural_branches.label_of(db, org.branch) or org.branch
             raise AppError(409, "IS_LEADER", f"{user.name} es líder de {label}: primero quítale el liderazgo")
         if org is not None:
             org.active = False

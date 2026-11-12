@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from backend.service.core.config import settings
 from backend.service.core.security import hash_password
+from backend.service.services import cultural_branches
 from backend.service.models.tables import (
     Artist,
     ArtistConnection,
@@ -86,6 +87,8 @@ def seed_database(db: Session):
                                                       ("audicion", "Audición", "morado"), ("concurso", "Concurso", "amarillo"),
                                                       ("curso", "Curso", "crema")))
     ], ["slug"])
+    # Las 10 ramas de cultura que siembra la migracion f6b8d0a2c4e7.
+    cultural_branches.seed_base_branches(db)
     # Las 7 categorias de lugar que siembra la migracion c7e2a4f6b8d1.
     _upsert_ignore(db, PlaceCategory, [
         {"slug": slug, "label": label, "icon": icon, "color": color, "sort_order": index, "active": True}

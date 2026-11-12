@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { BTN_INK_MD, BTN_INK_OUTLINE_MD, FORM_INPUT, FORM_LABEL } from '../uiStyles.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { apiRequest } from '../../utils/api.js';
-import { CULTURAL_CATEGORIES } from '../../utils/constants.js';
+import { branchLabel, keyOptions, useCulturalBranches } from '../../utils/culturalBranches.js';
 import { UnverifiedNotice, isUnverifiedError } from '../VerifyEmailNotice.jsx';
 
 // Formulario "Quiero participar" en un dialogo accesible (categoria, perfil del lider y perfil del
@@ -11,7 +11,6 @@ import { UnverifiedNotice, isUnverifiedError } from '../VerifyEmailNotice.jsx';
 // /api/gestores?branch=), lo revisa el lider; si no, el equipo. Foco al primer campo, Esc cierra,
 // Tab queda dentro y el foco vuelve a donde estaba al cerrar.
 export const MAX_REQUEST_MESSAGE = 500;
-const LABELS = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
 const ALERT = 'm-0 rounded-[14px] bg-[rgba(216,91,54,.08)] py-3 px-4 text-[14px] text-[#b3442b]';
 
 async function branchHasLeader(branch) {
@@ -33,7 +32,8 @@ export default function BranchRequestDialog({ lockedBranch, initialBranch, onSen
   const { showToast } = useToast();
   const id = useId();
   const boxRef = useRef(null);
-  const [branch, setBranch] = useState(lockedBranch || initialBranch || CULTURAL_CATEGORIES[0][0]);
+  const { list: branches } = useCulturalBranches();
+  const [branch, setBranch] = useState(lockedBranch || initialBranch || branches[0]?.key || '');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -73,8 +73,8 @@ export default function BranchRequestDialog({ lockedBranch, initialBranch, onSen
     try {
       await onSend(branch, message.trim());
       const hasLeader = await branchHasLeader(branch);
-      setSent({ label: LABELS[branch], hasLeader });
-      showToast({ tone: 'menta', eyebrow: 'Hilo en camino', title: 'Solicitud enviada', text: `Pediste participar en ${LABELS[branch]}.` });
+      setSent({ label: branchLabel(branch), hasLeader });
+      showToast({ tone: 'menta', eyebrow: 'Hilo en camino', title: 'Solicitud enviada', text: `Pediste participar en ${branchLabel(branch)}.` });
     } catch (sendError) {
       // Correo sin verificar: el aviso de verificacion (con reenviar), no un error generico.
       if (isUnverifiedError(sendError)) setUnverified(true);
@@ -103,7 +103,7 @@ export default function BranchRequestDialog({ lockedBranch, initialBranch, onSen
             <label className={FORM_LABEL}>
               Rama cultural
               <select className={FORM_INPUT} value={branch} onChange={(event) => setBranch(event.target.value)} disabled={Boolean(lockedBranch) || sending}>
-                {CULTURAL_CATEGORIES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                {keyOptions(branches).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </select>
             </label>
             <div className="grid gap-1.5">

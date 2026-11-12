@@ -19,7 +19,7 @@ from sqlalchemy import func, select  # noqa: E402
 from backend.service.db.session import SessionLocal  # noqa: E402
 from backend.service.errors import AppError  # noqa: E402
 from backend.service.models.tables import Organization, User  # noqa: E402
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORY_LABELS  # noqa: E402
+from backend.service.services import cultural_branches  # noqa: E402
 from backend.service.services import branches  # noqa: E402
 
 
@@ -34,18 +34,20 @@ def main():
     parser.add_argument("--aplicar", action="store_true", help="aplica el cambio (sin esto es un dry-run)")
     args = parser.parse_args()
     branch = args.rama.strip().upper()
-    if branch not in CULTURAL_CATEGORY_LABELS:
-        print(f"Rama invalida: {args.rama}. Opciones: {', '.join(CULTURAL_CATEGORY_LABELS)}")
-        sys.exit(1)
 
     db = SessionLocal()
     try:
+        # Las ramas viven en la tabla cultural_branches.
+        labels = cultural_branches.labels(db)
+        if branch not in labels:
+            print(f"Rama invalida: {args.rama}. Opciones: {', '.join(labels)}")
+            sys.exit(1)
         user = db.execute(select(User).where(func.lower(User.email) == args.email.strip().lower())).scalars().first()
         if user is None:
             print(f"No hay ningun usuario con el correo {args.email}.")
             sys.exit(1)
         org = db.execute(select(Organization).where(Organization.user_id == user.id).order_by(Organization.id)).scalars().first()
-        print(f"Rama: {branch} ({CULTURAL_CATEGORY_LABELS[branch]})")
+        print(f"Rama: {branch} ({labels[branch]})")
         print(f"Lider actual:  {describe(branches.current_leader_row(db, branch))}")
         print(f"Nuevo lider:   {user.name} <{user.email}> (id {user.id}, organización «{org.name if org else '—'}», rama {org.branch if org else '—'})")
         try:
@@ -64,7 +66,7 @@ def main():
             print(f"\nDry-run: quedaria como lider {describe(after)}; se deshizo. Para aplicar, repite con --aplicar.")
             return
         db.commit()
-        print(f"\nAplicado. Lider de {CULTURAL_CATEGORY_LABELS[branch]}: {describe(branches.current_leader_row(db, branch))}")
+        print(f"\nAplicado. Lider de {labels[branch]}: {describe(branches.current_leader_row(db, branch))}")
     finally:
         db.close()
 

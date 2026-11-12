@@ -18,7 +18,8 @@ import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
 import { coverSources, useCategoryCovers } from '../utils/categoryCovers.js';
 import { cdnImage } from '../utils/cloudinaryUrl.js';
-import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
+import { KIND_LABELS } from '../utils/constants.js';
+import { branchLabel, branchSlug, useCulturalBranches } from '../utils/culturalBranches.js';
 import { formatDateShort } from '../utils/dateUtils.js';
 import { getInitials } from '../utils/initials.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
@@ -43,7 +44,6 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 //   con el filtro "Solo lugares" de su lista. Los aprueba siempre el admin, nunca un lider.
 // La pestana va en la URL con replaceState (sin hashchange: App subiria la pagina).
 
-const CATEGORY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label, slug]) => [key, { label, slug }]));
 const TABS = [['mis-publicaciones', 'Mis publicaciones', 'book'], ['mi-categoria', 'Mi categoría', 'people']];
 // El lider de la rama suma Por revisar, Solicitudes, Participantes y Talento (en este orden); el de la
 // rama Musica, ademas, Mis artistas (los artistas de TEJIDO que carga; components/gestor/leader/).
@@ -163,7 +163,7 @@ function PublicationItem({ publication, user, branch, busy, onEdit, onAction }) 
           <p className="m-0 mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold uppercase tracking-[.08em] text-muted">
             <span>{KIND_LABELS[publication.kind] || publication.kind}</span>
             {publication.kind === 'LUGAR' && publication.place_category && <><span aria-hidden="true">·</span><span>{publication.place_category.label}</span></>}
-            {publication.cultural_category && <><span aria-hidden="true">·</span><span>{CATEGORY[publication.cultural_category]?.label}</span></>}
+            {publication.cultural_category && <><span aria-hidden="true">·</span><span>{branchLabel(publication.cultural_category)}</span></>}
             {date && <><span aria-hidden="true">·</span><span className="normal-case tracking-normal font-semibold">{date}</span></>}
             {outside && <span className={OUTSIDE_TAG}>Fuera de tu categoría</span>}
           </p>
@@ -274,6 +274,7 @@ function LeaderSummary({ branchLabel, counts, onOpen }) {
 }
 
 export default function GestorDashboard({ user, section }) {
+  useCulturalBranches();
   const { showToast } = useToast();
   const isLeader = Boolean(user?.is_leader);
   const isMusicLeader = isLeader && user?.branch === 'MUSICA';
@@ -366,7 +367,9 @@ export default function GestorDashboard({ user, section }) {
 
   const { publications, category } = state;
   const branch = category?.branch || null;
-  const info = branch ? { label: category.label || CATEGORY[branch]?.label, slug: CATEGORY[branch]?.slug } : null;
+  const info = branch ? { label: category.label || branchLabel(branch), slug: branchSlug(branch) } : null;
+  // Rama desactivada por el admin: conserva el dashboard y edita lo suyo, pero no crea contenido nuevo.
+  const branchOff = Boolean(branch && category?.branch_active === false);
   const byStatus = filter === 'ALL' ? publications : publications.filter((publication) => publication.status === filter);
   const visible = kindFilter === 'LUGAR' ? byStatus.filter((publication) => publication.kind === 'LUGAR') : byStatus;
   const placeCount = publications.filter((publication) => publication.kind === 'LUGAR').length;
@@ -396,14 +399,14 @@ export default function GestorDashboard({ user, section }) {
             <p className="mt-4 mb-0 text-[18px] leading-[1.6] text-[#53645c]">
               {category?.organization?.name || 'Crea borradores, envíalos a revisión y corrige lo que el equipo te pida.'}
             </p>
-            {ready && branch && (
+            {ready && branch && !branchOff && (
               <a className="mt-3 inline-flex items-center gap-2 text-[14px] font-semibold text-ink no-underline hover:underline" href={`#categoria/${info.slug}`}>
                 Ver mi categoría <Icon name="arrow-right" className="size-4" />
               </a>
             )}
           </div>
         </div>
-        {ready && branch && !editor && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}><Icon name="pen" className="size-4" /> Nueva publicación</button>}
+        {ready && branch && !branchOff && !editor && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}><Icon name="pen" className="size-4" /> Nueva publicación</button>}
         {showLeader && <div className="w-full"><LeaderSummary branchLabel={info.label} counts={leaderCounts} onOpen={changeTab} /></div>}
       </header>
 
@@ -417,6 +420,12 @@ export default function GestorDashboard({ user, section }) {
             Escríbele al equipo de TEJIDO para que te asigne tu rama cultural. Cuando la tengas, aquí podrás crear y enviar tus publicaciones.
           </p>
         </section>
+      )}
+
+      {ready && branchOff && (
+        <div className="mb-6 rounded-[18px] border border-[#e6d3a0] bg-[#fbf3dc] py-4 px-5 text-[15px] leading-[1.55] text-[#5b4a1a]" role="status">
+          <strong className="text-ink">Tu rama está desactivada.</strong> Puedes ver y editar lo que ya tienes, pero por ahora no se crean publicaciones ni perfiles nuevos en {info.label}. Si tienes dudas, escríbele al equipo de TEJIDO.
+        </div>
       )}
 
       {ready && branch && (
@@ -467,7 +476,7 @@ export default function GestorDashboard({ user, section }) {
                         icon="pen"
                         title="Tu primer hilo está por tejerse"
                         text="Crea tu primera publicación: queda como borrador hasta que la envíes a revisión."
-                        action={!editor && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}>Crear publicación</button>}
+                        action={!editor && !branchOff && <button type="button" className={BTN_INK_MD} onClick={() => openEditor()}>Crear publicación</button>}
                       />
                     </div>
                   )}

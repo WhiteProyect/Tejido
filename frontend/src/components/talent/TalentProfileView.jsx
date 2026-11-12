@@ -15,7 +15,7 @@ import VenuesMap from './VenuesMap.jsx';
 import { META, SECTION_LABEL, useIsMobile } from './talentUi.js';
 import { BTN_INK_MD } from '../uiStyles.js';
 import { cdnImage } from '../../utils/cloudinaryUrl.js';
-import { CATEGORY_BY_KEY, canSave, categoryColor, categoryOrigin, categoryTint, formatCOP, initials, talentShareUrl, useTalentFavorite } from '../../utils/talent.js';
+import { canSave, categoryByKey, categoryColor, categoryOrigin, categoryTint, formatCOP, initials, talentShareUrl, useTalentFavorite } from '../../utils/talent.js';
 
 // Presentacion del perfil de un talento: la usan la pagina publica (screens/TalentProfileScreen,
 // GET /api/talent/{slug}) y la vista previa (screens/TalentPreviewScreen, GET /api/talent/manage/{id}).
@@ -66,7 +66,7 @@ function Share({ talent, menuAlign }) {
 }
 
 function Breadcrumbs({ talent }) {
-  const category = CATEGORY_BY_KEY[talent.category];
+  const category = categoryByKey(talent.category);
   const LINK = 'text-[#3f514a] no-underline hover:text-ink hover:underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
   const sep = (
     <li aria-hidden="true" className="text-[#6c756f]">
@@ -79,7 +79,7 @@ function Breadcrumbs({ talent }) {
         <li><a className={LINK} href="#inicio">Inicio</a></li>
         {sep}
         <li><a className={LINK} href="#talento">Talento</a></li>
-        {category && <>{sep}<li><a className={LINK} href={`#talento?cat=${category.slug}`}>{category.label}</a></li></>}
+        {category && <>{sep}<li>{category.active ? <a className={LINK} href={`#talento?cat=${category.slug}`}>{category.label}</a> : category.label}</li></>}
         {sep}
         <li aria-current="page" className="font-semibold text-ink [overflow-wrap:anywhere]">{talent.name}</li>
       </ol>

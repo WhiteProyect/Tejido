@@ -1,5 +1,5 @@
 """Entradas de la pestaña Usuarios del admin (services/users.py y los cambios de rol de services/branches.py)."""
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, field_validator
 
@@ -44,3 +44,9 @@ class MoveBranchInput(BaseModel):
     @classmethod
     def _branch(cls, v):
         return str(v or "").strip().upper()
+
+
+class PulsoInput(BaseModel):
+    """Tarjetas visibles del Pulso, en orden. Sin tipo aqui: services/admin_pulso.py valida (lista de 1 a 12
+    ids del catalogo, sin repetidos) y responde 422 en español."""
+    pulso: Any = None

@@ -12,8 +12,8 @@ from sqlalchemy import delete, func, select, update
 
 from backend.service.db.session import get_db
 from backend.service.main import app
-from backend.service.models.tables import (Artist, Category, CulturalCategoryCover, Publication, TalentProfile,
-                                           User)
+from backend.service.models.tables import (Artist, Category, CulturalBranch, HomeCarouselPick, HomeCarouselSettings, Publication,
+                                           TalentProfile, User)
 from backend.service.services import home_carousel
 from backend.service.services.auth import now_utc
 
@@ -32,6 +32,9 @@ def db(client):  # el client instala el schema de test (dependency override)
     session.execute(update(Publication).values(deleted=True))
     session.execute(update(TalentProfile).values(deleted=True))
     session.execute(update(Artist).values(active=False))
+    # Sin elegidos y con las cantidades por defecto: el carrusel automatico.
+    session.execute(delete(HomeCarouselPick))
+    session.execute(delete(HomeCarouselSettings))
     try:
         yield session
     finally:
@@ -71,9 +74,9 @@ class Content:
         self.db.flush()
         return row
 
-    def artist(self, name, featured=False, active=True, image="https://img.test/a.jpg", bio="Bio"):
+    def artist(self, name, featured=False, active=True, image="https://img.test/a.jpg", bio="Bio", moneystack=True, **extra):
         row = Artist(user_id=self.user_id, name=name, stage_name=name, slug=f"{name.lower()}-{uuid.uuid4().hex[:6]}",
-                     bio=bio, image=image, featured=featured, active=active, created_at=self._tick())
+                     bio=bio, image=image, featured=featured, active=active, moneystack=moneystack, created_at=self._tick(), **extra)
         self.db.add(row)
         self.db.flush()
         return row
@@ -82,6 +85,11 @@ class Content:
 @pytest.fixture
 def content(db):
     return Content(db)
+
+
+def limits(db, content=10, moneystack=3, tejido=3):
+    db.merge(HomeCarouselSettings(id=1, content_limit=content, moneystack_limit=moneystack, tejido_limit=tejido, updated_at=now_utc()))
+    db.flush()
 
 
 def keys(slides):
@@ -139,10 +147,15 @@ def test_one_per_each_of_the_ten_categories_plus_one_talent(db, content):
         content.publication(branch=branch)
     first_talent = content.talent()
     featured_talent = content.talent(featured=True)
+    # Por defecto caben 10: de los 11 candidatos se cae el de menos prioridad (la publicacion mas antigua).
+    default = build(db)
+    assert len(default) == 10 and default[0]["key"] == f"talent-{featured_talent.id}"
+    limits(db, content=12)
     slides = build(db)
-    assert len(slides) == home_carousel.MAX_CONTENT == 11
+    assert len(slides) == 11 and keys(default) == keys(slides)[:10]
+    labels = dict(db.execute(select(CulturalBranch.key, CulturalBranch.label)).all())
     assert sorted(s["category_label"] for s in slides if s["type"] == "PUBLICATION") == sorted(
-        home_carousel.CULTURAL_CATEGORY_LABELS[b] for b in BRANCHES)
+        labels[b] for b in BRANCHES)
     talents = [s for s in slides if s["type"] == "TALENT"]
     assert keys(talents) == [f"talent-{featured_talent.id}"] and f"talent-{first_talent.id}" not in keys(slides)
     # Orden del contenido: destacado primero y luego del mas reciente al mas antiguo.
@@ -150,23 +163,21 @@ def test_one_per_each_of_the_ten_categories_plus_one_talent(db, content):
     assert all(s["type"] != "ARTIST" for s in slides)
 
 
-def test_interleaves_artists_in_cycle_starting_with_content(db, content):
+def test_interleaves_artists_spread_evenly_starting_with_content(db, content):
     pubs = [content.publication(branch=branch) for branch in BRANCHES[:4]]
     talent = content.talent()
     a = content.artist("Uno", featured=True)
     b = content.artist("Dos")
     c = content.artist("Tres")
+    content.artist("Zeta")  # ultimo por nombre: pasa de la cuota de Moneystack (3)
     slides = build(db)
-    types = [s["type"] for s in slides]
-    assert types == ["TALENT", "ARTIST", "PUBLICATION", "ARTIST", "PUBLICATION", "ARTIST",
-                     "PUBLICATION", "ARTIST", "PUBLICATION", "ARTIST"]
+    # 5 de contenido y 3 artistas: el artista i va detras del contenido floor(i * 5 / 3) = 0, 1, 3.
+    assert [s["type"] for s in slides] == ["TALENT", "ARTIST", "PUBLICATION", "ARTIST", "PUBLICATION",
+                                           "PUBLICATION", "ARTIST", "PUBLICATION"]
     # Contenido del mas reciente al mas antiguo (el talento es lo ultimo creado).
     assert keys([s for s in slides if s["type"] != "ARTIST"]) == [f"talent-{talent.id}"] + [f"publication-{p.id}" for p in reversed(pubs)]
-    artists = [s["key"] for s in slides if s["type"] == "ARTIST"]
-    assert artists[:3] == [f"artist-{a.id}", f"artist-{b.id}", f"artist-{c.id}"]
-    # Nunca el mismo artista dos veces seguidas, tampoco al dar la vuelta.
-    cycle = artists + artists[:1]
-    assert all(x != y for x, y in zip(cycle, cycle[1:])), artists
+    # Cada artista una sola vez, destacados primero y luego por nombre.
+    assert artist_keys(slides) == [f"artist-{a.id}", f"artist-{b.id}", f"artist-{c.id}"]
 
 
 def test_alternation_by_theme_counts_only_content(db, content):
@@ -176,7 +187,7 @@ def test_alternation_by_theme_counts_only_content(db, content):
     slides = build(db)
     # El frontend alterna A/B contando solo las que no son de artista: A, artista, B, artista, A, artista.
     content_positions = [i for i, s in enumerate(slides) if s["type"] != "ARTIST"]
-    assert content_positions == [0, 2, 4] and [s["type"] for s in slides].count("ARTIST") == 3
+    assert content_positions == [0, 2, 3] and [s["type"] for s in slides].count("ARTIST") == 1
 
 
 def test_without_artists_only_content_and_without_content_only_artists(db, content):
@@ -261,7 +272,7 @@ def test_artist_slide_payload_is_unchanged(db, content):
     content.publication()
     slide = next(s for s in build(db) if s["type"] == "ARTIST")
     assert list(slide) == ["type", "key", "title", "summary", "image", "badge", "tags", "href", "cta_label", "artist",
-                           "featured_track"]
+                           "featured_track", "sello"]
     assert slide["key"] == f"artist-{artist.id}" and slide["badge"] == "Artista destacado"
     assert slide["tags"] == ["Moneystack", "Bajo Cauca", "Música Urbana"] and slide["cta_label"] == "Ver perfil"
     assert len(slide["summary"]) <= 180 and slide["href"] == f"#artista/{artist.slug}"
@@ -269,8 +280,8 @@ def test_artist_slide_payload_is_unchanged(db, content):
 
 
 def test_image_falls_back_to_branch_cover(db, content):
-    db.execute(delete(CulturalCategoryCover).where(CulturalCategoryCover.category_key.in_(("DANZA", "TEATRO"))))
-    db.add(CulturalCategoryCover(category_key="DANZA", image_url="https://img.test/portada-danza.jpg", updated_at=now_utc()))
+    db.execute(update(CulturalBranch).where(CulturalBranch.key.in_(("DANZA", "TEATRO"))).values(image_url=None))
+    db.execute(update(CulturalBranch).where(CulturalBranch.key == "DANZA").values(image_url="https://img.test/portada-danza.jpg"))
     with_cover = content.publication(branch="DANZA", image=None)
     static = content.publication(kind="EVENTO", branch="TEATRO", image=None)
     slides = by_key(build(db))
@@ -354,7 +365,7 @@ def test_featuring_or_archiving_an_artist_is_seen_on_the_next_load(client):
         gen.close()
 
 
-# ───────────── artistas destacados: siempre presentes ─────────────
+# ───────────── artistas: cuota por sello, cada uno una vez ─────────────
 
 def artist_keys(slides):
     return [s["key"] for s in slides if s["type"] == "ARTIST"]
@@ -364,95 +375,74 @@ def types(slides):
     return [s["type"] for s in slides]
 
 
-def assert_never_same_twice(slides):
-    """Ningun artista justo despues de si mismo (entre artistas), tampoco al dar la vuelta."""
-    sequence = artist_keys(slides)
-    if len(sequence) < 2:
-        return
-    cycle = sequence + sequence[:1]
-    assert all(x != y for x, y in zip(cycle, cycle[1:])), sequence
-
-
 @pytest.mark.parametrize("pieces", [0, 1, 2])
-def test_featured_artist_present_with_little_content(db, content, pieces):
+def test_featured_artist_first_with_little_content(db, content, pieces):
     for branch in BRANCHES[:pieces]:
         content.publication(branch=branch)
     others = [content.artist(name) for name in ("Ana", "Beto", "Caro")]
     star = content.artist("Zeta", featured=True)  # ultimo por nombre, primero por destacado
     slides = build(db)
-    if pieces:
-        assert types(slides) == ["PUBLICATION", "ARTIST"] * pieces
-        assert artist_keys(slides) == [f"artist-{a.id}" for a in [star, *others][:pieces]]
-    else:
-        assert artist_keys(slides) == [f"artist-{a.id}" for a in [star, *others]]
-    assert_never_same_twice(slides)
+    assert artist_keys(slides) == [f"artist-{a.id}" for a in [star, *others][:3]]
+    if pieces == 1:
+        assert types(slides) == ["PUBLICATION", "ARTIST", "ARTIST", "ARTIST"]
+    if pieces == 2:
+        assert types(slides) == ["PUBLICATION", "ARTIST", "ARTIST", "PUBLICATION", "ARTIST"]
 
 
-def test_three_featured_with_one_content_slide(db, content):
-    pub = content.publication()
-    stars = [content.artist(name, featured=True) for name in ("Ana", "Beto", "Caro")]
-    content.artist("Dani")
-    slides = build(db)
-    assert keys(slides) == [f"publication-{pub.id}"] + [f"artist-{a.id}" for a in stars]
-    assert_never_same_twice(slides)
-
-
-def test_extra_featured_are_spread_evenly(db, content):
+def test_more_artists_than_content_go_in_even_blocks(db, content):
     pubs = [content.publication(branch=branch) for branch in BRANCHES[:2]]
     stars = [content.artist(name, featured=True) for name in ("Ana", "Beto", "Caro", "Dino", "Eva")]
+    limits(db, moneystack=5)
     slides = build(db)
     assert types(slides) == ["PUBLICATION", "ARTIST", "ARTIST", "ARTIST", "PUBLICATION", "ARTIST", "ARTIST"]
     assert artist_keys(slides) == [f"artist-{a.id}" for a in stars]
     assert keys([s for s in slides if s["type"] != "ARTIST"]) == [f"publication-{p.id}" for p in reversed(pubs)]
 
 
-def test_featured_and_regular_with_little_content(db, content):
-    for branch in BRANCHES[:3]:
-        content.publication(branch=branch)
-    stars = [content.artist(name, featured=True) for name in ("Beto", "Ana")]
-    regular = [content.artist(name) for name in ("Caro", "Dino", "Eva")]
-    slides = build(db)
-    # Sobra un hueco: es del primer no destacado.
-    assert types(slides) == ["PUBLICATION", "ARTIST"] * 3
-    assert artist_keys(slides) == [f"artist-{a.id}" for a in (stars[1], stars[0], regular[0])]
-    # Con mas destacados que contenido, los no destacados no entran.
-    more = [content.artist(name, featured=True) for name in ("Fito", "Gina")]
-    slides = build(db)
-    assert types(slides) == ["PUBLICATION", "ARTIST", "ARTIST", "PUBLICATION", "ARTIST", "PUBLICATION", "ARTIST"]
-    assert artist_keys(slides) == [f"artist-{a.id}" for a in (stars[1], stars[0], *more)]
-
-
-def test_more_than_the_featured_cap(db, content):
-    content.publication()
-    stars = [content.artist(f"Estrella{i}", featured=True) for i in range(home_carousel.MAX_FEATURED_ARTISTS + 2)]
-    regular = content.artist("Zzz")
-    slides = build(db)
-    assert home_carousel.MAX_FEATURED_ARTISTS == 6
-    assert types(slides)[0] == "PUBLICATION" and artist_keys(slides) == [f"artist-{a.id}" for a in stars[:6]]
-    # Con mas huecos, los que pasan del tope rellenan como cualquier otro artista.
-    for branch in BRANCHES[1:9]:
-        content.publication(branch=branch)
-    slides = build(db)
-    assert types(slides) == ["PUBLICATION", "ARTIST"] * 9
-    assert artist_keys(slides) == [f"artist-{a.id}" for a in [*stars, regular]]
-    assert_never_same_twice(slides)
-
-
-@pytest.mark.parametrize("pieces,artists", [(1, 1), (2, 2), (3, 2), (4, 2), (3, 3), (5, 3), (7, 3), (6, 4), (10, 4)])
-def test_never_the_same_artist_twice_in_a_row(db, content, pieces, artists):
+@pytest.mark.parametrize("pieces,artists", [(1, 1), (3, 2), (5, 3), (10, 3), (10, 6), (4, 6)])
+def test_each_artist_once_and_spread(db, content, pieces, artists):
     for branch in BRANCHES[:pieces]:
         content.publication(branch=branch)
     for i in range(artists):
         content.artist(f"Art{i}", featured=i == 0)
+    limits(db, moneystack=6)
     slides = build(db)
     sequence = artist_keys(slides)
-    # Un artista por hueco: contenido y artista alternan, empezando por contenido.
-    assert [s["type"] == "ARTIST" for s in slides] == [False, True] * pieces
-    if artists == 1:
-        return  # un solo artista: se repite por fuerza
-    assert all(x != y for x, y in zip(sequence, sequence[1:])), sequence
-    if not (artists == 2 and pieces % 2):  # dos artistas y huecos impares: la vuelta repite por fuerza
-        assert_never_same_twice(slides)
+    assert len(sequence) == len(set(sequence)) == artists
+    assert slides[0]["type"] != "ARTIST" and len(slides) == pieces + artists
+    if artists <= pieces:
+        # Un artista por bloque como mucho, y separados parejo.
+        positions = [i for i, s in enumerate(slides) if s["type"] == "ARTIST"]
+        assert all(slides[i - 1]["type"] != "ARTIST" for i in positions)
+        assert all(b - a <= -(-pieces // artists) + 1 for a, b in zip(positions, positions[1:])), types(slides)
+
+
+def test_quota_per_sello_and_fill_alternates_starting_with_moneystack(db, content):
+    for branch in BRANCHES[:6]:
+        content.publication(branch=branch)
+    money = [content.artist(f"M{i}", featured=i == 0) for i in range(4)]
+    tejido = [content.artist(f"T{i}", moneystack=False, featured=i == 2) for i in range(4)]
+    slides = build(db)
+    assert artist_keys(slides) == [f"artist-{a.id}" for a in (money[0], tejido[2], money[1], tejido[0], money[2], tejido[1])]
+    limits(db, moneystack=1, tejido=4)
+    assert artist_keys(build(db)) == [f"artist-{a.id}" for a in (money[0], tejido[2], tejido[0], tejido[1], tejido[3])]
+    limits(db, moneystack=0, tejido=0)
+    assert artist_keys(build(db)) == []
+
+
+def test_tejido_artist_card(db, content):
+    content.publication()
+    artist = content.artist("Rio", moneystack=False, genre="Bullerengue", municipality="nechi", bio="Bio")
+    money = content.artist("Mauro", featured=True)
+    slides = by_key(build(db))
+    card = slides[f"artist-{artist.id}"]
+    assert card["sello"] == "TEJIDO" and card["badge"] == "Artista de TEJIDO"
+    assert card["tags"] == ["Bullerengue", "Nechí", "Música"] and "Moneystack" not in card["tags"]
+    assert card["href"] == f"#artista/{artist.slug}" and card["cta_label"] == "Ver perfil"
+    assert slides[f"artist-{money.id}"]["sello"] == "MONEYSTACK"
+    # Sin genero ni municipio: solo "Musica".
+    bare = content.artist("Seco", moneystack=False)
+    assert by_key(build(db))[f"artist-{bare.id}"]["tags"] == ["Música"]
 
 
 def test_no_content_only_artists_featured_first(db, content):
@@ -464,6 +454,7 @@ def test_no_content_only_artists_featured_first(db, content):
 def test_no_artists_only_content(db, content):
     pubs = [content.publication(branch=branch) for branch in BRANCHES[:2]]
     content.artist("Archivado", featured=True, active=False)
+    content.artist("En revision", moneystack=False, status="REVIEW")
     assert keys(build(db)) == [f"publication-{p.id}" for p in reversed(pubs)]
 
 
@@ -475,6 +466,6 @@ def test_two_artists_together_keep_the_artist_card(db, content):
     assert types(slides) == ["PUBLICATION", "ARTIST", "ARTIST"]
     for slide in slides[1:]:
         assert list(slide) == ["type", "key", "title", "summary", "image", "badge", "tags", "href", "cta_label",
-                               "artist", "featured_track"]
+                               "artist", "featured_track", "sello"]
         assert slide["badge"] == "Artista destacado" and slide["tags"] == ["Moneystack", "Bajo Cauca", "Música Urbana"]
         assert len(slide["summary"]) <= 180 and slide["featured_track"] is None

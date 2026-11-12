@@ -13,20 +13,20 @@ from sqlalchemy.orm import Session
 
 from backend.service.api.deps import get_current_user
 from backend.service.db.session import get_db
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORY_LABELS
 from backend.service.schemas.talent import (
     AvailabilityInput, EndorsementsInput, MediaListInput, MilestonesInput, ServicesInput, SpecsInput, TalentCreateInput,
     TalentStatusInput, TalentUpdateInput, VenuesInput,
 )
+from backend.service.services import cultural_branches
 from backend.service.services import notifications
 from backend.service.services import talent as svc
 
 router = APIRouter(prefix="/api/talent")
 
 
-def _notify_review(background_tasks: BackgroundTasks, profile, user: dict) -> None:
+def _notify_review(db: Session, background_tasks: BackgroundTasks, profile, user: dict) -> None:
     background_tasks.add_task(notifications.notify_talent_review, profile.name, user["name"],
-                              CULTURAL_CATEGORY_LABELS.get(profile.category, profile.category))
+                              cultural_branches.label_of(db, profile.category) or profile.category)
 
 
 # ─────────────────────────── gestion ───────────────────────────
@@ -56,7 +56,7 @@ def update_talent(talent_id: int, payload: TalentUpdateInput, background_tasks: 
     if to_review:
         # Commit antes del aviso: el correo solo sale con el cambio ya guardado.
         db.commit()
-        _notify_review(background_tasks, profile, user)
+        _notify_review(db, background_tasks, profile, user)
     return result
 
 
@@ -65,7 +65,7 @@ def _put_list(key: str, talent_id: int, items: list, background_tasks: Backgroun
     result = {"items": saved, "status": profile.status}
     if to_review:
         db.commit()
-        _notify_review(background_tasks, profile, user)
+        _notify_review(db, background_tasks, profile, user)
     return result
 
 
@@ -116,7 +116,7 @@ def submit_talent(talent_id: int, background_tasks: BackgroundTasks, user: Optio
                   db: Session = Depends(get_db)):
     profile = svc.submit(db, user, talent_id)
     db.commit()
-    _notify_review(background_tasks, profile, user)
+    _notify_review(db, background_tasks, profile, user)
     return {"id": profile.id, "status": profile.status}
 
 

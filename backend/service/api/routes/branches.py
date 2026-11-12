@@ -16,7 +16,7 @@ from backend.service.core.rate_limit import allow_branch_request
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
 from backend.service.schemas.branches import JoinRequestInput, RejectInput
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORY_LABELS
+from backend.service.services import cultural_branches
 from backend.service.services import branches as svc
 from backend.service.services import notifications
 
@@ -37,7 +37,7 @@ def approve_request(branch: str, request_id: int, background_tasks: BackgroundTa
     request, applicant = svc.approve_request(db, branch, request_id, user["id"])
     db.commit()
     background_tasks.add_task(notifications.notify_join_decision, applicant.email, applicant.name,
-                              CULTURAL_CATEGORY_LABELS[branch], True, None)
+                              cultural_branches.label_of(db, branch), True, None)
     return {"id": request.id, "status": request.status, "user_id": applicant.id}
 
 
@@ -48,7 +48,7 @@ def reject_request(branch: str, request_id: int, payload: RejectInput, backgroun
     request, applicant = svc.reject_request(db, branch, request_id, user["id"], payload.note)
     db.commit()
     background_tasks.add_task(notifications.notify_join_decision, applicant.email, applicant.name,
-                              CULTURAL_CATEGORY_LABELS[branch], False, request.decision_note)
+                              cultural_branches.label_of(db, branch), False, request.decision_note)
     return {"id": request.id, "status": request.status, "decision_note": request.decision_note}
 
 
@@ -86,7 +86,7 @@ def create_branch_request(payload: JoinRequestInput, background_tasks: Backgroun
     request = svc.create_request(db, user, payload.branch, payload.message)
     leader = svc.branch_leader(db, request.branch)
     db.commit()
-    background_tasks.add_task(notifications.notify_join_request, user["name"], CULTURAL_CATEGORY_LABELS[request.branch],
+    background_tasks.add_task(notifications.notify_join_request, user["name"], cultural_branches.label_of(db, request.branch),
                               request.message, {"email": leader.email, "name": leader.name} if leader else None)
     return svc.latest_request(db, user["id"])
 

@@ -6,9 +6,8 @@
  * Turístico de Hilo (título, lugar, categoría/tipo y resumen).
  */
 
-import { CULTURAL_CATEGORIES, KIND_LABELS, MUNICIPALITY_LOCATION_MAP, normalizeText } from './constants.js';
-
-const LABEL_BY_CATEGORY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
+import { KIND_LABELS, MUNICIPALITY_LOCATION_MAP, normalizeText } from './constants.js';
+import { branchLabel, isActiveKey } from './culturalBranches.js';
 
 // Municipio por palabras clave del lugar, sin el valor por defecto de passportUtils
 // (allí todo lo desconocido cuenta como Caucasia; para filtrar eso sería engañoso).
@@ -40,7 +39,7 @@ export function scorePublication(publication, tokens) {
   const summary = normalizeText(publication.summary || '');
   const location = normalizeText(publication.location || '');
   const meta = normalizeText([
-    LABEL_BY_CATEGORY[publication.cultural_category],
+    publication.cultural_category && branchLabel(publication.cultural_category),
     KIND_LABELS[publication.kind],
     publication.cultural_category,
   ].filter(Boolean).join(' '));
@@ -107,6 +106,7 @@ export function parseExploreFilters(hash = window.location.hash) {
     q: params.get('q') || '',
     kind: Object.prototype.hasOwnProperty.call(KIND_LABELS, kind) ? kind : '',
     municipality: params.get('mun') || '',
-    category: LABEL_BY_CATEGORY[params.get('cat') || ''] ? params.get('cat') : '',
+    // Solo ramas activas (utils/culturalBranches.js; quien lo usa vuelve a leer al llegar la lista).
+    category: isActiveKey(params.get('cat') || '') ? params.get('cat') : '',
   };
 }

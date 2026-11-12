@@ -1,5 +1,6 @@
 from typing import Optional
 
+from backend.service.services import cultural_branches
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -10,7 +11,6 @@ from backend.service.db.session import get_db
 from backend.service.errors import AppError
 from backend.service.schemas.municipalities import MUNICIPALITY_LABELS
 from backend.service.services import opportunity_types as types_service
-from backend.service.services.agenda import CATEGORY_BY_SLUG
 from backend.service.services.opportunities import build_opportunities
 
 router = APIRouter()
@@ -28,7 +28,7 @@ def opportunities(request: Request, municipality: Optional[str] = Query(default=
                   category: Optional[str] = Query(default=None), soon: str = Query(default="0"),
                   offset: str = Query(default="0"), db: Session = Depends(get_db)):
     """Publico: oportunidades por bloques (services/opportunities.py). Filtros opcionales: municipality
-    (slug de los 6), type (slug), category (slug de las 10 categorias) y soon=1 (cierran en 7 dias o
+    (slug de los 6), type (slug), category (slug de una rama activa) y soon=1 (cierran en 7 dias o
     menos). offset pagina las cerradas."""
     municipality = (municipality or "").strip().lower() or None
     if municipality and municipality not in MUNICIPALITY_LABELS:
@@ -37,13 +37,15 @@ def opportunities(request: Request, municipality: Optional[str] = Query(default=
     if type_slug and type_slug not in {item["slug"] for item in types_service.public_types(db)}:
         raise AppError(422, "INVALID_TYPE", "Ese tipo de oportunidad no existe")
     category_slug = (category or "").strip().lower() or None
-    if category_slug and category_slug not in CATEGORY_BY_SLUG:
+    # Solo las ramas activas; una desactivada responde como una que no existe (422).
+    category_key = cultural_branches.key_by_slug(db, category_slug) if category_slug else None
+    if category_slug and category_key is None:
         raise AppError(422, "INVALID_CATEGORY", "Esa categoría cultural no existe")
     if soon not in ("0", "1"):
         raise AppError(422, "INVALID_SOON", "El parámetro soon solo puede ser 0 o 1")
     if not offset.isdigit():
         raise AppError(422, "INVALID_OFFSET", "El parámetro offset debe ser un número entero desde 0")
-    data = build_opportunities(db, municipality=municipality, type_slug=type_slug, category=CATEGORY_BY_SLUG.get(category_slug),
+    data = build_opportunities(db, municipality=municipality, type_slug=type_slug, category=category_key,
                                soon=soon == "1", offset=int(offset))
     return revalidated_json(request, data)
 

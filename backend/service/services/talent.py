@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import and_, delete, exists, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from backend.service.api.deps import require_verified
 from backend.service.errors import AppError
@@ -25,7 +25,7 @@ from backend.service.models.tables import (
     TalentService, TalentSpec, TalentVenue, User,
 )
 from backend.service.schemas.artists import MAX_SLUG_LENGTH
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS
+from backend.service.services import cultural_branches
 from backend.service.schemas.municipalities import MUNICIPALITIES, MUNICIPALITY_LABELS
 from backend.service.schemas.talent import (
     ADMIN_ONLY_FIELDS, AVAILABILITY_WINDOW_DAYS, NOT_EDITABLE_FIELDS, RESERVED_TALENT_SLUGS, STATUSES, AvailabilityInput,
@@ -107,7 +107,9 @@ def _visible():
 
 
 def _labels(profile: TalentProfile) -> dict:
-    return {"category_label": CULTURAL_CATEGORY_LABELS.get(profile.category),
+    # La sesion del propio perfil: la rama sale del mapa de identidad tras la primera lectura (sin N+1).
+    db = object_session(profile)
+    return {"category_label": (cultural_branches.label_of(db, profile.category) if db is not None else None) or profile.category,
             "origin_label": MUNICIPALITY_LABELS.get(profile.origin)}
 
 
@@ -175,7 +177,7 @@ def _filter_value(value: Optional[str], valid, label: str, upper: bool) -> Optio
 
 def list_public(db: Session, category=None, origin=None, q=None, available=False, limit=DEFAULT_LIMIT, offset=0,
                 user: Optional[dict] = None) -> dict:
-    category = _filter_value(category, CULTURAL_CATEGORIES, "Categoría", upper=True)
+    category = _filter_value(category, cultural_branches.keys(db), "Categoría", upper=True)
     origin = _filter_value(origin, MUNICIPALITIES, "Municipio", upper=False)
     q = str(q or "").strip()[:100]
     filters = {}
@@ -196,7 +198,7 @@ def list_public(db: Session, category=None, origin=None, q=None, available=False
     ).scalars().all()
     total = db.execute(select(func.count()).select_from(TalentProfile).where(*conditions())).scalar_one()
     # Cada faceta se cuenta con los OTROS filtros: asi se ve cuanto hay en cada opcion alternativa.
-    categories = dict.fromkeys(CULTURAL_CATEGORY_LABELS, 0)
+    categories = dict.fromkeys(cultural_branches.keys(db), 0)
     categories.update(dict(db.execute(
         select(TalentProfile.category, func.count()).where(*conditions("category")).group_by(TalentProfile.category)
     ).all()))
@@ -382,7 +384,7 @@ def _private(db: Session, profile: TalentProfile) -> dict:
 def list_manage(db: Session, user: Optional[dict], status=None, category=None, q=None) -> dict:
     branch = manager_branch(db, user)
     status = _filter_value(status, STATUSES, "Estado", upper=True)
-    category = _filter_value(category, CULTURAL_CATEGORIES, "Categoría", upper=True)
+    category = _filter_value(category, cultural_branches.keys(db, active_only=False), "Categoría", upper=True)
     conditions = [TalentProfile.deleted.is_(False)]
     if branch is not None:
         conditions.append(TalentProfile.category == branch)
@@ -422,6 +424,7 @@ def create(db: Session, user: Optional[dict], payload: TalentCreateInput) -> Tal
         category = branch
     elif category is None:
         raise AppError(400, "VALIDATION", "La categoría es requerida")
+    category = cultural_branches.require_branch(db, category, what="categoría")
     _check_representative(db, user, branch, payload.representative_user_id)
     if payload.slug is not None and _slug_taken(db, payload.slug):
         raise AppError(409, "SLUG_TAKEN", "Ese slug ya está en uso")
@@ -446,6 +449,8 @@ def update(db: Session, user: Optional[dict], talent_id: int, payload: TalentUpd
     sent = _check_fields(user, branch, payload)
     if branch is not None and "category" in sent and payload.category != branch:
         raise AppError(403, "FORBIDDEN", "Como líder no puedes pasar este talento a otra rama")
+    if "category" in sent and payload.category is not None:
+        cultural_branches.require_branch(db, payload.category, current=profile.category, what="categoría")
     if "representative_user_id" in sent:
         _check_representative(db, user, branch, payload.representative_user_id)
     if "slug" in sent and payload.slug is not None and payload.slug != profile.slug:

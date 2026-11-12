@@ -1,12 +1,11 @@
 // Agenda (#agenda): filtros en el hash, consulta a GET /api/agenda y ayudas de fecha de las tarjetas.
 // Los filtros viajan en el hash (#agenda?mun=<municipio>&cat=<categoria>&anteriores=1), como en
 // Talento, para poder compartirlos; los slugs invalidos se ignoran.
-import { CULTURAL_CATEGORIES } from './constants.js';
+import { isActiveSlug } from './culturalBranches.js';
 import { MUNICIPALITY_LIST } from './municipalities.js';
 
 export const EMPTY_AGENDA_FILTERS = { mun: '', cat: '', past: false };
 
-const CATEGORY_SLUGS = new Set(CULTURAL_CATEGORIES.map(([, , slug]) => slug));
 const MUNICIPALITY_SLUGS = new Set(MUNICIPALITY_LIST.map(({ slug }) => slug));
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
@@ -17,7 +16,8 @@ export function parseAgendaFilters(hash = window.location.hash) {
   const cat = params.get('cat') || '';
   return {
     mun: MUNICIPALITY_SLUGS.has(mun) ? mun : '',
-    cat: CATEGORY_SLUGS.has(cat) ? cat : '',
+    // Solo ramas activas (utils/culturalBranches.js; la pantalla relee al llegar la lista).
+    cat: isActiveSlug(cat) ? cat : '',
     past: params.get('anteriores') === '1',
   };
 }

@@ -17,7 +17,7 @@ from sqlalchemy import and_, func, not_, or_, select
 from sqlalchemy.orm import Session
 
 from backend.service.models.tables import Publication
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS, category_slug
+from backend.service.schemas.cultural_categories import category_slug
 from backend.service.schemas.municipalities import MUNICIPALITY_LABELS
 from backend.service.services.home_carousel import _cover_lookup as category_cover_lookup, today_bogota
 
@@ -26,7 +26,6 @@ UPCOMING_LIMIT = 100
 TRADITIONS_LIMIT = 60
 RECENT_LIMIT = 60
 ARCHIVE_PAGE = 24
-CATEGORY_BY_SLUG = {category_slug(key): key for key in CULTURAL_CATEGORIES}
 # Las publicaciones viejas guardan un degradado CSS en image: solo vale un enlace.
 _IMAGE_URL = re.compile(r"^(https?://|/)")
 
@@ -36,14 +35,14 @@ _COLUMNS = (Publication.id, Publication.title, Publication.summary, Publication.
 
 
 def _event(row, cover) -> dict:
-    category = row.cultural_category if row.cultural_category in CULTURAL_CATEGORIES else None
+    category = row.cultural_category if cover.valid(row.cultural_category) else None
     image = row.image if row.image and _IMAGE_URL.match(row.image) else cover(category)
     event = {
         "id": row.id, "title": row.title, "summary": row.summary, "image": image, "kind": row.kind,
         "municipality": row.municipality if row.municipality in MUNICIPALITY_LABELS else None,
         "municipality_label": MUNICIPALITY_LABELS.get(row.municipality),
         "cultural_category": category_slug(category) if category else None,
-        "category_label": CULTURAL_CATEGORY_LABELS.get(category),
+        "category_label": cover.label(category),
         "location": (row.location or "").strip() or None,
         "start_date": row.start_date.isoformat() if row.start_date else None,
         "end_date": row.end_date.isoformat() if row.end_date else None,

@@ -4,7 +4,7 @@ import Footer from './components/Footer.jsx';
 import HiloAssistant from './components/HiloAssistant.jsx';
 import SiteHeader from './components/SiteHeader.jsx';
 import { VerifyEmailBanner } from './components/VerifyEmailNotice.jsx';
-import { CULTURAL_CATEGORIES } from './utils/constants.js';
+import { branchBySlug, useCulturalBranches } from './utils/culturalBranches.js';
 import { clearMapReturn } from './utils/mapReturn.js';
 import { navIndex } from './utils/navSections.js';
 import { useToast } from './context/ToastContext.jsx';
@@ -72,7 +72,7 @@ function getRoute() {
     return { screen: 'municipio', slug: hash.slice('municipio/'.length) };
   }
 
-  // Categoria cultural: #categoria/<slug> (slugs en utils/constants.js::CULTURAL_CATEGORIES).
+  // Categoria cultural: #categoria/<slug> (ramas activas, utils/culturalBranches.js).
   if (hash.startsWith('categoria/')) {
     return { screen: 'categoria', slug: hash.slice('categoria/'.length) };
   }
@@ -180,6 +180,7 @@ export default function App() {
   const { showToast } = useToast();
   const reduceMotion = useReducedMotion();
   const [route, setRoute] = useState(getRoute);
+  const { ready: branchesReady } = useCulturalBranches();
   const routeRef = useRef(route);
   const lastUrl = useRef(window.location.pathname + window.location.hash);
   // -1/1: deslizamiento hacia una pestaña a la izquierda/derecha; 0: fundido vertical.
@@ -323,10 +324,11 @@ export default function App() {
       content = <PublicationScreen id={route.slug} user={user} canGoBack={hasNavigated} />;
       break;
     case 'categoria': {
-      const category = CULTURAL_CATEGORIES.find(([, , slug]) => slug === route.slug);
-      content = category
-        ? <CategoryScreen categoryKey={category[0]} publications={publications} loading={loading} error={error} user={user} />
-        : <NotFoundScreen />;
+      // Un slug que no esta en la lista de respaldo espera a la lista real antes de decir que no existe.
+      const category = branchBySlug(route.slug);
+      if (category) content = <CategoryScreen categoryKey={category.key} publications={publications} loading={loading} error={error} user={user} />;
+      else if (!branchesReady) content = <section className="min-h-[62vh]" aria-busy="true" />;
+      else content = <NotFoundScreen />;
       break;
     }
     case 'admin-dashboard':

@@ -13,7 +13,6 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, field_validator, model_validator
 
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES
 
 ALLOWED_KINDS = {"HISTORIA", "EVENTO", "OPORTUNIDAD", "TALENTO", "INICIATIVA", "LUGAR"}
 
@@ -77,12 +76,9 @@ class PublicationInput(BaseModel):
     @field_validator("cultural_category", mode="before")
     @classmethod
     def _normalize_cultural_category(cls, v):
+        # Que exista y este activa lo valida el servicio con la tabla (services/cultural_branches.py).
         v = str(v or "").strip().upper()
-        if not v:
-            return None
-        if v not in CULTURAL_CATEGORIES:
-            raise ValueError("Selecciona una categoría cultural válida")
-        return v
+        return v or None
 
     @field_validator("category_id", mode="before")
     @classmethod

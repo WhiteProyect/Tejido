@@ -1,4 +1,4 @@
-"""Portadas de categorias (GET /api/cultural-categories/covers) y scripts/migrar_imagenes_a_cloudinary.py.
+"""scripts/migrar_imagenes_a_cloudinary.py (artistas y portadas de las ramas en cultural_branches.image_url).
 
 Schema aislado del conftest. Nunca se golpea Cloudinary: la subida se reemplaza por una funcion
 falsa (o se intercepta httpx.post). Los archivos viven en un public/ temporal: las rutas del seed
@@ -9,9 +9,9 @@ import uuid
 from pathlib import Path
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import select, update
 
-from backend.service.models.tables import Artist, ArtistMedia, CulturalCategoryCover
+from backend.service.models.tables import Artist, ArtistMedia, CulturalBranch
 from backend.service.services import uploads
 from backend.service.services.auth import now_utc
 from backend.tests_fastapi.test_gestores_invites import schema_session
@@ -31,10 +31,10 @@ def script():
 @pytest.fixture
 def no_covers():
     with schema_session() as db:
-        db.execute(delete(CulturalCategoryCover))
+        db.execute(update(CulturalBranch).values(image_url=None))
     yield
     with schema_session() as db:
-        db.execute(delete(CulturalCategoryCover))
+        db.execute(update(CulturalBranch).values(image_url=None))
 
 
 @pytest.fixture
@@ -82,23 +82,8 @@ def artist_state(artist_id):
     with schema_session() as db:
         row = db.get(Artist, artist_id)
         media = db.scalars(select(ArtistMedia.url).where(ArtistMedia.artist_id == artist_id).order_by(ArtistMedia.id)).all()
-        covers = dict(db.execute(select(CulturalCategoryCover.category_key, CulturalCategoryCover.image_url)).all())
+        covers = dict(db.execute(select(CulturalBranch.key, CulturalBranch.image_url).where(CulturalBranch.image_url.is_not(None))).all())
         return row.image, row.hero_image, media, covers
-
-
-# ─────────────────────────── endpoint ───────────────────────────
-
-def test_covers_endpoint_is_public_and_filters_keys(client, no_covers):
-    resp = client.get("/api/cultural-categories/covers")
-    assert resp.status_code == 200 and resp.json() == {}
-    assert resp.headers["cache-control"] == "public, max-age=300"
-
-    with schema_session() as db:
-        db.add_all([
-            CulturalCategoryCover(category_key="MUSICA", image_url=f"{CDN}/tejido/categorias/musica.jpg", updated_at=now_utc()),
-            CulturalCategoryCover(category_key="RAP", image_url=f"{CDN}/x.jpg", updated_at=now_utc()),
-        ])
-    assert client.get("/api/cultural-categories/covers").json() == {"MUSICA": f"{CDN}/tejido/categorias/musica.jpg"}
 
 
 # ─────────────────────────── script ───────────────────────────

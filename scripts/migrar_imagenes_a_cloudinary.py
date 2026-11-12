@@ -26,14 +26,14 @@ sys.path.insert(0, str(ROOT))
 
 import httpx  # noqa: E402
 from sqlalchemy import select, update  # noqa: E402
-from sqlalchemy.dialects.postgresql import insert as pg_insert  # noqa: E402
 
 from backend.service.core.config import settings  # noqa: E402
 from backend.service.db.session import SessionLocal  # noqa: E402
 from backend.service.models.tables import (  # noqa: E402
-    Artist, ArtistConnection, ArtistMedia, ArtistTimeline, CulturalCategoryCover, Track,
+    Artist, ArtistConnection, ArtistMedia, ArtistTimeline, CulturalBranch, Track,
 )
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORY_LABELS, category_slug  # noqa: E402
+from backend.service.schemas.cultural_categories import category_slug  # noqa: E402
+from backend.service.services.cultural_branches import BASE_BRANCHES  # noqa: E402
 from backend.service.services import uploads  # noqa: E402
 from backend.service.services.auth import now_utc  # noqa: E402
 
@@ -84,9 +84,10 @@ def build_plan(db, public_dir: Path = PUBLIC_DIR) -> list[Item]:
                 item = items[value] = Item(source=value, path=public_dir / value.lstrip("/"), folder=f"tejido/artistas/{folder_slug}")
             item.rows.append((model, column, row_id))
 
-    done = dict(db.execute(select(CulturalCategoryCover.category_key, CulturalCategoryCover.image_url)).all())
+    # Las portadas viven en cultural_branches.image_url (solo las 10 ramas iniciales tienen archivo local).
+    done = dict(db.execute(select(CulturalBranch.key, CulturalBranch.image_url)).all())
     covers = []
-    for key in CULTURAL_CATEGORY_LABELS:
+    for key, _label in BASE_BRANCHES:
         if str(done.get(key) or "").startswith(CLOUDINARY_PREFIX):
             continue
         slug = category_slug(key)
@@ -137,9 +138,7 @@ def apply(db, plan: list[Item], upload=upload_file) -> dict[str, str]:
         for model, column, row_id in item.rows:
             db.execute(update(model).where(model.id == row_id).values({column: url}))
         if item.category_key:
-            stmt = pg_insert(CulturalCategoryCover).values(category_key=item.category_key, image_url=url, updated_at=now_utc())
-            db.execute(stmt.on_conflict_do_update(index_elements=["category_key"],
-                                                  set_={"image_url": url, "updated_at": now_utc()}))
+            db.execute(update(CulturalBranch).where(CulturalBranch.key == item.category_key).values(image_url=url, updated_at=now_utc()))
     db.flush()
     return urls
 

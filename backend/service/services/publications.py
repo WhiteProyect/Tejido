@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from backend.service.errors import AppError
 from backend.service.models.tables import (Category, Event, Favorite, Opportunity, OpportunityType, Organization, Place,
                                            PlaceCategory, Publication, Role, User)
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS
+from backend.service.services import cultural_branches
 from backend.service.schemas.publications import PublicationInput
 from backend.service.services.branches import leader_of
 from backend.service.services.municipalities import PUBLICATION_MESSAGE, require_municipality
@@ -545,26 +545,35 @@ def gestor_branch(db: Session, user_id: int) -> str | None:
     branch = db.execute(
         select(Organization.branch).where(Organization.user_id == user_id).order_by(Organization.id).limit(1)
     ).scalar_one_or_none()
-    return branch if branch in CULTURAL_CATEGORIES else None
+    return branch if cultural_branches.is_valid_branch(db, branch, active_only=False) else None
 
 
-def resolve_cultural_category(db: Session, user: dict, requested: str | None, kind: str | None = None) -> str | None:
+def resolve_cultural_category(db: Session, user: dict, requested: str | None, kind: str | None = None, current: str | None = None) -> str | None:
     """Un GESTOR solo publica en su rama: vacia se le asigna, otra es 403, sin rama 409.
     El ADMIN elige cualquiera (o ninguna). Excepcion de LUGAR (solo lo crea el lider; la ruta ya lo
-    comprobo): la categoria es opcional, ninguna o la de su rama (otra, 403)."""
+    comprobo): la categoria es opcional, ninguna o la de su rama (otra, 403).
+    La rama debe existir y estar activa (422), salvo que sea la que la publicacion ya tenia (current):
+    lo existente se edita sin cambiar de rama aunque esta se haya desactivado."""
+    resolved = _resolve_branch(db, user, requested, kind)
+    if resolved:
+        cultural_branches.require_branch(db, resolved, current=current, what="categoría cultural")
+    return resolved
+
+
+def _resolve_branch(db: Session, user: dict, requested: str | None, kind: str | None) -> str | None:
     if user["role"] != "GESTOR":
         return requested
     if kind == "LUGAR":
         branch = leader_of(db, user["id"])
         if requested and requested != branch:
-            label = CULTURAL_CATEGORY_LABELS.get(branch, "tu rama")
+            label = cultural_branches.label_of(db, branch) or "tu rama"
             raise AppError(403, "FORBIDDEN", f"En un lugar solo puedes elegir tu rama ({label}) o dejarlo sin categoría cultural")
         return requested or None
     branch = gestor_branch(db, user["id"])
     if branch is None:
         raise AppError(409, "NO_CATEGORY", "Todavía no tienes una categoría asignada; escríbele al equipo de TEJIDO")
     if requested and requested != branch:
-        raise AppError(403, "FORBIDDEN", f"Solo puedes publicar en tu categoría: {CULTURAL_CATEGORY_LABELS[branch]}")
+        raise AppError(403, "FORBIDDEN", f"Solo puedes publicar en tu categoría: {cultural_branches.label_of(db, branch)}")
     return branch
 
 
@@ -592,7 +601,8 @@ def category_overview(db: Session, user_id: int) -> dict:
     branch = gestor_branch(db, user_id)
     result = {
         "branch": branch,
-        "label": CULTURAL_CATEGORY_LABELS.get(branch),
+        "label": cultural_branches.label_of(db, branch),
+        "branch_active": cultural_branches.is_valid_branch(db, branch) if branch else None,
         "organization": {"name": organization.name, "photo_url": organization.photo_url} if organization else None,
         "counts": counts,
         "colleagues": [],
@@ -709,7 +719,8 @@ def update_publication(db: Session, user: dict, publication_id: int, current_sta
     current_place = db.execute(select(Place.place_category_id).where(Place.publication_id == publication_id)).scalar_one_or_none()
     place = clean_place(db, item, current_category_id=current_place)
     latitude, longitude = clean_point(item.latitude, item.longitude, item.kind)
-    cultural_category = resolve_cultural_category(db, user, item.cultural_category, item.kind)
+    current_category = db.execute(select(Publication.cultural_category).where(Publication.id == publication_id)).scalar_one_or_none()
+    cultural_category = resolve_cultural_category(db, user, item.cultural_category, item.kind, current=current_category)
     status, clear_note = status_after_edit(user, current_status, item.publish)
     changes = {
         "category_id": item.category_id,

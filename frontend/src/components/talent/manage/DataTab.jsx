@@ -4,7 +4,8 @@ import { useUnsavedChanges } from '../../admin/artist/unsavedChanges.js';
 import { HINT, Switch, TextField } from '../../gestor/edit/common.jsx';
 import { BTN_INK_OUTLINE_MD, FORM_INPUT, FORM_LABEL } from '../../uiStyles.js';
 import { apiRequest } from '../../../utils/api.js';
-import { CULTURAL_CATEGORIES, MUNICIPALITIES } from '../../../utils/constants.js';
+import { MUNICIPALITIES } from '../../../utils/constants.js';
+import { branchLabel, keyOptions, useCulturalBranches } from '../../../utils/culturalBranches.js';
 import { ALERT, LIMITS, SaveBar, talentApi } from './common.jsx';
 
 // Pestaña Datos: lo basico del perfil (POST al crear, PATCH con lo que cambio al editar).
@@ -12,7 +13,6 @@ import { ALERT, LIMITS, SaveBar, talentApi } from './common.jsx';
 // (GET /api/branches/{rama}/participants). Admin: categoria libre, representante = cualquier gestor
 // activo (GET /api/admin/gestores) y ademas verificado (exige acta), acta, fecha, destacado y
 // "Guardar y publicar". Al lider esos controles no se le muestran (el backend los rechaza).
-const BRANCH_LABEL = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
 
 function valuesFrom(detail, branch) {
   return {
@@ -43,7 +43,7 @@ function useRepresentatives(isAdmin, branch) {
         const items = rows.filter((row) => row.active).map((row) => ({
           id: String(row.id),
           label: isAdmin
-            ? `${row.name}${row.organization_name ? ` · ${row.organization_name}` : ''}${row.branch ? ` (${BRANCH_LABEL[row.branch] || row.branch})` : ''}`
+            ? `${row.name}${row.organization_name ? ` · ${row.organization_name}` : ''}${row.branch ? ` (${branchLabel(row.branch)})` : ''}`
             : `${row.name}${row.organization ? ` · ${row.organization}` : ''}${row.is_leader ? ' (líder, tú)' : ''}`,
         }));
         setOptions({ loading: false, items, error: '' });
@@ -57,6 +57,7 @@ function useRepresentatives(isAdmin, branch) {
 export default function DataTab({ role, branch, detail, onSaved, onCreated }) {
   const isAdmin = role === 'ADMIN';
   const id = useId();
+  const { list: branches } = useCulturalBranches();
   const [initial] = useState(() => valuesFrom(detail, isAdmin ? '' : branch));
   const [values, setValues] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -123,11 +124,11 @@ export default function DataTab({ role, branch, detail, onSaved, onCreated }) {
           <label className={FORM_LABEL}>Categoría
             <select className={FORM_INPUT} value={values.category} onChange={(event) => set('category')(event.target.value)} required>
               <option value="">Elige una categoría</option>
-              {CULTURAL_CATEGORIES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              {keyOptions(branches, detail?.category).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </select>
           </label>
         ) : (
-          <p className={`${FORM_LABEL} m-0`}>Categoría<span className="py-2.5 text-[15px] font-bold normal-case tracking-normal text-ink">{BRANCH_LABEL[branch]} (tu rama)</span></p>
+          <p className={`${FORM_LABEL} m-0`}>Categoría<span className="py-2.5 text-[15px] font-bold normal-case tracking-normal text-ink">{branchLabel(branch)} (tu rama)</span></p>
         )}
         <div className="grid gap-1.5">
           <label htmlFor={`${id}-origin`} className={FORM_LABEL}>Municipio de origen</label>

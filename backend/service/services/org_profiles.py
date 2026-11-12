@@ -17,8 +17,8 @@ from backend.service.models.tables import (
     Organization, OrganizationHighlight, OrganizationImage, OrganizationSocialLink, Publication, Role, User,
 )
 from backend.service.schemas.artists import MAX_SLUG_LENGTH
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS
 from backend.service.schemas.org_profiles import MAX_HIGHLIGHTS
+from backend.service.services import cultural_branches
 from backend.service.services.artists import _with_suffix, slugify
 from backend.service.services.organizations import NO_ORGANIZATION
 from backend.service.services.serialization import rows_to_dicts
@@ -113,11 +113,11 @@ def _member_row(db: Session, branch: str, leader: bool):
 
 
 def _build_profile(db: Session, org: Organization, user: User, private: bool) -> dict:
-    branch = org.branch if org.branch in CULTURAL_CATEGORIES else None
+    branch = org.branch if cultural_branches.is_valid_branch(db, org.branch, active_only=False) else None
     data = {
         "slug": org.slug, "name": org.name, "gestor_name": user.name, "photo_url": org.photo_url, "cover_url": org.cover_url,
         "tagline": org.tagline, "description": org.description, "branch": branch,
-        "branch_label": CULTURAL_CATEGORY_LABELS.get(branch) if branch else None, "is_leader": bool(org.is_leader),
+        "branch_label": cultural_branches.label_of(db, branch) if branch else None, "is_leader": bool(org.is_leader),
         "municipality": org.municipality, "founded_year": org.founded_year,
         "years_active": (date.today().year - org.founded_year) if org.founded_year else None,
         "has_venue": bool(org.has_venue),

@@ -361,6 +361,55 @@ class PublicationImage(Base):
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
 
+class AdminPreference(Base):
+    """Preferencias de cada admin. pulso: lista ORDENADA de ids de tarjetas visibles del Pulso del
+    dashboard (catalogo en services/admin_pulso.py). Sin fila: el Pulso por defecto."""
+    __tablename__ = "admin_preferences"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    pulso: Mapped[list] = mapped_column(JSONB, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class HomeCarouselPick(Base):
+    """Eleccion del admin para el carrusel del inicio (services/home_carousel.py). Cada fila apunta a UNA
+    publicacion, UN talento o UN artista (FK con CASCADE: borrar el elemento borra la eleccion). La lista es
+    "Artistas" si hay artist_id y "Contenido" si no; position ordena dentro de su lista. La vigencia se
+    calcula al leer: una eleccion que deja de valer se salta en el publico, pero no se borra."""
+    __tablename__ = "home_carousel_picks"
+    __table_args__ = (
+        CheckConstraint("num_nonnulls(publication_id, talent_id, artist_id) = 1", name="ck_home_carousel_picks_one_item"),
+        Index("uq_home_carousel_picks_publication", "publication_id", unique=True, postgresql_where=text("publication_id IS NOT NULL")),
+        Index("uq_home_carousel_picks_talent", "talent_id", unique=True, postgresql_where=text("talent_id IS NOT NULL")),
+        Index("uq_home_carousel_picks_artist", "artist_id", unique=True, postgresql_where=text("artist_id IS NOT NULL")),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    publication_id: Mapped[int | None] = mapped_column(ForeignKey("publications.id", ondelete="CASCADE"))
+    talent_id: Mapped[int | None] = mapped_column(ForeignKey("talent_profiles.id", ondelete="CASCADE"))
+    artist_id: Mapped[int | None] = mapped_column(ForeignKey("artists.id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class HomeCarouselSettings(Base):
+    """Cantidades del carrusel del inicio (una sola fila, id = 1). Sin fila: 10 / 3 / 3."""
+    __tablename__ = "home_carousel_settings"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_home_carousel_settings_single_row"),
+        CheckConstraint("content_limit BETWEEN 0 AND 12", name="ck_home_carousel_settings_content"),
+        CheckConstraint("moneystack_limit BETWEEN 0 AND 6", name="ck_home_carousel_settings_moneystack"),
+        CheckConstraint("tejido_limit BETWEEN 0 AND 6", name="ck_home_carousel_settings_tejido"),
+        CheckConstraint("content_limit + moneystack_limit + tejido_limit > 0", name="ck_home_carousel_settings_total"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False, default=1)
+    content_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=10, server_default=text("10"))
+    moneystack_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=3, server_default=text("3"))
+    tejido_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=3, server_default=text("3"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class Session_(Base):
     __tablename__ = "sessions"
 
@@ -565,9 +614,30 @@ class ArtistMetric(Base):
     metadata_: Mapped[dict | list | str | float | int | bool | None] = mapped_column("metadata", JSONB)
 
 
+class CulturalBranch(Base):
+    """Rama de cultura (lo que el publico llama "categoria"): services/cultural_branches.py. key es la que
+    guardan organizations.branch, publications.cultural_category, branch_join_requests.branch y
+    talent_profiles.category; key y slug no cambian nunca. image_url: portada (sin ella, la estatica)."""
+    __tablename__ = "cultural_branches"
+    __table_args__ = (
+        CheckConstraint("key ~ '^[A-Z][A-Z0-9_]{0,39}$'", name="ck_cultural_branches_key"),
+        Index("uq_cultural_branches_label_lower", func.lower(text("label")), unique=True),
+    )
+
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    label: Mapped[str] = mapped_column(String, nullable=False)
+    slug: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default=text("true"))
+    protected: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=text("false"))
+    image_url: Mapped[str | None] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class CulturalCategoryCover(Base):
-    """Portada de cada categoria cultural (las categorias viven en codigo:
-    schemas/cultural_categories.py). Sin fila, el frontend usa /images/categorias/<slug>.jpg."""
+    """SIN USO desde la migracion f6b8d0a2c4e7: las portadas viven en cultural_branches.image_url. La tabla
+    se conserva hasta que se decida borrarla en una migracion posterior."""
     __tablename__ = "cultural_category_covers"
 
     category_key: Mapped[str] = mapped_column(String, primary_key=True)

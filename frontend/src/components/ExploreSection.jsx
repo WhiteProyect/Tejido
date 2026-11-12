@@ -4,7 +4,8 @@ import EmptyNote from './EmptyNote.jsx';
 import Icon from './Icon.jsx';
 import PublicationCard from './PublicationCard.jsx';
 import { BTN_INK_MD, BTN_QUIET_SM, EYEBROW, H1, SECTION, STATUS, STATUS_ERROR } from './uiStyles.js';
-import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
+import { KIND_LABELS } from '../utils/constants.js';
+import { keyOptions, useCulturalBranches } from '../utils/culturalBranches.js';
 import { MUNICIPALITY_LIST } from '../utils/municipalities.js';
 import { countInterests, onInterestsChange, relatedToInterests } from '../utils/interests.js';
 import { exploreHash, parseExploreFilters, searchPublications } from '../utils/search.js';
@@ -16,7 +17,6 @@ const EMPTY_FILTERS = { q: '', kind: '', municipality: '', category: '' };
 const SELECT = 'rounded-full border border-[#d9cfbe] bg-white py-2.5 px-4 font-sans text-[14px] font-semibold text-ink outline-none focus:border-ink';
 const FIELD_LABEL = 'grid gap-1.5 text-[11px] font-extrabold uppercase tracking-[.14em] text-[#6a7c75]';
 const KIND_OPTIONS = Object.entries(KIND_LABELS);
-const CATEGORY_OPTIONS = CULTURAL_CATEGORIES.map(([key, label]) => [key, label]);
 const MUNICIPALITY_OPTIONS = MUNICIPALITY_LIST.map(({ slug, name }) => [slug, name]);
 
 function sameFilters(a, b) {
@@ -39,6 +39,14 @@ export default function ExploreSection({ publications = [], loading = false, err
   const [filters, setFilters] = useState(() => parseExploreFilters());
   const [related, setRelated] = useState(() => relatedToInterests(publications));
   const [signals, setSignals] = useState(() => countInterests());
+  const { list: branches, ready: branchesReady } = useCulturalBranches();
+
+  // Al llegar la lista de ramas se releen los filtros (una rama nueva en ?cat= ya es valida).
+  useEffect(() => {
+    if (!branchesReady || !window.location.hash.startsWith('#explorar')) return;
+    const next = parseExploreFilters();
+    setFilters((current) => (sameFilters(current, next) ? current : next));
+  }, [branchesReady]);
 
   // Un hashchange de afuera (atrás, un enlace compartido, el buscador del header) relee los filtros.
   useEffect(() => {
@@ -134,7 +142,7 @@ export default function ExploreSection({ publications = [], loading = false, err
             Categoría
             <select className={SELECT} value={filters.category} onChange={(event) => update({ category: event.target.value })}>
               <option value="">Todas</option>
-              {CATEGORY_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              {keyOptions(branches).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
         </div>

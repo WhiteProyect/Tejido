@@ -4,7 +4,7 @@ import { AnimatedBlock, BlockBar, FilterBar, HiloCard, PageHero, SkeletonCards }
 import { TS } from '../components/territory/territoryStyles.js';
 import { apiRequest } from '../utils/api.js';
 import { EMPTY_AGENDA_FILTERS, agendaHash, agendaUrl, groupByMonth, parseAgendaFilters, sameAgendaFilters } from '../utils/agenda.js';
-import { CULTURAL_CATEGORIES } from '../utils/constants.js';
+import { slugOptions, useCulturalBranches } from '../utils/culturalBranches.js';
 import { MUNICIPALITY_LIST } from '../utils/municipalities.js';
 
 // Agenda (#agenda): solo eventos (GET /api/agenda), de los seis municipios. Bloques con barras a todo
@@ -13,7 +13,6 @@ import { MUNICIPALITY_LIST } from '../utils/municipalities.js';
 // (#agenda?mun=&cat=&anteriores=1): replaceState para los propios y un hashchange de afuera los relee.
 // Aqui nunca hay convocatorias ni botones de postulacion.
 const MUNICIPALITY_OPTIONS = MUNICIPALITY_LIST.map(({ slug, name }) => [slug, name]);
-const CATEGORY_OPTIONS = CULTURAL_CATEGORIES.map(([, label, slug]) => [slug, label]);
 
 function Cards({ events, variant, invite }) {
   return (
@@ -36,6 +35,14 @@ export default function AgendaScreen() {
   const request = useRef(0);
 
   useEffect(() => { document.title = 'Agenda del Bajo Cauca · TEJIDO'; }, []);
+
+  // Al llegar la lista de ramas se releen los filtros (una rama nueva en ?cat= ya es valida).
+  const { list: branches, ready: branchesReady } = useCulturalBranches();
+  useEffect(() => {
+    if (!branchesReady || !window.location.hash.startsWith('#agenda')) return;
+    const next = parseAgendaFilters();
+    setFilters((current) => (sameAgendaFilters(current, next) ? current : next));
+  }, [branchesReady]);
 
   useEffect(() => {
     function handleHash() {
@@ -180,7 +187,7 @@ export default function AgendaScreen() {
       <FilterBar label="Filtros de la agenda" onChange={update} onClear={clearFilters}
         selects={[
           { key: 'mun', label: 'Municipio', value: filters.mun, options: MUNICIPALITY_OPTIONS, placeholder: 'Todos los municipios' },
-          { key: 'cat', label: 'Categoría', value: filters.cat, options: CATEGORY_OPTIONS, placeholder: 'Todas las categorías' },
+          { key: 'cat', label: 'Categoría', value: filters.cat, options: slugOptions(branches), placeholder: 'Todas las categorías' },
         ]}
         toggles={[{ key: 'past', label: 'Ver anteriores', checked: filters.past }]} />
       <p className={TS.count} aria-live="polite">{countText}</p>

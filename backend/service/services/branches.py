@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, aliased
 
 from backend.service.errors import AppError
 from backend.service.models.tables import BranchJoinRequest, Organization, Publication, Role, User
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS
+from backend.service.services import cultural_branches
 from backend.service.services.org_profiles import ensure_slug
 from backend.service.services.serialization import rows_to_dicts
 
@@ -25,10 +25,15 @@ def now_utc():
     return datetime.now(timezone.utc)
 
 
-def require_valid_branch(branch: str) -> str:
-    branch = str(branch or "").strip().upper()
-    if branch not in CULTURAL_CATEGORIES:
+def require_valid_branch(db: Session, branch: str, active_only: bool = False) -> str:
+    """Clave de una rama de la URL: 404 si no existe; con active_only (para crear algo en ella), 422 si esta
+    desactivada. Las lecturas y los paneles del lider aceptan una rama desactivada."""
+    branch = cultural_branches.normalize_key(branch)
+    found = cultural_branches.get_branch(db, branch)
+    if found is None:
         raise AppError(404, "NOT_FOUND", "Esa rama cultural no existe")
+    if active_only and not found.active:
+        raise AppError(422, "INACTIVE_BRANCH", f"La rama {found.label} está desactivada: no admite cambios nuevos")
     return branch
 
 
@@ -50,7 +55,7 @@ def leader_of(db: Session, user_id: int) -> Optional[str]:
                User.active.is_(True), Role.name == "GESTOR")
         .limit(1)
     ).scalar_one_or_none()
-    return branch if branch in CULTURAL_CATEGORIES else None
+    return branch if cultural_branches.is_valid_branch(db, branch, active_only=False) else None
 
 
 def branch_leader(db: Session, branch: str):
@@ -76,7 +81,7 @@ def participant_branch(db: Session, user_id: int) -> Optional[str]:
         .order_by(Organization.id)
         .limit(1)
     ).scalar_one_or_none()
-    return branch if branch in CULTURAL_CATEGORIES else None
+    return branch if cultural_branches.is_valid_branch(db, branch, active_only=False) else None
 
 
 def can_manage_branch(db: Session, user: Optional[dict], branch: str) -> bool:
@@ -88,7 +93,7 @@ def can_manage_branch(db: Session, user: Optional[dict], branch: str) -> bool:
 
 
 def require_branch_manager(db: Session, user: Optional[dict], branch: str) -> str:
-    branch = require_valid_branch(branch)
+    branch = require_valid_branch(db, branch)
     if not can_manage_branch(db, user, branch):
         raise AppError(403, "FORBIDDEN", "Solo el líder de esta rama o un administrador pueden gestionarla")
     return branch
@@ -149,12 +154,12 @@ def current_leader_row(db: Session, branch: str):
 def set_leader(db: Session, branch: str, gestor_id: int) -> dict:
     """Nombra lider de la rama a ese gestor (debe tener su organizacion en ESA rama). Quita la
     marca al anterior, que queda como participante. Idempotente. No hace commit."""
-    branch = require_valid_branch(branch)
+    branch = require_valid_branch(db, branch)
     user, org = _gestor_with_org(db, gestor_id)
     if org is None or org.branch != branch:
-        current = CULTURAL_CATEGORY_LABELS.get(org.branch) if org else None
+        current = cultural_branches.label_of(db, org.branch) if org else None
         where = f"está en {current}" if current else "no tiene rama asignada"
-        raise AppError(409, "OTHER_BRANCH", f"{user.name} {where}: primero asígnale la rama {CULTURAL_CATEGORY_LABELS[branch]}")
+        raise AppError(409, "OTHER_BRANCH", f"{user.name} {where}: primero asígnale la rama {cultural_branches.label_of(db, branch)}")
     previous = current_leader_row(db, branch)
     if previous and previous.id == user.id:
         return {"branch": branch, "leader_id": user.id, "previous_leader_id": user.id, "changed": False}
@@ -167,7 +172,7 @@ def set_leader(db: Session, branch: str, gestor_id: int) -> dict:
 
 
 def clear_leader(db: Session, branch: str) -> None:
-    branch = require_valid_branch(branch)
+    branch = require_valid_branch(db, branch)
     db.execute(update(Organization).where(Organization.branch == branch, Organization.is_leader.is_(True)).values(is_leader=False))
     db.flush()
 
@@ -184,7 +189,9 @@ def branches_overview(db: Session) -> list[dict]:
         select(BranchJoinRequest.branch, func.count()).where(BranchJoinRequest.status == "PENDING").group_by(BranchJoinRequest.branch)
     ).all())
     result = []
-    for key, label in CULTURAL_CATEGORY_LABELS.items():
+    # Solo las ramas activas: una desactivada sale de la cobertura.
+    for branch_row in cultural_branches.list_branches(db, active_only=True):
+        key, label = branch_row.key, branch_row.label
         leader = current_leader_row(db, key)
         result.append({
             "branch": key, "label": label,
@@ -232,18 +239,19 @@ def list_requests(db: Session, branch: str, status: str) -> list[dict]:
 
 
 def list_all_requests(db: Session, status: str) -> list[dict]:
+    branch_labels = cultural_branches.labels(db)
     """Bandeja del admin: solicitudes de todas las ramas, con la etiqueta de la rama y si tiene
     lider activo (si no lo tiene, le toca al admin)."""
     rows = _requests(db, status)
     leaders = {branch: branch_leader(db, branch) is not None for branch in {row["branch"] for row in rows}}
     for row in rows:
-        row["branch_label"] = CULTURAL_CATEGORY_LABELS.get(row["branch"], row["branch"])
+        row["branch_label"] = branch_labels.get(row["branch"], row["branch"])
         row["branch_has_leader"] = leaders[row["branch"]]
     return rows
 
 
 def create_request(db: Session, user: dict, branch: str, message: Optional[str]) -> BranchJoinRequest:
-    branch = require_valid_branch(branch)
+    branch = cultural_branches.require_branch(db, branch)
     if user["role"] != "CIUDADANO":
         raise AppError(409, "ALREADY_MEMBER", "Tu cuenta ya participa en TEJIDO como gestor o administrador")
     pending = db.execute(
@@ -360,7 +368,7 @@ def promote_to_leader(db: Session, branch: str, user_id: int, organization_name:
     GESTOR, organizacion (reutilizada o nueva) y set_leader (el lider anterior queda como participante).
     Su solicitud pendiente en esa rama queda aprobada; una en otra rama, cancelada. No hace commit: si el
     indice unico de lider salta (IntegrityError), la ruta deshace todo."""
-    branch = require_valid_branch(branch)
+    branch = cultural_branches.require_branch(db, branch)
     user = _promotable_citizen(db, user_id)
     org = _become_gestor(db, user, branch, organization_name)
     result = set_leader(db, branch, user.id)
@@ -371,7 +379,7 @@ def promote_to_leader(db: Session, branch: str, user_id: int, organization_name:
 def make_participant(db: Session, branch: str, user_id: int, organization_name: Optional[str], decided_by: int) -> dict:
     """CIUDADANO (activo, correo verificado) -> GESTOR participante de la rama, sin liderazgo. Mismas
     reglas que promote_to_leader. No hace commit."""
-    branch = require_valid_branch(branch)
+    branch = cultural_branches.require_branch(db, branch)
     user = _promotable_citizen(db, user_id)
     org = _become_gestor(db, user, branch, organization_name)
     _settle_requests(db, user.id, branch, decided_by, OTHER_BRANCH_MEMBER_NOTE)
@@ -383,7 +391,7 @@ def move_to_branch(db: Session, user_id: int, branch: str, lead: bool, decided_b
     lider (set_leader: el lider anterior pasa a participante). Al cambiar de rama, lo suyo en REVISION
     vuelve a BORRADOR (lo publicado sigue visible), como remove_participant. Un LIDER de otra rama no se
     mueve sin quitarle antes el liderazgo. No hace commit (IntegrityError -> la ruta deshace todo)."""
-    branch = require_valid_branch(branch)
+    branch = cultural_branches.require_branch(db, branch)
     row = db.execute(
         select(User, Organization, Role.name)
         .join(Role, Role.id == User.role_id)
@@ -403,10 +411,10 @@ def move_to_branch(db: Session, user_id: int, branch: str, lead: bool, decided_b
         raise AppError(409, "NO_ORGANIZATION", f"{user.name} no tiene organización: edítalo desde Gestores para crearla")
     same = org.branch == branch and org.active
     if org.is_leader and not same:
-        current = CULTURAL_CATEGORY_LABELS.get(org.branch, org.branch)
+        current = cultural_branches.label_of(db, org.branch) or org.branch
         raise AppError(409, "IS_LEADER", f"{user.name} es líder de {current}: primero quítale el liderazgo para moverlo")
     if same and not lead:
-        raise AppError(409, "SAME_BRANCH", f"{user.name} ya participa en {CULTURAL_CATEGORY_LABELS[branch]}")
+        raise AppError(409, "SAME_BRANCH", f"{user.name} ya participa en {cultural_branches.label_of(db, branch)}")
     drafted = 0
     if not same:
         org.branch, org.active, org.is_leader = branch, True, False
@@ -510,6 +518,6 @@ def me_branch(db: Session, user: dict) -> dict:
         select(Organization.branch, Organization.is_leader).where(Organization.user_id == user["id"], Organization.active.is_(True))
         .order_by(Organization.id).limit(1)
     ).first()
-    if org is None or org.branch not in CULTURAL_CATEGORIES:
-        return {"branch": None, "is_leader": False}
-    return {"branch": org.branch, "is_leader": bool(org.is_leader)}
+    if org is None or not cultural_branches.is_valid_branch(db, org.branch, active_only=False):
+        return {"branch": None, "is_leader": False, "branch_active": None}
+    return {"branch": org.branch, "is_leader": bool(org.is_leader), "branch_active": cultural_branches.is_valid_branch(db, org.branch)}

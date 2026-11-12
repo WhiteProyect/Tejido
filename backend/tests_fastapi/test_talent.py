@@ -438,8 +438,11 @@ def test_list_limits_and_validations(client, people):
     assert [s["title"] for s in detail["services"]] == ["Solo"]
 
     for body in ({"name": "n" * 121}, {"tagline": "t" * 201}, {"description": "d" * 2001}, {"origin": "medellin"},
-                 {"category": "RAP"}, {"cover_url": "javascript:alert(1)"}):
+                 {"cover_url": "javascript:alert(1)"}):
         assert client.patch(f"/api/talent/{tid}", json=body, headers=people.leader).status_code == 400, body
+    # Categoria: el lider no la cambia (403); una rama que no existe es 422 (tabla cultural_branches).
+    assert client.patch(f"/api/talent/{tid}", json={"category": "RAP"}, headers=people.leader).status_code == 403
+    assert client.patch(f"/api/talent/{tid}", json={"category": "RAP"}, headers=people.admin).status_code == 422
     assert client.post("/api/talent", json={"origin": "caucasia"}, headers=people.leader).status_code == 400
     assert client.post("/api/talent", json={"name": "Sin origen"}, headers=people.leader).status_code == 400
     client.delete(f"/api/talent/{tid}", headers=people.admin)

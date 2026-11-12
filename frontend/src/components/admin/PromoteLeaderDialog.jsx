@@ -4,7 +4,7 @@ import Icon from '../Icon.jsx';
 import Modal from '../talent/Modal.jsx';
 import { BTN_INK_MD, BTN_INK_OUTLINE_MD } from '../uiStyles.js';
 import { branchParticipants, moveGestor, promoteToLeader, searchUsers, setLeader } from '../../services/adminApi.js';
-import { BRANCH_LABELS } from '../../utils/constants.js';
+import { branchLabel } from '../../utils/culturalBranches.js';
 import { MUNICIPALITY_BY_SLUG } from '../../utils/municipalities.js';
 
 // "Nombrar líder de <rama>" desde la cobertura de ramas, con dos origenes:
@@ -152,7 +152,7 @@ export default function PromoteLeaderDialog({ branch, branchLabel, currentLeader
       : <><strong>{chosen.person.name}</strong> será líder de <strong>{branchLabel}</strong>.</>);
 
   return (
-    <Modal title={`Nombrar líder de ${branchLabel}`} onClose={onClose}>
+    <Modal animated title={`Nombrar líder de ${branchLabel}`} onClose={onClose}>
       <AnimatePresence mode="wait" initial={false}>
         {!chosen ? (
           <motion.div key="elegir" className="mt-5 grid gap-4" {...motionProps(-1)} data-paso="buscar">
@@ -243,7 +243,7 @@ export default function PromoteLeaderDialog({ branch, branchLabel, currentLeader
             {chosen.kind === 'mover' && (
               <p className={NOTICE} data-aviso-movimiento>
                 <Icon name="arrow-right" className="mt-0.5 size-4 shrink-0" />
-                <span>Deja {BRANCH_LABELS[chosen.person.branch] || chosen.person.branch_label}: sus publicaciones en revisión vuelven a borrador (lo ya publicado sigue visible).</span>
+                <span>Deja {chosen.person.branch_label || branchLabel(chosen.person.branch)}: sus publicaciones en revisión vuelven a borrador (lo ya publicado sigue visible).</span>
               </p>
             )}
             {currentLeader && (

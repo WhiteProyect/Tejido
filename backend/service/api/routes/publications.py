@@ -11,8 +11,8 @@ from backend.service.api.deps import get_current_user, require_login, require_ve
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
 from backend.service.models.tables import Favorite, Publication, PublicationImage, Report, Role, User
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORY_LABELS
 from backend.service.schemas.publications import PublicationInput, PublicationStatusInput
+from backend.service.services import cultural_branches
 from backend.service.services import branches as branch_service
 from backend.service.services import notifications
 from backend.service.services import publications as svc
@@ -58,7 +58,7 @@ def _review_leader(db: Session, author_id: int, cultural_category: str | None, k
     moderator = branch_service.moderator_for(db, {"author_id": author_id, "cultural_category": cultural_category, "kind": kind})
     if moderator == "ADMIN":
         return None
-    return {"email": moderator.email, "name": moderator.name, "branch_label": CULTURAL_CATEGORY_LABELS[cultural_category]}
+    return {"email": moderator.email, "name": moderator.name, "branch_label": cultural_branches.label_of(db, cultural_category) or cultural_category}
 
 
 @router.get("/api/publications/{publication_id}/images")

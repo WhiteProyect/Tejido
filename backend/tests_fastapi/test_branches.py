@@ -247,7 +247,7 @@ def test_requests_reject_cancel_and_rate_limit(client, tokens, admin, sent, bran
     assert client.get("/api/me/branch-request", headers=cit).json()["status"] == "REJECTED"
 
     # Rama invalida, mensaje largo, gestor que pide entrar, anonimo.
-    assert client.post("/api/branch-requests", json={"branch": "RAP"}, headers=cit).status_code == 404
+    assert client.post("/api/branch-requests", json={"branch": "RAP"}, headers=cit).status_code == 422
     assert client.post("/api/branch-requests", json={"branch": branch, "message": "x" * 501}, headers=cit).status_code == 400
     assert client.post("/api/branch-requests", json={"branch": branch}, headers=auth_header(tokens, "gestor")).status_code == 409
     assert client.post("/api/branch-requests", json={"branch": branch}).status_code == 401

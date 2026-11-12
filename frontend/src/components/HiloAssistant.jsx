@@ -25,12 +25,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Icon from './Icon.jsx';
-import { CULTURAL_CATEGORIES, KIND_LABELS } from '../utils/constants.js';
+import { KIND_LABELS } from '../utils/constants.js';
+import { branchLabel, branchSlug, isActiveKey } from '../utils/culturalBranches.js';
 import { onHiloReaction } from '../utils/hiloBus.js';
 import { exploreHash } from '../utils/search.js';
 
-const SLUG_BY_CATEGORY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, , slug]) => [key, slug]));
-const LABEL_BY_CATEGORY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
 const WHISPER_MS = 5000;
 const CHAT_KEY = 'tejido_hilo_chat_v1';
 const MAX_STORED_MESSAGES = 30;
@@ -289,7 +288,7 @@ function scorePublication(pub, tokens) {
   const summary = normalize(pub.summary || '');
   const location = normalize(pub.location || '');
   const meta = normalize([
-    LABEL_BY_CATEGORY[pub.cultural_category],
+    pub.cultural_category && branchLabel(pub.cultural_category),
     KIND_LABELS[pub.kind],
     pub.cultural_category,
   ].filter(Boolean).join(' '));
@@ -384,9 +383,10 @@ function slimConversation(conversation) {
  * (#publicacion/<id>); la categoría queda como enlace secundario.
  */
 function HiloMiniCard({ publication, onNavigate }) {
-  const slug = SLUG_BY_CATEGORY[publication.cultural_category];
+  // Solo las ramas activas tienen pagina de categoria (utils/culturalBranches.js).
+  const slug = isActiveKey(publication.cultural_category) ? branchSlug(publication.cultural_category) : null;
   const place = (publication.location || 'Caucasia').split(',')[0].trim();
-  const meta = [LABEL_BY_CATEGORY[publication.cultural_category] || KIND_LABELS[publication.kind], place].filter(Boolean);
+  const meta = [(publication.cultural_category && branchLabel(publication.cultural_category)) || KIND_LABELS[publication.kind], place].filter(Boolean);
   return (
     <div className="mt-2 rounded-[16px] border-[1.5px] border-river bg-white p-3.5">
       <p className="m-0 truncate text-[10px] font-extrabold uppercase tracking-[.14em] text-river" title={publication.location || 'Caucasia'}>{meta.join(' · ')}</p>

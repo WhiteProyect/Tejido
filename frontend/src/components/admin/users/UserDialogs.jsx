@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import Modal from '../../talent/Modal.jsx';
 import { BTN_GHOST, BTN_INK_MD, BTN_INK_OUTLINE_MD } from '../../uiStyles.js';
-import { BRANCH_LABELS, CULTURAL_BRANCHES } from '../../../utils/constants.js';
+import { branchLabel, useCulturalBranches } from '../../../utils/culturalBranches.js';
 import { MUNICIPALITY_LIST, MUNICIPALITY_BY_SLUG } from '../../../utils/municipalities.js';
 import { formatDateShort } from '../../../utils/dateUtils.js';
 import {
@@ -20,7 +20,7 @@ const EFFECT = 'm-0 rounded-[14px] bg-[#f3e4c8] px-4 py-3 text-[15px] leading-[1
 const DANGER_MD = BTN_INK_MD.replace('bg-ink', 'bg-[#a8431f]').replace(/hover:bg-\S+/, 'hover:bg-[#8f3719]');
 const NOTICE = 'm-0 rounded-[14px] border border-[#e8d29a] bg-[#fbf3dc] px-4 py-3 text-[14px] font-semibold leading-[1.5] text-[#5f4a10]';
 
-const label = (branch) => BRANCH_LABELS[branch] || branch;
+const label = (branch) => branchLabel(branch);
 const leaderOf = (overview, branch) => overview?.[branch]?.leader || null;
 
 // Configuracion de cada accion: titulo, efecto (con los valores elegidos), campos y la llamada.
@@ -143,7 +143,9 @@ function actionConfig(kind, user, overview) {
 export function ActionDialog({ kind, user, overview, onClose, onDone }) {
   const id = useId().replace(/:/g, '');
   const config = actionConfig(kind, user, overview);
-  const firstBranch = CULTURAL_BRANCHES.find((key) => key !== config?.exclude) || CULTURAL_BRANCHES[0];
+  // Solo ramas activas (utils/culturalBranches.js).
+  const branchKeys = useCulturalBranches().list.map(({ key }) => key);
+  const firstBranch = branchKeys.find((key) => key !== config?.exclude) || branchKeys[0] || '';
   const [values, setValues] = useState({ branch: firstBranch, org: user.name, understand: false });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -174,12 +176,12 @@ export function ActionDialog({ kind, user, overview, onClose, onDone }) {
   }
 
   return (
-    <Modal title={config.title} onClose={onClose}>
+    <Modal animated title={config.title} onClose={onClose}>
       <form className="mt-5 grid gap-4" onSubmit={submit} data-dialogo-accion={kind}>
         {fields.includes('branch') && (
           <label className={LABEL} htmlFor={`${id}-rama`}>Rama
             <select id={`${id}-rama`} className={FIELD} value={values.branch} onChange={(event) => setValues({ ...values, branch: event.target.value })} data-campo-rama>
-              {CULTURAL_BRANCHES.filter((key) => key !== config.exclude).map((key) => <option key={key} value={key}>{label(key)}</option>)}
+              {branchKeys.filter((key) => key !== config.exclude).map((key) => <option key={key} value={key}>{label(key)}</option>)}
             </select>
           </label>
         )}
@@ -241,7 +243,7 @@ export function EditUserDialog({ user, onClose, onDone }) {
   }
 
   return (
-    <Modal title={`Editar a ${user.name}`} onClose={onClose}>
+    <Modal animated title={`Editar a ${user.name}`} onClose={onClose}>
       <form className="mt-5 grid gap-4" onSubmit={submit} data-dialogo-editar>
         <label className={LABEL} htmlFor={`${id}-nombre`}>Nombre
           <input id={`${id}-nombre`} className={FIELD} value={name} maxLength={120} required onChange={(event) => setName(event.target.value)} data-campo-nombre />
@@ -278,7 +280,7 @@ export function UserDetailDialog({ userId, actions, onAction, onClose }) {
   const user = state.user;
   const quick = user ? (actions(user) || []).filter((action) => action.id !== 'ver' && !action.disabled).slice(0, 3) : [];
   return (
-    <Modal title={user ? user.name : 'Ficha del usuario'} onClose={onClose} wide>
+    <Modal animated title={user ? user.name : 'Ficha del usuario'} onClose={onClose} wide>
       {state.loading && <p className="mt-5 mb-0 text-[15px] text-[#53645c]" aria-busy="true">Cargando la ficha…</p>}
       {state.error && <p className={`${ALERT} mt-5`} role="alert">{state.error}</p>}
       {user && (

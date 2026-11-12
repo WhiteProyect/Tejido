@@ -6,8 +6,9 @@ import TalentCard from '../components/talent/TalentCard.jsx';
 import TalentSeal from '../components/talent/TalentSeal.jsx';
 import { BTN_INK_MD, BTN_INK_OUTLINE_MD } from '../components/uiStyles.js';
 import { apiRequest } from '../utils/api.js';
-import { CULTURAL_CATEGORIES, MUNICIPALITIES } from '../utils/constants.js';
-import { CATEGORY_KEY_BY_SLUG, EMPTY_FILTERS, parseTalentFilters, talentHash } from '../utils/talent.js';
+import { MUNICIPALITIES } from '../utils/constants.js';
+import { useCulturalBranches } from '../utils/culturalBranches.js';
+import { EMPTY_FILTERS, categoryKeyBySlug, parseTalentFilters, talentHash } from '../utils/talent.js';
 import { ARTICULATION_BANNER, TECHNICAL_SERVICES } from '../utils/talentContent.js';
 
 // Listado publico del talento contratable (#talento), segun el diseño: encabezado centrado,
@@ -32,7 +33,7 @@ function sameFilters(a, b) {
 
 function apiQuery(filters, offset) {
   const params = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
-  if (filters.cat) params.set('category', CATEGORY_KEY_BY_SLUG[filters.cat]);
+  if (filters.cat) params.set('category', categoryKeyBySlug(filters.cat));
   if (filters.mun) params.set('origin', filters.mun);
   if (filters.q.trim()) params.set('q', filters.q.trim());
   if (filters.disp) params.set('available', '1');
@@ -96,6 +97,14 @@ export default function TalentScreen({ user }) {
   const request = useRef(0);
 
   useEffect(() => { document.title = 'Talento del Bajo Cauca · TEJIDO'; }, []);
+
+  // Al llegar la lista de ramas se releen los filtros (una rama nueva en ?cat= ya es valida).
+  const { list: branches, ready: branchesReady } = useCulturalBranches();
+  useEffect(() => {
+    if (!branchesReady || !window.location.hash.startsWith('#talento') || window.location.hash.startsWith('#talento/')) return;
+    const next = parseTalentFilters();
+    setFilters((current) => (sameFilters(current, next) ? current : next));
+  }, [branchesReady]);
 
   // Un hashchange de afuera (atras, un enlace compartido o del menu) vuelve a leer los filtros.
   useEffect(() => {
@@ -163,8 +172,8 @@ export default function TalentScreen({ user }) {
 
   const hasFilters = Boolean(filters.cat || filters.mun || filters.q.trim() || filters.disp);
   const facets = state.facets;
-  const activeKey = filters.cat ? CATEGORY_KEY_BY_SLUG[filters.cat] : null;
-  const categoryChips = CULTURAL_CATEGORIES.filter(([key]) => key === activeKey || (facets?.categories?.[key] || 0) > 0);
+  const activeKey = filters.cat ? categoryKeyBySlug(filters.cat) : null;
+  const categoryChips = branches.filter(({ key }) => key === activeKey || (facets?.categories?.[key] || 0) > 0);
   const returnTo = talentHash(filters).replace('#', '');
   const countText = state.loading ? '' : `${state.total} ${state.total === 1 ? 'talento' : 'talentos'}${hasFilters ? ' con estos filtros' : ''}`;
 
@@ -249,7 +258,7 @@ export default function TalentScreen({ user }) {
         </form>
 
         <div className="mx-auto mt-4 flex max-w-[900px] flex-wrap items-center justify-center gap-2" role="group" aria-label="Filtros del talento">
-          {categoryChips.map(([key, label, slug]) => {
+          {categoryChips.map(({ key, label, slug }) => {
             const active = key === activeKey;
             return (
               <button key={key} type="button" aria-pressed={active} className={`${CHIP_PILL} ${active ? CHIP_ACTIVE : CHIP_IDLE}`}

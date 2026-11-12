@@ -6,7 +6,7 @@ import PublicationCard from '../components/PublicationCard.jsx';
 import ParticipateBlock from '../components/branch/ParticipateBlock.jsx';
 import ScreenIntro from '../components/ScreenIntro.jsx';
 import { SCREEN_SECTION, STATUS, STATUS_ERROR } from '../components/uiStyles.js';
-import { CULTURAL_CATEGORIES } from '../utils/constants.js';
+import { branchLabel, branchSlug, useCulturalBranches } from '../utils/culturalBranches.js';
 import { getInitials } from '../utils/initials.js';
 import { getMunicipalityFromLocation, stampMunicipality } from '../utils/passportUtils.js';
 import { cdnImage } from '../utils/cloudinaryUrl.js';
@@ -98,7 +98,9 @@ function MusicArtists() {
 }
 
 export default function CategoryScreen({ categoryKey, publications = [], loading = false, error = '', user }) {
-  const [, label = categoryKey, slug] = CULTURAL_CATEGORIES.find(([key]) => key === categoryKey) || [];
+  useCulturalBranches();
+  const label = branchLabel(categoryKey);
+  const slug = branchSlug(categoryKey);
   const gestores = useGestores(categoryKey);
   const [search, setSearch] = useState('');
   const term = search.trim().toLocaleLowerCase('es');

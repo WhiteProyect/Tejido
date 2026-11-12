@@ -9,15 +9,16 @@ from sqlalchemy.orm import Session
 from backend.service.api.deps import get_current_user, require_roles
 from backend.service.db.session import get_db
 from backend.service.errors import AppError
-from backend.service.models.tables import BranchJoinRequest, Organization, Publication, Report, Role, Suggestion, TalentProfile, User
+from backend.service.models.tables import Organization, Role, User
 from backend.service.schemas.branches import LeaderInput, PromoteLeaderInput
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORY_LABELS
 from backend.service.schemas.organizations import GestorCreateInput, GestorUpdateInput
-from backend.service.schemas.admin_users import MakeGestorInput, MoveBranchInput, UserUpdateInput
+from backend.service.schemas.admin_users import MakeGestorInput, MoveBranchInput, PulsoInput, UserUpdateInput
 from backend.service.services import artists as artists_service
 from backend.service.services import branches as branch_service
+from backend.service.services import cultural_branches
 from backend.service.services import email as email_service
 from backend.service.services import notifications
+from backend.service.services import admin_pulso as pulso_service
 from backend.service.services import org_profiles
 from backend.service.services import users as users_service
 from backend.service.services.auth import now_utc
@@ -32,31 +33,33 @@ ADMIN_ONLY = "Acceso administrativo requerido"
 
 @router.get("/stats")
 def stats(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Conteos del Pulso: todas las claves del catalogo (services/admin_pulso.py)."""
     require_roles(user, ("ADMIN",), "Acceso administrativo requerido")
-    published = db.execute(
-        select(func.count()).select_from(Publication).where(Publication.status == "PUBLISHED", Publication.deleted.is_(False))
-    ).scalar_one()
-    pending = db.execute(
-        select(func.count()).select_from(Publication).where(Publication.status == "REVIEW", Publication.deleted.is_(False))
-    ).scalar_one()
-    users = db.execute(select(func.count()).select_from(User).where(User.active.is_(True))).scalar_one()
-    gestores_activos = db.execute(
-        select(func.count()).select_from(User).join(Role, Role.id == User.role_id)
-        .where(Role.name == "GESTOR", User.active.is_(True))
-    ).scalar_one()
-    reports = db.execute(select(func.count()).select_from(Report).where(Report.status == "OPEN")).scalar_one()
-    suggestions = db.execute(select(func.count()).select_from(Suggestion).where(Suggestion.status == "NEW")).scalar_one()
-    join_requests = db.execute(
-        select(func.count()).select_from(BranchJoinRequest).where(BranchJoinRequest.status == "PENDING")
-    ).scalar_one()
-    talent_review = db.execute(
-        select(func.count()).select_from(TalentProfile).where(TalentProfile.status == "REVIEW", TalentProfile.deleted.is_(False))
-    ).scalar_one()
-    # Artistas que cargo el lider de Musica y esperan aprobacion (pestaña Artistas del admin).
-    artists_review = artists_service.count_in_review(db)
-    return {"published": published, "pending": pending, "users": users, "gestores_activos": gestores_activos,
-            "reports": reports, "suggestions": suggestions, "join_requests": join_requests, "talent_review": talent_review,
-            "artists_review": artists_review}
+    return pulso_service.compute_stats(db)
+
+
+@router.get("/preferences/pulso")
+def get_pulso(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Tarjetas visibles del Pulso de ESTE admin, en orden (o el default si no hay fila): {pulso, is_default, catalog, max}."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    return pulso_service.get_pulso(db, user["id"])
+
+
+@router.put("/preferences/pulso")
+def put_pulso(payload: PulsoInput, user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    result = pulso_service.save_pulso(db, user["id"], payload.pulso)
+    db.commit()
+    return result
+
+
+@router.delete("/preferences/pulso")
+def delete_pulso(user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Restablece el Pulso por defecto (borra la fila)."""
+    require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    result = pulso_service.reset_pulso(db, user["id"])
+    db.commit()
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +100,7 @@ def _status(active: bool, invited: bool) -> str:
 def create_gestor(payload: GestorCreateInput, background_tasks: BackgroundTasks,
                   user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
     require_roles(user, ("ADMIN",), ADMIN_ONLY)
+    cultural_branches.require_branch(db, payload.branch)
     if db.execute(select(User.id).where(func.lower(User.email) == payload.email)).first():
         raise AppError(409, "EMAIL_IN_USE", "Ya existe una cuenta con ese correo")
 
@@ -122,7 +126,7 @@ def create_gestor(payload: GestorCreateInput, background_tasks: BackgroundTasks,
     link, email_sent = _send_invite(gestor, token)
     if payload.is_leader:
         background_tasks.add_task(notifications.notify_leader_appointed, gestor.email, gestor.name,
-                                  CULTURAL_CATEGORY_LABELS[payload.branch])
+                                  cultural_branches.label_of(db, payload.branch))
     return {"user_id": gestor.id, "organization_id": organization.id, "invite_link": link, "email_sent": email_sent}
 
 
@@ -166,6 +170,7 @@ def update_gestor(gestor_id: int, payload: GestorUpdateInput, user: Optional[dic
         if org_fields.get("organization_name"):
             organization.name = org_fields["organization_name"]
         if org_fields.get("branch"):
+            cultural_branches.require_branch(db, org_fields["branch"], current=organization.branch)
             if organization.is_leader and org_fields["branch"] != organization.branch:
                 raise AppError(409, "IS_LEADER", "Este gestor es líder de su rama: quita primero el liderazgo para cambiarlo de rama")
             organization.branch = org_fields["branch"]
@@ -236,7 +241,7 @@ def list_users(q: Optional[str] = Query(default=None), role: Optional[str] = Que
     status = (status or "").strip().upper() or None
     if status and status not in users_service.STATUSES:
         raise AppError(422, "INVALID_STATUS", "El estado debe ser ACTIVO, INACTIVO o INVITADO")
-    branch = branch_service.require_valid_branch(branch) if (branch or "").strip() else None
+    branch = branch_service.require_valid_branch(db, branch) if (branch or "").strip() else None
     if page < 1:
         raise AppError(422, "INVALID_PAGE", "La página empieza en 1")
     if page_size < 1 or page_size > users_service.MAX_PAGE_SIZE:
@@ -271,7 +276,7 @@ def _leader_change(db: Session, background_tasks: BackgroundTasks, run) -> dict:
         raise AppError(409, "LEADER_EXISTS", "Esa rama ya tiene líder: quítale el liderazgo antes de nombrar otro")
     if result.get("leader_id") and result.get("changed"):
         named = db.get(User, result["leader_id"])
-        background_tasks.add_task(notifications.notify_leader_appointed, named.email, named.name, CULTURAL_CATEGORY_LABELS[result["branch"]])
+        background_tasks.add_task(notifications.notify_leader_appointed, named.email, named.name, cultural_branches.label_of(db, result["branch"]))
     return result
 
 
@@ -280,7 +285,7 @@ def make_gestor(user_id: int, payload: MakeGestorInput, background_tasks: Backgr
                 user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
     """Ciudadano -> gestor participante de la rama (leader: y lider, como promote)."""
     require_roles(user, ("ADMIN",), ADMIN_ONLY)
-    branch = branch_service.require_valid_branch(payload.branch)
+    branch = cultural_branches.require_branch(db, payload.branch)
     if payload.leader:
         return _leader_change(db, background_tasks, lambda: branch_service.promote_to_leader(db, branch, user_id, payload.organization_name, user["id"]))
     result = branch_service.make_participant(db, branch, user_id, payload.organization_name, user["id"])
@@ -293,7 +298,7 @@ def move_gestor(user_id: int, payload: MoveBranchInput, background_tasks: Backgr
                 user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
     """Gestor -> otra rama (lead: y lider). Lo suyo en revision vuelve a borrador."""
     require_roles(user, ("ADMIN",), ADMIN_ONLY)
-    branch = branch_service.require_valid_branch(payload.branch)
+    branch = cultural_branches.require_branch(db, payload.branch)
     return _leader_change(db, background_tasks, lambda: branch_service.move_to_branch(db, user_id, branch, payload.lead, user["id"]))
 
 
@@ -306,7 +311,7 @@ def remove_from_branch(user_id: int, user: Optional[dict] = Depends(get_current_
         users_service.get_user(db, user_id)  # 404 si no existe
         raise AppError(409, "NOT_GESTOR", "Esa persona no es gestor de ninguna rama")
     if branch_service.current_leader_row(db, branch) and branch_service.current_leader_row(db, branch).id == user_id:
-        raise AppError(409, "IS_LEADER", f"Es líder de {CULTURAL_CATEGORY_LABELS[branch]}: primero quítale el liderazgo")
+        raise AppError(409, "IS_LEADER", f"Es líder de {cultural_branches.label_of(db, branch)}: primero quítale el liderazgo")
     branch_service.remove_participant(db, branch, user_id, user["id"])
     db.commit()
     return {"user_id": user_id, "branch": branch, "role": "CIUDADANO"}
@@ -357,7 +362,7 @@ def put_branch_leader(branch: str, payload: LeaderInput, background_tasks: Backg
         db.commit()
         gestor = db.get(User, payload.gestor_id)
         background_tasks.add_task(notifications.notify_leader_appointed, gestor.email, gestor.name,
-                                  CULTURAL_CATEGORY_LABELS[result["branch"]])
+                                  cultural_branches.label_of(db, result["branch"]))
     return result
 
 
@@ -366,7 +371,7 @@ def promote_branch_leader(branch: str, payload: PromoteLeaderInput, background_t
                           user: Optional[dict] = Depends(get_current_user), db: Session = Depends(get_db)):
     """Un ciudadano (activo, correo verificado) pasa a gestor y lider de la rama, todo en una transaccion."""
     require_roles(user, ("ADMIN",), ADMIN_ONLY)
-    branch = branch_service.require_valid_branch(branch)
+    branch = branch_service.require_valid_branch(db, branch, active_only=True)
     try:
         result = branch_service.promote_to_leader(db, branch, payload.user_id, payload.organization_name, user["id"])
         db.commit()
@@ -375,7 +380,7 @@ def promote_branch_leader(branch: str, payload: PromoteLeaderInput, background_t
         db.rollback()
         raise AppError(409, "LEADER_EXISTS", "Esa rama ya tiene líder: quítale el liderazgo antes de nombrar otro")
     promoted = db.get(User, result["user_id"])
-    background_tasks.add_task(notifications.notify_leader_appointed, promoted.email, promoted.name, CULTURAL_CATEGORY_LABELS[branch])
+    background_tasks.add_task(notifications.notify_leader_appointed, promoted.email, promoted.name, cultural_branches.label_of(db, branch))
     return result
 
 

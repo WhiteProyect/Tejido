@@ -15,7 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.service.models.tables import Opportunity, OpportunityType, Publication
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS, category_slug
+from backend.service.schemas.cultural_categories import category_slug
 from backend.service.schemas.municipalities import MUNICIPALITY_LABELS
 from backend.service.services.home_carousel import _cover_lookup as category_cover_lookup, today_bogota
 
@@ -33,14 +33,14 @@ _COLUMNS = (Publication.id, Publication.title, Publication.summary, Publication.
 
 
 def _item(row, cover, closed: bool) -> dict:
-    category = row.cultural_category if row.cultural_category in CULTURAL_CATEGORIES else None
+    category = row.cultural_category if cover.valid(row.cultural_category) else None
     item = {
         "id": row.id, "title": row.title, "summary": row.summary,
         "image": row.image if row.image and _IMAGE_URL.match(row.image) else cover(category),
         "municipality": row.municipality if row.municipality in MUNICIPALITY_LABELS else None,
         "municipality_label": MUNICIPALITY_LABELS.get(row.municipality),
         "cultural_category": category_slug(category) if category else None,
-        "category_label": CULTURAL_CATEGORY_LABELS.get(category),
+        "category_label": cover.label(category),
         "type": {"slug": row.type_slug, "label": row.type_label, "color": row.type_color} if row.type_slug else None,
         "organizer": row.organizer, "audience": row.audience, "prize": row.prize,
         "requirements": list(row.requirements or []),

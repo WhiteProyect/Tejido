@@ -188,7 +188,7 @@ def test_make_gestor_participant_and_leader(client, admin, sent, branch_cleanup)
     for target, code in ((other["id"], "ALREADY_GESTOR"), (me(client, admin)["id"], "IS_ADMIN"), (99999999, "USER_NOT_FOUND")):
         resp = client.post(f"/api/admin/users/{target}/make-gestor", json={"branch": BRANCH}, headers=admin)
         assert resp.json()["error"] == code
-    assert client.post(f"/api/admin/users/{user['id']}/make-gestor", json={"branch": "NO_EXISTE"}, headers=admin).status_code == 404
+    assert client.post(f"/api/admin/users/{user['id']}/make-gestor", json={"branch": "NO_EXISTE"}, headers=admin).status_code == 422
 
 
 def test_remove_from_branch(client, admin, sent, category_ids, branch_cleanup):

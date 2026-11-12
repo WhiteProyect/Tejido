@@ -10,7 +10,8 @@ import { OpportunityPills, OpportunityRequirements, OpportunitySummary } from '.
 import { BTN_INK_OUTLINE_MD, SECTION, placeColors } from '../components/uiStyles.js';
 import { apiRequest } from '../utils/api.js';
 import { cdnImage } from '../utils/cloudinaryUrl.js';
-import { BRANCH_LABELS, CULTURAL_CATEGORIES, KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
+import { KIND_COLORS, KIND_LABELS } from '../utils/constants.js';
+import { branchLabel, branchSlug, isActiveKey, useCulturalBranches } from '../utils/culturalBranches.js';
 import { formatDate } from '../utils/dateUtils.js';
 import { getInitials } from '../utils/initials.js';
 import { directionsUrl, eventMapHref, placeMapHref, telHref, whatsappHref } from '../utils/mapConfig.js';
@@ -25,7 +26,6 @@ import { STATUS_LABELS } from '../utils/publicationStatus.js';
 // horario, sitio web, "Ver en el mapa vivo" (#mapa?lugar=<id>), "Como llegar", "Actualizado <mes año>" y
 // "Reportar un dato incorrecto" (flujo de reportes). Solo se muestra lo que existe; sin foto, el icono de
 // su categoria sobre crema (sin portadas inventadas).
-const CATEGORY_BY_KEY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label, slug]) => [key, { label, slug }]));
 const DETAIL_LABEL = 'm-0 text-[11px] font-bold uppercase tracking-[.14em] text-muted';
 const DETAIL_VALUE = 'mt-1 mb-0 text-[15px] leading-[1.5] text-ink';
 const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
@@ -83,6 +83,7 @@ function Unavailable() {
 }
 
 export default function PublicationScreen({ id, user, canGoBack }) {
+  useCulturalBranches(); // vuelve a pintar el nombre de la rama al llegar la lista
   const [state, setState] = useState({ loading: true, data: null, unavailable: false, error: '' });
   const [viewer, setViewer] = useState(null); // indice de la foto ampliada
 
@@ -135,10 +136,12 @@ export default function PublicationScreen({ id, user, canGoBack }) {
   ];
   const [cover, ...rest] = photos;
   const hasGallery = photos.length > 1;
-  const category = CATEGORY_BY_KEY[pub.cultural_category];
+  const category = pub.cultural_category
+    ? { label: branchLabel(pub.cultural_category), slug: branchSlug(pub.cultural_category), active: isActiveKey(pub.cultural_category) }
+    : null;
   const organization = pub.author_organization;
   const authorName = organization?.name || pub.author || 'Equipo TEJIDO';
-  const branch = organization?.branch && BRANCH_LABELS[organization.branch];
+  const branch = organization?.branch && branchLabel(organization.branch);
   const isOpportunity = pub.kind === 'OPORTUNIDAD';
   const isPlace = pub.kind === 'LUGAR';
   const published = pub.status === 'PUBLISHED';
@@ -290,7 +293,9 @@ export default function PublicationScreen({ id, user, canGoBack }) {
             {pub.kind === 'EVENTO' && pub.capacity ? <Detail label="Cupo">{pub.capacity} personas</Detail> : null}
             {category && (
               <Detail label="Categoría cultural">
-                <a className={`font-bold text-river no-underline hover:underline ${FOCUS}`} href={`#categoria/${category.slug}`}>{category.label}</a>
+                {category.active
+                  ? <a className={`font-bold text-river no-underline hover:underline ${FOCUS}`} href={`#categoria/${category.slug}`}>{category.label}</a>
+                  : <span className="font-bold">{category.label}</span>}
               </Detail>
             )}
             {pub.link && !isPlace && (

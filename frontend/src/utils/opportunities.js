@@ -2,13 +2,12 @@
 // cierre. Los filtros viajan en el hash (#oportunidades?mun=&tipo=&cat=&pronto=1), como en la Agenda;
 // los slugs de municipio y categoria invalidos se ignoran (el de tipo lo valida la pantalla con la
 // lista de tipos activos).
-import { CULTURAL_CATEGORIES } from './constants.js';
+import { isActiveSlug } from './culturalBranches.js';
 import { closingNotice as dayNotice, getCountdown } from './dateUtils.js';
 import { MUNICIPALITY_LIST } from './municipalities.js';
 
 export const EMPTY_OPPORTUNITY_FILTERS = { mun: '', tipo: '', cat: '', pronto: false };
 
-const CATEGORY_SLUGS = new Set(CULTURAL_CATEGORIES.map(([, , slug]) => slug));
 const MUNICIPALITY_SLUGS = new Set(MUNICIPALITY_LIST.map(({ slug }) => slug));
 const TYPE_SLUG = /^[a-z0-9-]{1,60}$/;
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -22,7 +21,8 @@ export function parseOpportunityFilters(hash = window.location.hash) {
   return {
     mun: MUNICIPALITY_SLUGS.has(mun) ? mun : '',
     tipo: TYPE_SLUG.test(tipo) ? tipo : '',
-    cat: CATEGORY_SLUGS.has(cat) ? cat : '',
+    // Solo ramas activas (utils/culturalBranches.js; la pantalla relee al llegar la lista).
+    cat: isActiveSlug(cat) ? cat : '',
     pronto: params.get('pronto') === '1',
   };
 }

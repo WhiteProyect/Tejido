@@ -2,13 +2,12 @@ import { useState } from 'react';
 import Icon from '../Icon.jsx';
 import ShareMenu from '../ShareMenu.jsx';
 import { cdnImage } from '../../utils/cloudinaryUrl.js';
-import { CULTURAL_CATEGORIES } from '../../utils/constants.js';
+import { branchBySlug, branchSlug as slugOfBranch, useCulturalBranches } from '../../utils/culturalBranches.js';
 import { getInitials } from '../../utils/initials.js';
 
 // Cabecera del perfil de un gestor (#gestor/<slug>): portada ancha con degradado de lectura (o
 // fondo tintado de la rama), foto, nombre, rama, insignia de lider, lema, municipio, trayectoria,
 // compartir y el contacto principal visible.
-const SLUG_BY_KEY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, , slug]) => [key, slug]));
 const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 export const PRIMARY_LINK = `inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full bg-ink px-4 text-[14px] font-bold text-white no-underline transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--ink)_85%,white)] ${FOCUS}`;
 
@@ -33,7 +32,9 @@ export function LeaderBadge({ branchLabel, small = false }) {
 export default function GestorHeader({ profile, titleAs: Title = 'h1' }) {
   const [coverFailed, setCoverFailed] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
-  const branchSlug = SLUG_BY_KEY[profile.branch];
+  useCulturalBranches();
+  // Solo se enlaza a la categoria si la rama esta activa (una desactivada no tiene pagina).
+  const branchSlug = profile.branch && branchBySlug(slugOfBranch(profile.branch))?.key === profile.branch ? slugOfBranch(profile.branch) : null;
   const contact = primaryContact(profile.contact);
   const hasCover = profile.cover_url && !coverFailed;
   const facts = [

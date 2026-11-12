@@ -15,7 +15,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from backend.service.models.tables import Place, PlaceCategory, Publication
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES, CULTURAL_CATEGORY_LABELS, category_slug
+from backend.service.schemas.cultural_categories import category_slug
 from backend.service.schemas.municipalities import MUNICIPALITY_LABELS
 from backend.service.services.agenda import _IMAGE_URL
 from backend.service.services.home_carousel import _cover_lookup as category_cover_lookup, _summary, today_bogota
@@ -27,7 +27,7 @@ SUMMARY_LIMIT = 140
 
 
 def _common(row, cover, type_: str) -> dict:
-    category = row.cultural_category if row.cultural_category in CULTURAL_CATEGORIES else None
+    category = row.cultural_category if cover.valid(row.cultural_category) else None
     return {
         "key": f"{type_.lower()}-{row.id}", "type": type_, "id": row.id, "title": row.title,
         "summary": _summary(row.summary or "", SUMMARY_LIMIT) or None,
@@ -35,7 +35,7 @@ def _common(row, cover, type_: str) -> dict:
         "municipality": row.municipality if row.municipality in MUNICIPALITY_LABELS else None,
         "municipality_label": MUNICIPALITY_LABELS.get(row.municipality),
         "cultural_category": category_slug(category) if category else None,
-        "category_label": CULTURAL_CATEGORY_LABELS.get(category),
+        "category_label": cover.label(category),
         "location": (row.location or "").strip() or None,
         "lat": float(row.latitude), "lng": float(row.longitude),
         "href": f"#publicacion/{row.id}",

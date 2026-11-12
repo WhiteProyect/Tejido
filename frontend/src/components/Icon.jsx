@@ -13,10 +13,16 @@
 const PATHS = {
   // Navegacion y controles
   'arrow-left': <path d="M19 12H5m6-6-6 6 6 6" />,
+  // Carrusel: una diapositiva al centro, las vecinas asomando y los puntos.
+  carousel: <path d="M7.5 4.5h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1zM3 7v7M21 7v7M10 20h.01M12 20h.01M14 20h.01" />,
   'arrow-right': <path d="M5 12h14m-6-6 6 6-6 6" />,
   'arrow-up-right': <path d="M7 17 17 7M9 7h8v8" />,
   home: <><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1v-9.5z" /></>,
   'id-card': <><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><circle cx="9" cy="11" r="2" /><path d="M5.8 15.8c.6-1.4 1.8-2.1 3.2-2.1s2.6.7 3.2 2.1M14 10h4M14 13.5h3" /></>,
+  flag: <><path d="M5.5 21V4.5" /><path d="M5.5 4.5h11l-2.5 4 2.5 4h-11" /></>,
+  grip: <><circle cx="9" cy="6.5" r="1.1" /><circle cx="15" cy="6.5" r="1.1" /><circle cx="9" cy="12" r="1.1" /><circle cx="15" cy="12" r="1.1" /><circle cx="9" cy="17.5" r="1.1" /><circle cx="15" cy="17.5" r="1.1" /></>,
+  'arrow-up': <path d="M12 19V5m-6 6 6-6 6 6" />,
+  'arrow-down': <path d="M12 5v14m6-6-6 6-6-6" />,
   plus: <path d="M12 5v14M5 12h14" />,
   minus: <path d="M5 12h14" />,
   list: <path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" />,

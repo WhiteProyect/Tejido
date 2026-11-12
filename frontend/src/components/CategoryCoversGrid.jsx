@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { coverSources, useCategoryCovers } from '../utils/categoryCovers.js';
-import { CULTURAL_CATEGORIES } from '../utils/constants.js';
+import { useCulturalBranches } from '../utils/culturalBranches.js';
 
 // Portadas de las categorias culturales (Explorar sin filtro ni busqueda). Cada una lleva a
-// #categoria/<slug>. La foto sale de la base (Cloudinary, utils/categoryCovers.js); si no hay o
-// falla, de /images/categorias/<slug>.jpg; y si esa tambien falla, queda un fondo solido
+// #categoria/<slug> (solo las ramas activas, utils/culturalBranches.js). La foto sale de la base
+// (Cloudinary, utils/categoryCovers.js); si no hay o falla, de /images/categorias/<slug>.jpg (las 10 iniciales); y si esa tambien falla, queda un fondo solido
 // tintado, como el placeholder de PublicationCard.
 const EASE = 'ease-[cubic-bezier(.22,1,.36,1)]';
 // Tinte de respaldo por portada: se reparten los colores de marca en orden.
@@ -50,12 +50,13 @@ function CategoryCover({ label, slug, tint, sources }) {
 export default function CategoryCoversGrid() {
   // Mientras llegan las portadas, ninguna tarjeta pide imagen (queda el tinte, como al cargar).
   const covers = useCategoryCovers();
+  const { list } = useCulturalBranches();
   return (
     // div con role, no <nav>: el CSS legado oculta la etiqueta nav en movil (selector global).
     <div role="navigation" aria-label="Categorías culturales">
       {/* Misma reticula que las tarjetas de publicaciones: 2 columnas desde 1201 px. */}
       <ul className="m-0 grid list-none grid-cols-2 gap-5 p-0 max1200:grid-cols-1">
-        {CULTURAL_CATEGORIES.map(([key, label, slug], index) => (
+        {list.map(({ key, label, slug }, index) => (
           <li key={key}>
             <CategoryCover
               key={covers === null ? 'pending' : 'ready'}

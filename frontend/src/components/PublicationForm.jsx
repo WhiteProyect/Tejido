@@ -9,7 +9,8 @@ import TagsInput from './TagsInput.jsx';
 import { BTN_GHOST, BTN_INK_MD, BTN_INK_OUTLINE_MD, FORM_INPUT, FORM_LABEL, PANEL, PANEL_TITLE, placeColors } from './uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
-import { CULTURAL_CATEGORIES, KIND_LABELS, MUNICIPALITIES } from '../utils/constants.js';
+import { KIND_LABELS, MUNICIPALITIES } from '../utils/constants.js';
+import { branchLabel, keyOptions, useCulturalBranches } from '../utils/culturalBranches.js';
 import { STATUS_LABELS } from '../utils/publicationStatus.js';
 
 // Formulario de crear/editar publicacion, compartido por el Dashboard del Gestor y el del
@@ -167,8 +168,6 @@ function CountedField({ id, label, value, onChange, max, error, hint, disabled, 
   );
 }
 
-const CATEGORY_LABELS = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
-
 // Texto del aviso al guardar, segun quien edita y en que estado queda.
 function toastFor({ editing, allowPublish, publish, backToReview, status }) {
   if (!editing) {
@@ -225,6 +224,9 @@ export default function PublicationForm({ publication, categories, allowPublish 
   const alreadyPublished = publication?.status === 'PUBLISHED';
   // Gestor editando una publicada: al guardar vuelve a revision.
   const backToReview = editing && !allowPublish && alreadyPublished;
+  const { list: branches } = useCulturalBranches();
+  // Ramas activas; la que la publicacion ya tenia se conserva aunque se haya desactivado.
+  const categoryOptions = keyOptions(branches, publication?.cultural_category);
   const outsideBranch = Boolean(fixedCategory && editing && publication.cultural_category !== fixedCategory && publication.kind !== 'LUGAR');
   const set = (key) => (value) => setForm((current) => ({ ...current, [key]: value }));
   const field = (key) => ({ value: form[key], onChange: (event) => set(key)(event.target.value), disabled: saving });
@@ -416,17 +418,17 @@ export default function PublicationForm({ publication, categories, allowPublish 
               <label className={FORM_LABEL} htmlFor={culturalId}>Categoría cultural (opcional)</label>
               <select id={culturalId} className={FORM_INPUT} {...field('cultural_category')} aria-describedby={`${culturalId}-hint`}>
                 <option value="">Sin categoría cultural</option>
-                {(fixedCategory ? CULTURAL_CATEGORIES.filter(([key]) => key === fixedCategory) : CULTURAL_CATEGORIES)
+                {(fixedCategory ? [[fixedCategory, branchLabel(fixedCategory)]] : categoryOptions)
                   .map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </select>
               <span id={`${culturalId}-hint`} className="text-[13px] text-muted">{PLACE_NOTE}</span>
             </div>
           ) : fixedCategory ? (
             <label className={FORM_LABEL}>Categoría cultural
-              <input className={FORM_INPUT} value={CATEGORY_LABELS[fixedCategory] || fixedCategory} disabled readOnly />
+              <input className={FORM_INPUT} value={branchLabel(fixedCategory)} disabled readOnly />
               <span className="text-[12px] font-medium normal-case tracking-normal text-muted">
                 {outsideBranch
-                  ? `Publicas en tu categoría. Esta era de «${CATEGORY_LABELS[publication.cultural_category] || 'sin categoría'}»: al guardar pasa a la tuya.`
+                  ? `Publicas en tu categoría. Esta era de «${branchLabel(publication.cultural_category) || 'sin categoría'}»: al guardar pasa a la tuya.`
                   : 'Publicas en tu categoría.'}
               </span>
             </label>
@@ -434,7 +436,7 @@ export default function PublicationForm({ publication, categories, allowPublish 
             <label className={FORM_LABEL}>Categoría cultural
               <select className={FORM_INPUT} {...field('cultural_category')}>
                 <option value="">Sin categoría</option>
-                {CULTURAL_CATEGORIES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                {categoryOptions.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
               </select>
             </label>
           )}

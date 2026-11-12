@@ -139,7 +139,7 @@ def test_review_and_rejected_are_hidden_everywhere(client, admin, music, created
         assert client.get(path).status_code == 404, path
 
 
-def test_approve_publishes_in_tejido_but_never_in_the_moneystack_carousel(client, admin, music, created):
+def test_approve_publishes_in_tejido_and_its_own_carousel_card(client, admin, music, created):
     data = create(client, music["lider"], created, municipality="taraza", genre="Vallenato")
     assert client.get("/api/admin/stats", headers=admin).json()["artists_review"] >= 1
     before = client.get("/api/admin/stats", headers=admin).json()["artists_review"]
@@ -153,10 +153,11 @@ def test_approve_publishes_in_tejido_but_never_in_the_moneystack_carousel(client
     assert not PRIVATE & set(profile.json()["artist"])
     town = client.get("/api/municipalities/taraza").json()
     assert {"slug": data["slug"], "moneystack": False} in [{"slug": a["slug"], "moneystack": a["moneystack"]} for a in town["artists"]]
-    # Aunque el admin lo destaque, un artista de TEJIDO no entra a las diapositivas de Moneystack.
+    # Destacado, entra al carrusel como artista de TEJIDO (su propia tarjeta), nunca con el sello Moneystack.
     assert client.put(f"/api/artists/{data['id']}", json={"featured": True}, headers=admin).status_code == 200
-    keys = {slide["key"] for slide in client.get("/api/home/carousel").json()["slides"]}
-    assert f"artist-{data['id']}" not in keys
+    slides = {slide["key"]: slide for slide in client.get("/api/home/carousel").json()["slides"]}
+    card = slides[f"artist-{data['id']}"]
+    assert card["sello"] == "TEJIDO" and card["badge"] == "Artista de TEJIDO" and "Moneystack" not in card["tags"]
     assert client.get("/api/artists/home").json()["artist"]["moneystack"] is True
     # El lider edita su artista publicado: no vuelve a revision (asi se decidio).
     assert client.put(f"/api/artists/{data['id']}", json={"bio": "Nueva biografía"}, headers=music["lider"]).status_code == 200

@@ -5,16 +5,15 @@ import { BTN_GHOST, BTN_INK_SM } from './uiStyles.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
 import { coverSources, setCategoryCovers, useCategoryCovers } from '../utils/categoryCovers.js';
-import { CULTURAL_CATEGORIES } from '../utils/constants.js';
+import { branchLabel, branchSlug, hasStaticCover } from '../utils/culturalBranches.js';
 import { ACCEPTED_IMAGE_TYPES, uploadImage, validateImageFile } from '../utils/uploadImage.js';
 
-// Portada de UNA categoria cultural (la de Explorar / CategoryCoversGrid), para el admin (las 10) y
-// el lider (la de su rama). Muestra la portada efectiva (la guardada o, sin ella, la estatica),
+// Portada de UNA categoria cultural (la de Explorar / CategoryCoversGrid), para el lider (la de su rama). Muestra la portada efectiva (la guardada o, sin ella, la estatica),
 // "Cambiar imagen" (subida firmada a Cloudinary, scope "category_cover", mismas validaciones de tipo
 // y peso que el resto del sitio; al terminar se guarda con PUT /api/cultural-categories/{clave}/cover)
 // y "Volver a la original" (DELETE, con confirmacion). El backend decide quien puede. Tras cada
 // cambio, setCategoryCovers actualiza todas las portadas montadas sin recargar.
-const CATEGORY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label, slug]) => [key, { label, slug }]));
+// Una rama creada por el admin no tiene portada estatica: sin imagen propia queda el tinte.
 
 function CoverPreview({ sources, label }) {
   const [index, setIndex] = useState(0);
@@ -37,7 +36,9 @@ export default function CategoryCoverEditor({ categoryKey, headingLevel = 3 }) {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState({ error: false, text: '' });
-  const { label, slug } = CATEGORY[categoryKey];
+  const label = branchLabel(categoryKey);
+  const slug = branchSlug(categoryKey);
+  const original = hasStaticCover(categoryKey);
   const custom = Boolean(covers?.[categoryKey]);
   const Heading = `h${headingLevel}`;
 
@@ -95,7 +96,7 @@ export default function CategoryCoverEditor({ categoryKey, headingLevel = 3 }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <Heading className="m-0 font-sans text-[18px] font-bold leading-[1.25] tracking-[-0.02em] text-ink">{label}</Heading>
         <span className={`rounded-full py-0.5 px-2.5 text-[11px] font-bold uppercase tracking-[.08em] ${custom ? 'bg-[rgba(29,143,163,0.12)] text-[#146f80]' : 'bg-[rgba(102,116,111,0.14)] text-[#44564f]'}`}>
-          {covers === null ? 'Cargando' : custom ? 'Personalizada' : 'Original'}
+          {covers === null ? 'Cargando' : custom ? 'Personalizada' : original ? 'Original' : 'Sin imagen'}
         </span>
       </div>
 
@@ -114,7 +115,7 @@ export default function CategoryCoverEditor({ categoryKey, headingLevel = 3 }) {
         </button>
         {custom && (
           <button type="button" className={BTN_GHOST} disabled={busy} onClick={() => setConfirming(true)} aria-label={`Volver a la portada original de ${label}`}>
-            Volver a la original
+            {original ? 'Volver a la original' : 'Quitar imagen'}
           </button>
         )}
       </div>

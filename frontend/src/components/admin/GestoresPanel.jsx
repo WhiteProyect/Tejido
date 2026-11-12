@@ -7,7 +7,7 @@ import Icon from '../Icon.jsx';
 import { BTN_GHOST, BTN_INK_MD, BTN_INK_OUTLINE_MD } from '../uiStyles.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { clearLeader } from '../../services/adminApi.js';
-import { BRANCH_LABELS, CULTURAL_BRANCHES } from '../../utils/constants.js';
+import { activeBranches, branchLabel, keyOptions, useCulturalBranches } from '../../utils/culturalBranches.js';
 
 // Panel de administracion de gestores (dentro de AdminModule, ProfileScreen).
 // Endpoints: GET/POST /api/admin/gestores, PATCH /api/admin/gestores/{id},
@@ -28,7 +28,9 @@ const STATUS = {
   INACTIVO: ['Inactivo', 'bg-[#ece7df] text-[#3f4a46]'],
   ACTIVO: ['Activo', 'bg-[rgba(29,143,163,0.1)] text-[#146f80]'],
 };
-const EMPTY_FORM = { name: '', email: '', organization_name: '', branch: CULTURAL_BRANCHES[0], contact: '' };
+const EMPTY_FORM = { name: '', email: '', organization_name: '', branch: '', contact: '' };
+// La primera rama activa cuando no viene una elegida.
+const firstBranch = () => activeBranches()[0]?.key || '';
 
 async function api(url, { method = 'GET', body } = {}) {
   const token = localStorage.getItem('tejido_token');
@@ -83,9 +85,10 @@ function InviteNotice({ notice, onClose }) {
 // la rama se recalcula.
 function AddGestorForm({ preset, overview, onCreated, onCancel }) {
   const [form, setForm] = useState(() => {
-    const branch = preset?.branch || EMPTY_FORM.branch;
+    const branch = preset?.branch || firstBranch();
     return { ...EMPTY_FORM, branch, is_leader: !overview[branch]?.leader };
   });
+  const { list: branches } = useCulturalBranches();
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const set = (field) => (event) => setForm({ ...form, [field]: event.target.value });
@@ -104,7 +107,7 @@ function AddGestorForm({ preset, overview, onCreated, onCancel }) {
     try {
       const result = await api('/api/admin/gestores', { method: 'POST', body: { ...form, is_leader: Boolean(form.is_leader && !currentLeader) } });
       onCreated(form, result);
-      setForm(EMPTY_FORM);
+      setForm({ ...EMPTY_FORM, branch: firstBranch() });
     } catch (createError) {
       setError(createError.message);
     } finally {
@@ -119,7 +122,7 @@ function AddGestorForm({ preset, overview, onCreated, onCancel }) {
       <label className={LABEL}>Organización<input className={FIELD} value={form.organization_name} onChange={set('organization_name')} required /></label>
       <label className={LABEL}>Rama cultural
         <select name="branch" className={FIELD} value={form.branch} onChange={(event) => changeBranch(event.target.value)} required>
-          {CULTURAL_BRANCHES.map((key) => <option key={key} value={key}>{BRANCH_LABELS[key]}</option>)}
+          {keyOptions(branches).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
         </select>
       </label>
       <div className="col-span-2 max600:col-span-1">
@@ -129,7 +132,7 @@ function AddGestorForm({ preset, overview, onCreated, onCancel }) {
           disabled={Boolean(currentLeader)}
           label="Será el líder de esta rama"
           description={currentLeader
-            ? `${BRANCH_LABELS[form.branch]} ya tiene líder (${currentLeader.name}). Para cambiarlo, usa “Nombrar líder” en sus participantes.`
+            ? `${branchLabel(form.branch)} ya tiene líder (${currentLeader.name}). Para cambiarlo, usa “Nombrar líder” en sus participantes.`
             : 'Revisará lo que publiquen los participantes de la rama y aprobará quién se suma. Le avisaremos por correo.'}
         />
       </div>
@@ -300,7 +303,7 @@ export default function GestoresPanel({ onStatsChange }) {
                     <td className="py-4 pr-4 text-[#44564f]">{gestor.email}</td>
                     <td className="py-4 pr-4 text-[#44564f]">{gestor.organization_name || '–'}</td>
                     <td className="py-4 pr-4 text-[#44564f]">
-                      {BRANCH_LABELS[gestor.branch] || '–'}
+                      {gestor.branch ? branchLabel(gestor.branch) : '–'}
                       {gestor.is_leader && <span className="ml-2 whitespace-nowrap rounded-full bg-[rgba(212,168,67,0.2)] py-0.5 px-2 text-[11px] font-bold text-[#6b500f]">Líder</span>}
                     </td>
                     <td className="py-4 pr-4"><span className={`whitespace-nowrap rounded-full py-1 px-3 text-[12px] font-bold ${statusTone}`}>{statusLabel}</span></td>

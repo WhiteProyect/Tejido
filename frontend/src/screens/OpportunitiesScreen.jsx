@@ -6,7 +6,7 @@ import { TS } from '../components/territory/territoryStyles.js';
 import { UNVERIFIED_TEXT, notifyUnverified } from '../components/VerifyEmailNotice.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from '../utils/api.js';
-import { CULTURAL_CATEGORIES } from '../utils/constants.js';
+import { slugOptions, useCulturalBranches } from '../utils/culturalBranches.js';
 import { MUNICIPALITY_LIST } from '../utils/municipalities.js';
 import {
   EMPTY_OPPORTUNITY_FILTERS, opportunitiesUrl, opportunityHash, parseOpportunityFilters, sameOpportunityFilters,
@@ -19,7 +19,6 @@ import {
 // hash (#oportunidades?mun=&tipo=&cat=&pronto=1), como en la Agenda. Guardar: solo sin sesion (abre
 // el aviso) o CIUDADANO (POST/DELETE .../favorite; lo ya guardado sale de GET /api/me/saved).
 const MUNICIPALITY_OPTIONS = MUNICIPALITY_LIST.map(({ slug, name }) => [slug, name]);
-const CATEGORY_OPTIONS = CULTURAL_CATEGORIES.map(([, label, slug]) => [slug, label]);
 
 export default function OpportunitiesScreen({ user }) {
   const { showToast } = useToast();
@@ -34,6 +33,14 @@ export default function OpportunitiesScreen({ user }) {
   const isCitizen = user?.role === 'CIUDADANO';
 
   useEffect(() => { document.title = 'Oportunidades del Bajo Cauca · TEJIDO'; }, []);
+
+  // Al llegar la lista de ramas se releen los filtros (una rama nueva en ?cat= ya es valida).
+  const { list: branches, ready: branchesReady } = useCulturalBranches();
+  useEffect(() => {
+    if (!branchesReady || !window.location.hash.startsWith('#oportunidades')) return;
+    const next = parseOpportunityFilters();
+    setFilters((current) => (sameOpportunityFilters(current, next) ? current : next));
+  }, [branchesReady]);
   useEffect(() => { apiRequest('/api/opportunity-types').then(setTypes).catch(() => setTypes([])); }, []);
   useEffect(() => {
     if (!isCitizen) { setSaved(new Set()); return; }
@@ -210,7 +217,7 @@ export default function OpportunitiesScreen({ user }) {
         selects={[
           { key: 'mun', label: 'Municipio', value: filters.mun, options: MUNICIPALITY_OPTIONS, placeholder: 'Todos los municipios' },
           { key: 'tipo', label: 'Tipo', value: filters.tipo, options: types.map(({ slug, label }) => [slug, label]), placeholder: 'Todos los tipos' },
-          { key: 'cat', label: 'Categoría', value: filters.cat, options: CATEGORY_OPTIONS, placeholder: 'Todas las categorías' },
+          { key: 'cat', label: 'Categoría', value: filters.cat, options: slugOptions(branches), placeholder: 'Todas las categorías' },
         ]}
         toggles={[{ key: 'pronto', label: 'Cierran pronto', checked: filters.pronto }]} />
       <p className={TS.count} aria-live="polite">{countText}</p>

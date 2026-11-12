@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import BranchParticipants from './BranchParticipants.jsx';
-import { BTN_GHOST, BTN_INK_SM } from '../uiStyles.js';
+import { BTN_DANGER, BTN_GHOST, BTN_INK_SM } from '../uiStyles.js';
 import { coverSources, useCategoryCovers } from '../../utils/categoryCovers.js';
-import { CULTURAL_CATEGORIES } from '../../utils/constants.js';
+import { activeBranches, useCulturalBranches } from '../../utils/culturalBranches.js';
 
-// Cobertura de las 10 ramas culturales (GestoresPanel), calculada con la lista de
+// Cobertura de las ramas culturales ACTIVAS (GestoresPanel; utils/culturalBranches.js), calculada con la lista de
 // GET /api/admin/gestores. Por rama: Cubierta (algun gestor ACTIVO), Invitacion pendiente
 // (ninguno activo, alguno INVITADO que aun no acepta) o Sin gestor (un gestor INACTIVO, desactivado por
 // el admin, no cubre la rama). Gestores sin rama o con una rama invalida no cuentan en
@@ -26,19 +26,21 @@ const STATES = {
 const PRESS = 'transition-[background-color,border-color,color,transform] duration-200 active:scale-[.97] motion-reduce:transition-none motion-reduce:active:scale-100';
 const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 
-export function branchCoverage(gestores) {
-  const byBranch = Object.fromEntries(CULTURAL_CATEGORIES.map(([key]) => [key, []]));
+export function branchCoverage(gestores, active = activeBranches()) {
+  const byBranch = Object.fromEntries(active.map(({ key }) => [key, []]));
   let unassigned = 0;
+  let inactive = 0; // gestores de una rama desactivada: tampoco cuentan
   for (const gestor of gestores) {
     if (gestor.branch && byBranch[gestor.branch]) byBranch[gestor.branch].push(gestor);
+    else if (gestor.branch) inactive += 1;
     else unassigned += 1;
   }
-  const branches = CULTURAL_CATEGORIES.map(([key, label, slug]) => {
+  const branches = active.map(({ key, label, slug }) => {
     const list = byBranch[key];
     const state = list.some((g) => g.status === 'ACTIVO') ? 'covered' : list.some((g) => g.status === 'INVITADO') ? 'pending' : 'empty';
     return { key, label, slug, gestores: list, state };
   });
-  return { branches, unassigned };
+  return { branches, unassigned, inactive };
 }
 
 const THUMB = 'size-24 shrink-0 rounded-[14px] @min-[440px]:size-[130px]';
@@ -60,7 +62,8 @@ export default function BranchCoverage({ gestores, overview = {}, onAdd, onChang
   const [openBranch, setOpenBranch] = useState(null);
   const reduce = useReducedMotion();
   const covers = useCategoryCovers();
-  const { branches, unassigned } = branchCoverage(gestores);
+  const { list } = useCulturalBranches();
+  const { branches, unassigned, inactive } = branchCoverage(gestores, list);
   const count = (state) => branches.filter((b) => b.state === state).length;
   const covered = count('covered');
   const pending = count('pending');
@@ -130,36 +133,48 @@ export default function BranchCoverage({ gestores, overview = {}, onAdd, onChang
                         ))}
                       </ul>
                     )}
-                    <div className="mt-auto flex flex-wrap gap-2 pt-1" data-acciones-rama>
-                      <button
-                        type="button"
-                        className={`${isEmpty ? BTN_INK_SM : BTN_GHOST} ${FOCUS} ${PRESS} whitespace-nowrap`}
-                        onClick={() => onAdd(branch.key)}
-                        aria-label={`${isEmpty ? 'Crear gestor' : 'Agregar otro gestor'} para ${branch.label}`}
-                      >
-                        {isEmpty ? 'Crear gestor' : 'Agregar otro gestor'}
-                      </button>
-                      {onPromote && (
-                        <button type="button" className={`${BTN_GHOST} ${FOCUS} ${PRESS} whitespace-nowrap`} onClick={() => onPromote(branch.key, branch.label)}
-                          aria-label={info?.leader ? `Cambiar el líder de ${branch.label}` : `Nombrar líder de ${branch.label}`}
-                          aria-haspopup="dialog" data-nombrar-usuario>
-                          {info?.leader ? 'Cambiar líder…' : 'Nombrar líder'}
-                        </button>
-                      )}
-                      {onClearLeader && info?.leader && (
-                        <button type="button" className={`${BTN_GHOST} ${FOCUS} ${PRESS} whitespace-nowrap`} onClick={() => onClearLeader(branch.key, branch.label, info.leader)}
-                          aria-label={`Quitar el liderazgo de ${branch.label} a ${info.leader.name}`} aria-haspopup="dialog" data-quitar-liderazgo>
-                          Quitar liderazgo
-                        </button>
-                      )}
-                      {!isEmpty && (
-                        <button type="button" className={`${BTN_GHOST} ${FOCUS} ${PRESS} whitespace-nowrap`} aria-expanded={open}
-                          aria-controls={`participantes-${branch.key}`} onClick={() => setOpenBranch(open ? null : branch.key)}
-                          aria-label={`${open ? 'Ocultar' : 'Ver'} los participantes de ${branch.label}`}>
-                          {open ? 'Ocultar participantes' : 'Participantes'}
-                        </button>
-                      )}
-                    </div>
+                    {/* Acciones: la primaria (solida) segun lo pendiente de la rama -sin gestor: crear; sin lider:
+                        nombrarlo; con lider: sumar otro gestor- y las demas en pildoras con borde que se acomodan
+                        en filas sin partir etiquetas. "Quitar liderazgo" va al final, en tono de advertencia. */}
+                    {(() => {
+                      const leader = info?.leader || null;
+                      const actions = {
+                        add: (primary) => (
+                          <button key="add" type="button" className={`${primary ? BTN_INK_SM : BTN_GHOST} ${FOCUS} ${PRESS} whitespace-nowrap`}
+                            onClick={() => onAdd(branch.key)} aria-label={`${isEmpty ? 'Crear gestor' : 'Agregar otro gestor'} para ${branch.label}`} data-accion-rama="gestor">
+                            {isEmpty ? 'Crear gestor' : 'Agregar otro gestor'}
+                          </button>
+                        ),
+                        lead: (primary) => onPromote && (
+                          <button key="lead" type="button" className={`${primary ? BTN_INK_SM : BTN_GHOST} ${FOCUS} ${PRESS} whitespace-nowrap`} onClick={() => onPromote(branch.key, branch.label)}
+                            aria-label={leader ? `Cambiar el líder de ${branch.label}` : `Nombrar líder de ${branch.label}`}
+                            aria-haspopup="dialog" data-nombrar-usuario data-accion-rama="lider">
+                            {leader ? 'Cambiar líder…' : 'Nombrar líder'}
+                          </button>
+                        ),
+                        people: () => !isEmpty && (
+                          <button key="people" type="button" className={`${BTN_GHOST} ${FOCUS} ${PRESS} whitespace-nowrap`} aria-expanded={open}
+                            aria-controls={`participantes-${branch.key}`} onClick={() => setOpenBranch(open ? null : branch.key)}
+                            aria-label={`${open ? 'Ocultar' : 'Ver'} los participantes de ${branch.label}`} data-accion-rama="participantes">
+                            {open ? 'Ocultar participantes' : 'Participantes'}
+                          </button>
+                        ),
+                        unlead: () => onClearLeader && leader && (
+                          <button key="unlead" type="button" className={`${BTN_DANGER} ${FOCUS} ${PRESS} whitespace-nowrap`} onClick={() => onClearLeader(branch.key, branch.label, leader)}
+                            aria-label={`Quitar el liderazgo de ${branch.label} a ${leader.name}`} aria-haspopup="dialog" data-quitar-liderazgo data-accion-rama="quitar-lider">
+                            Quitar liderazgo
+                          </button>
+                        ),
+                      };
+                      const primary = isEmpty || leader || !onPromote ? 'add' : 'lead';
+                      const rest = ['add', 'lead', 'people', 'unlead'].filter((key) => key !== primary);
+                      return (
+                        <div className="mt-auto grid gap-2 pt-1" data-acciones-rama>
+                          <div className="flex" data-accion-primaria>{actions[primary](true)}</div>
+                          <div className="flex flex-wrap gap-1.5" data-acciones-secundarias>{rest.map((key) => actions[key](false))}</div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
                 {open && (
@@ -176,6 +191,11 @@ export default function BranchCoverage({ gestores, overview = {}, onAdd, onChang
       {unassigned > 0 && (
         <p className="mt-3 mb-0 rounded-[14px] bg-[rgba(212,168,67,0.12)] py-2.5 px-4 text-[14px] text-[#5f4a10]">
           Gestores sin rama asignada: <strong>{unassigned}</strong>. No cuentan en la cobertura; aparecen en la tabla de abajo.
+        </p>
+      )}
+      {inactive > 0 && (
+        <p className="mt-3 mb-0 rounded-[14px] bg-[rgba(212,168,67,0.12)] py-2.5 px-4 text-[14px] text-[#5f4a10]">
+          Gestores en ramas desactivadas: <strong>{inactive}</strong>. No cuentan en la cobertura; aparecen en la tabla de abajo.
         </p>
       )}
     </section>

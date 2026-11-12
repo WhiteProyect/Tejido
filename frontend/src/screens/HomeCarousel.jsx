@@ -85,10 +85,12 @@ function SlidePhoto({ src, alt, first, frame = '', photo = 'rounded-[28px]' }) {
   );
 }
 
+// Artista de Moneystack (con su sello) o de TEJIDO (slide.sello === 'TEJIDO': sin el sello Moneystack).
 function ArtistSlide({ slide, first }) {
   const { artist, featured_track: track } = slide;
+  const moneystack = slide.sello !== 'TEJIDO';
   return (
-    <div className={`${SLIDE_BOX} bg-[#0d0f0e] text-white`}>
+    <div className={`${SLIDE_BOX} bg-[#0d0f0e] text-white`} data-sello={moneystack ? 'MONEYSTACK' : 'TEJIDO'}>
       <div className={SLIDE_GRID}>
         <div className="relative z-2 min-w-0">
           <span className={BADGE}>{slide.badge}</span>
@@ -145,11 +147,13 @@ function ArtistSlide({ slide, first }) {
             )}
           </div>
 
-          <div className="bg-[rgba(212,168,67,0.12)] border border-[rgba(212,168,67,0.3)] rounded-[16px] py-4 px-5">
-            <span className="text-[11px] font-bold tracking-[0.1em] uppercase text-gold block mb-1.5">Sello Independiente</span>
-            <a href="#moneystack" className={`text-[20px] font-extrabold block mb-1 ${FOCUS_DARK}`}>Moneystack</a>
-            <span className="text-[13px] text-[rgba(255,255,255,0.7)]">Bajo Cauca Antioqueño</span>
-          </div>
+          {moneystack && (
+            <div className="bg-[rgba(212,168,67,0.12)] border border-[rgba(212,168,67,0.3)] rounded-[16px] py-4 px-5">
+              <span className="text-[11px] font-bold tracking-[0.1em] uppercase text-gold block mb-1.5">Sello Independiente</span>
+              <a href="#moneystack" className={`text-[20px] font-extrabold block mb-1 ${FOCUS_DARK}`}>Moneystack</a>
+              <span className="text-[13px] text-[rgba(255,255,255,0.7)]">Bajo Cauca Antioqueño</span>
+            </div>
+          )}
         </div>
         <div className={PHOTO_COL}>
           {artist.image ? (
@@ -159,7 +163,7 @@ function ArtistSlide({ slide, first }) {
               <span className="text-white text-[100px] font-extrabold tracking-[-0.05em]">{artist.stage_name.charAt(0)}</span>
             </div>
           )}
-          <p className="mt-6 mb-0 text-center text-[rgba(255,255,255,0.6)] text-[14px] font-bold tracking-[0.2em] uppercase">Moneystack</p>
+          <p className="mt-6 mb-0 text-center text-[rgba(255,255,255,0.6)] text-[14px] font-bold tracking-[0.2em] uppercase">{moneystack ? 'Moneystack' : 'TEJIDO'}</p>
         </div>
       </div>
     </div>
@@ -420,7 +424,7 @@ export default function HomeCarousel() {
             const variant = variants[position];
             return (
               <motion.div
-                // Un artista puede repetirse (Moneystack va entre cada contenido): la posicion hace unica la clave.
+                // La posicion hace unica la clave (la API ya no repite artistas, pero no cuesta asegurarlo).
                 key={`${slide.key}-${position}`}
                 role="group"
                 aria-roledescription="diapositiva"

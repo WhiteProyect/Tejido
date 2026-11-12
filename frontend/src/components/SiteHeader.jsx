@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import GlobalSearch from './GlobalSearch.jsx';
+import Icon from './Icon.jsx';
 import Logo from './Logo.jsx';
 import MobileMenu from './MobileMenu.jsx';
 import ThreadsIcon from './ThreadsIcon.jsx';
+import { requestPulsoEdit } from '../utils/pulsoCatalog.js';
 import { cdnImage } from '../utils/cloudinaryUrl.js';
 import { NAV_LINKS, activeSection } from '../utils/navSections.js';
 
@@ -163,6 +165,18 @@ export default function SiteHeader({ user, onLogin, onLogout, screen, municipali
         </LayoutGroup>
         <div className="col-start-3 flex items-center justify-self-end gap-2">
           <GlobalSearch publications={publications} loading={publicationsLoading} dark={isMoneystack} />
+          {/* Lapiz del Pulso: solo un admin y solo dentro de su dashboard (abre el modo edicion del Pulso). */}
+          {user?.role === 'ADMIN' && screen === 'admin-dashboard' && (
+            <span className="group relative inline-flex">
+              <button type="button" aria-label="Personalizar el Pulso" onClick={requestPulsoEdit} data-personalizar-pulso
+                className={`inline-flex size-11 cursor-pointer items-center justify-center rounded-full border-[1.5px] bg-transparent transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 ${tone.text} ${tone.ring} ${tone.focus} hover:bg-[rgba(23,63,54,.08)]`}>
+                <Icon name="pen" className="size-[18px]" strokeWidth={2} />
+              </button>
+              <span role="tooltip" className={`pointer-events-none absolute top-full right-0 z-30 mt-2 whitespace-nowrap rounded-[8px] px-2.5 py-1 text-[12px] font-bold opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 motion-reduce:transition-none ${tone.tip}`}>
+                Personalizar el Pulso
+              </span>
+            </span>
+          )}
           {user ? (
             <div className="relative" ref={menuRef}>
               <button className="w-9 h-9 overflow-hidden rounded-[50%] bg-ink text-white border-none p-0 text-[14px] font-bold cursor-pointer" aria-label={`Menú de ${user.name}`} onClick={() => { closeMenu(false); setShowUserMenu(!showUserMenu); }}>

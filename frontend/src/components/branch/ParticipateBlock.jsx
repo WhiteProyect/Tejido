@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Icon from '../Icon.jsx';
 import { BTN_INK_MD } from '../uiStyles.js';
-import { CULTURAL_CATEGORIES } from '../../utils/constants.js';
+import { branchLabel, isActiveKey, useCulturalBranches } from '../../utils/culturalBranches.js';
 import { formatDateShort } from '../../utils/dateUtils.js';
 import useBranchRequest from '../../utils/useBranchRequest.js';
 import BranchRequestDialog, { nextStepText } from './BranchRequestDialog.jsx';
@@ -13,15 +13,17 @@ import BranchRequestDialog, { nextStepText } from './BranchRequestDialog.jsx';
 //   otra rama: el boton se desactiva y se explica.
 // - Si no: el boton abre el formulario con esta rama ya elegida.
 // title/text: encabezado del bloque (la categoria lo usa; el perfil del lider va sin titulo).
-const LABELS = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label]) => [key, label]));
 const LINK = 'font-bold text-river no-underline hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 
 export default function ParticipateBlock({ user, branch, hasLeader, returnTo, title, text, className = '' }) {
   const branchRequest = useBranchRequest(user);
   const [open, setOpen] = useState(false);
+  const { ready } = useCulturalBranches();
   if (user && user.role !== 'CIUDADANO') return null;
+  // Una rama desactivada no recibe solicitudes.
+  if (ready && !isActiveKey(branch)) return null;
 
-  const label = LABELS[branch] || '';
+  const label = branchLabel(branch);
   const pending = branchRequest.request?.status === 'PENDING' ? branchRequest.request : null;
   const pendingHere = pending && pending.branch === branch;
   const pendingElsewhere = pending && pending.branch !== branch;
@@ -59,7 +61,7 @@ export default function ParticipateBlock({ user, branch, hasLeader, returnTo, ti
         </button>
         {pendingElsewhere && (
           <p id={`pendiente-${branch}`} className="m-0 text-[14px] leading-[1.5] text-[#53645c]">
-            Ya tienes una solicitud pendiente para {LABELS[pending.branch]}. Solo se puede una a la vez: puedes cancelarla desde <a className={LINK} href="#perfil">tu perfil</a>.
+            Ya tienes una solicitud pendiente para {branchLabel(pending.branch)}. Solo se puede una a la vez: puedes cancelarla desde <a className={LINK} href="#perfil">tu perfil</a>.
           </p>
         )}
       </>

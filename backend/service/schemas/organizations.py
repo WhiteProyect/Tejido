@@ -7,13 +7,13 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES
 from backend.service.schemas.users import image_url
 
 
 def _branch(v):
+    # Que la rama exista y este activa lo valida la ruta con la tabla (services/cultural_branches.py).
     v = str(v or "").strip().upper()
-    if v not in CULTURAL_CATEGORIES:
+    if not v:
         raise ValueError("Selecciona una rama cultural valida")
     return v
 

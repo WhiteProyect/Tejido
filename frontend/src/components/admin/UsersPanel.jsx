@@ -5,7 +5,7 @@ import Icon from '../Icon.jsx';
 import { BTN_INK_OUTLINE_MD, PANEL, PANEL_TITLE } from '../uiStyles.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { branchesOverview, listUsers } from '../../services/adminApi.js';
-import { BRANCH_LABELS, CULTURAL_BRANCHES } from '../../utils/constants.js';
+import { keyOptions, useCulturalBranches } from '../../utils/culturalBranches.js';
 import { formatDateShort } from '../../utils/dateUtils.js';
 import { MUNICIPALITY_BY_SLUG } from '../../utils/municipalities.js';
 import { ActionDialog, EditUserDialog, UserDetailDialog } from './users/UserDialogs.jsx';
@@ -44,6 +44,7 @@ function Who({ user }) {
 export default function UsersPanel({ subpath = '', onStatsChange }) {
   const { showToast } = useToast();
   const reduce = useReducedMotion();
+  const { list: branches } = useCulturalBranches();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -138,7 +139,7 @@ export default function UsersPanel({ subpath = '', onStatsChange }) {
           <label className="grid gap-1.5 text-[13px] font-bold text-ink" htmlFor="usuarios-rama">Rama
             <select id="usuarios-rama" className={SELECT} value={filters.branch} onChange={(event) => setFilter('branch', event.target.value)} data-filtro-rama>
               <option value="">Todas</option>
-              {CULTURAL_BRANCHES.map((key) => <option key={key} value={key}>{BRANCH_LABELS[key]}</option>)}
+              {keyOptions(branches).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
             </select>
           </label>
         </div>
@@ -181,9 +182,11 @@ export default function UsersPanel({ subpath = '', onStatsChange }) {
         </div>
       )}
       {data && !state.error && items.length > 0 && (
-        <div className={`mt-2 transition-opacity duration-150 ${state.loading ? 'opacity-60' : ''}`} aria-busy={state.loading || undefined}>
-          {/* Escritorio y tablet: tabla. */}
-          <div className="relative overflow-x-auto max-[767px]:hidden">
+        // Tabla solo si el panel tiene >= 800 px utiles (container query); si no, tarjetas. Con la barra de
+        // secciones a la derecha, a 1024 px el panel deja ~650 px y la tabla (760 px) obligaba a desplazar.
+        <div className={`@container mt-2 transition-opacity duration-150 ${state.loading ? 'opacity-60' : ''}`} aria-busy={state.loading || undefined}>
+          {/* Panel ancho: tabla. */}
+          <div className="relative hidden overflow-x-auto @min-[800px]:block">
             <table className="w-full min-w-[760px] border-collapse text-left text-[14px]" data-tabla-usuarios>
               <caption className="sr-only">Usuarios, página {data.page} de {pages}</caption>
               <thead>
@@ -212,8 +215,8 @@ export default function UsersPanel({ subpath = '', onStatsChange }) {
               </tbody>
             </table>
           </div>
-          {/* Movil: tarjetas. */}
-          <ul className="m-0 grid list-none gap-3 p-0 min-[768px]:hidden" data-tarjetas-usuarios>
+          {/* Panel angosto: tarjetas (dos columnas cuando caben). */}
+          <ul className="m-0 grid list-none grid-cols-1 gap-3 p-0 @min-[560px]:grid-cols-2 @min-[800px]:hidden" data-tarjetas-usuarios>
             {items.map((user, index) => (
               <motion.li key={user.id} className="grid gap-2.5 rounded-[16px] border border-[#ddd5c7] bg-[#fffdf6] p-4" {...row(index)} data-tarjeta-usuario={user.id}>
                 <Who user={user} />

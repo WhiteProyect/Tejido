@@ -1,13 +1,14 @@
 """Portadas de las categorias culturales: quien puede cambiarlas (PUT/DELETE
 /api/cultural-categories/{clave}/cover) y la firma de subida del scope "category_cover".
 
-Schema aislado del conftest. Cada test deja la tabla de portadas y los lideres como estaban.
+Schema aislado del conftest. Las portadas viven en cultural_branches.image_url; cada test las deja vacias
+y los lideres como estaban.
 """
 import pytest
-from sqlalchemy import delete
+from sqlalchemy import update
 
 from backend.service.core.config import settings
-from backend.service.models.tables import CulturalCategoryCover
+from backend.service.models.tables import CulturalBranch
 from backend.tests_fastapi.test_branches import admin, branch_cleanup, citizen, gestor, leader, sent  # noqa: F401
 from backend.tests_fastapi.test_gestor_category import category_ids  # noqa: F401
 from backend.tests_fastapi.test_gestores_invites import schema_session
@@ -25,13 +26,18 @@ def cover_url(name="portada"):
 def clean_covers():
     yield
     with schema_session() as db:
-        db.execute(delete(CulturalCategoryCover))
+        db.execute(update(CulturalBranch).values(image_url=None))
 
 
 @pytest.fixture(autouse=True)
 def cloud_name(monkeypatch):
     # El validador exige el cloud name de la cuenta; en los tests se fija uno conocido.
     monkeypatch.setattr(settings, "cloudinary_cloud_name", "tejido-test")
+
+
+def public_covers(client):
+    """{clave: url} de las ramas activas con imagen, tal como las ve el publico (GET /api/cultural-branches)."""
+    return {b["key"]: b["image_url"] for b in client.get("/api/cultural-branches").json() if b["image_url"]}
 
 
 def put(client, key, headers, url=None):
@@ -43,9 +49,7 @@ def test_admin_changes_any_cover_and_get_reflects_it(client, admin):
         resp = put(client, key, admin, cover_url(key.lower()))
         assert resp.status_code == 200 and resp.json()[key] == cover_url(key.lower())
         assert resp.headers["cache-control"] == "no-store"
-    covers = client.get("/api/cultural-categories/covers")
-    assert covers.json() == {"MUSICA": cover_url("musica"), "DANZA": cover_url("danza")}
-    assert covers.headers["cache-control"] == "public, max-age=300"  # el publico conserva su cache
+    assert public_covers(client) == {"MUSICA": cover_url("musica"), "DANZA": cover_url("danza")}
     # Volver a guardar actualiza la misma fila (upsert).
     assert put(client, "musica", admin, cover_url("otra")).json()["MUSICA"] == cover_url("otra")
 
@@ -67,7 +71,7 @@ def test_others_cannot_change_covers(client, admin, sent):
         assert client.delete("/api/cultural-categories/ARTES_VISUALES/cover", headers=headers).status_code == 403
     assert put(client, "MUSICA", {}).status_code == 401
     assert client.delete("/api/cultural-categories/MUSICA/cover").status_code == 401
-    assert client.get("/api/cultural-categories/covers").json() == {}
+    assert public_covers(client) == {}
 
 
 def test_invalid_key_and_urls(client, admin):
@@ -82,7 +86,7 @@ def test_invalid_key_and_urls(client, admin):
     for url in bad:
         resp = client.put("/api/cultural-categories/MUSICA/cover", json={"image_url": url}, headers=admin)
         assert resp.status_code == 400, url
-    assert client.get("/api/cultural-categories/covers").json() == {}
+    assert public_covers(client) == {}
 
 
 def test_delete_is_idempotent(client, admin):
@@ -90,7 +94,7 @@ def test_delete_is_idempotent(client, admin):
     for _ in range(2):
         resp = client.delete("/api/cultural-categories/teatro/cover", headers=admin)
         assert resp.status_code == 200 and "TEATRO" not in resp.json()
-    assert client.get("/api/cultural-categories/covers").json() == {}
+    assert public_covers(client) == {}
 
 
 def test_upload_scope_category_cover(client, admin, sent, branch_cleanup, configured):

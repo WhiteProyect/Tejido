@@ -2,12 +2,17 @@ import { useState } from 'react';
 import { UNVERIFIED_TEXT, isUnverifiedError, notifyUnverified } from '../components/VerifyEmailNotice.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { apiRequest } from './api.js';
-import { CULTURAL_CATEGORIES, MUNICIPALITIES } from './constants.js';
+import { MUNICIPALITIES } from './constants.js';
+import { branchBySlug, branchLabel, branchSlug, isActiveKey } from './culturalBranches.js';
 
 // Utilidades del talento contratable (#talento y #talento/<slug>).
 
-export const CATEGORY_BY_KEY = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, label, slug]) => [key, { label, slug }]));
-export const CATEGORY_KEY_BY_SLUG = Object.fromEntries(CULTURAL_CATEGORIES.map(([key, , slug]) => [slug, key]));
+// Rama del talento (utils/culturalBranches.js): nombre, slug y si esta activa (solo entonces se enlaza al filtro).
+export function categoryByKey(key) {
+  return key ? { label: branchLabel(key), slug: branchSlug(key), active: isActiveKey(key) } : null;
+}
+
+export const categoryKeyBySlug = (slug) => branchBySlug(slug)?.key || null;
 export const MUNICIPALITY_NAMES = Object.fromEntries(MUNICIPALITIES.map(({ id, name }) => [id, name]));
 
 // Tinte solido por categoria para las portadas sin foto (sin degradados: color de marca mezclado con crema).
@@ -64,7 +69,7 @@ export function initials(name) {
 }
 
 export function categoryOrigin(talent) {
-  const category = talent.category_label || CATEGORY_BY_KEY[talent.category]?.label || '';
+  const category = talent.category_label || branchLabel(talent.category);
   const origin = talent.origin_label || MUNICIPALITY_NAMES[talent.origin] || '';
   return [category, origin].filter(Boolean).join(' · ');
 }
@@ -89,7 +94,7 @@ export function parseTalentFilters(hash = window.location.hash) {
   const cat = params.get('cat') || '';
   const mun = params.get('mun') || '';
   return {
-    cat: CATEGORY_KEY_BY_SLUG[cat] ? cat : '',
+    cat: categoryKeyBySlug(cat) ? cat : '',
     mun: MUNICIPALITY_NAMES[mun] ? mun : '',
     q: (params.get('q') || '').slice(0, 100),
     disp: params.get('disp') === '1',

@@ -9,7 +9,6 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from backend.service.schemas.artists import _slug_format
-from backend.service.schemas.cultural_categories import CULTURAL_CATEGORIES
 from backend.service.schemas.fields import external_url, optional_text, required_text, url_or_path
 from backend.service.schemas.municipalities import MUNICIPALITIES
 
@@ -43,8 +42,9 @@ def talent_slug(v):
 
 
 def _category(v):
+    # Que exista y este activa lo valida services/talent.py con la tabla de ramas.
     v = str(v or "").strip().upper()
-    if v not in CULTURAL_CATEGORIES:
+    if not v:
         raise ValueError("Categoría cultural no válida")
     return v
 

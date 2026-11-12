@@ -133,8 +133,9 @@ def test_gestor_endpoints_require_admin(client, tokens, sent_emails):
 def test_create_gestor_rejects_invalid_branch(client, tokens, sent_emails):
     resp = client.post("/api/admin/gestores", json=new_gestor_payload(branch="POLITICA"),
                        headers=auth_header(tokens, "admin"))
-    assert resp.status_code == 400
-    assert resp.json()["error"] == "VALIDATION"
+    # Las ramas viven en la tabla cultural_branches: una que no existe es 422 (services/cultural_branches.py).
+    assert resp.status_code == 422
+    assert resp.json()["error"] == "INVALID_BRANCH"
     assert sent_emails == []
 
 
@@ -271,7 +272,7 @@ def test_patch_gestor_edits_organization_and_toggles_active(client, tokens, sent
         assert (org.name, org.branch, org.contact) == ("Nuevo Nombre", "TEATRO", None)
 
     bad = client.patch(f"/api/admin/gestores/{gid}", headers=admin, json={"branch": "NO_EXISTE"})
-    assert bad.status_code == 400
+    assert bad.status_code == 422
 
     # Desactivar corta el login; reactivar lo devuelve.
     off = client.patch(f"/api/admin/gestores/{gid}", headers=admin, json={"active": False})
